@@ -1,0 +1,9 @@
+node_modules
+dist
+
+desktop.ini
+Thumbs.db
+
+*.log
+.DS_Store
+coverage
