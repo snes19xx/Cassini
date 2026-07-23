@@ -1,17 +1,3 @@
-// src/components/ErrorBoundary/ErrorBoundary.tsx
-//
-// Catches React errors thrown inside the 3D scene tree (Canvas children,
-// useFrame hooks, etc.) so a single bad frame doesn't unmount the entire
-// app. The user reported the canvas occasionally crashing back to the home
-// screen while exploring around moons; without a stack trace the root
-// cause is unknown, so this is a safety net that surfaces the error and
-// offers a recovery option (resetting state + remounting the scene).
-//
-// Usage:
-//   <SceneErrorBoundary>
-//     <CassiniScene />
-//   </SceneErrorBoundary>
-
 import { Component, type ReactNode } from "react";
 
 interface Props {
