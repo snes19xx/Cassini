@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { Projector } from "../../components/Labels/Projector";
 import { useMissionStore } from "../../store/missionStore";
 import { getActiveTableau } from "./data/tableaus";
+import { MissionTimeAdvancer } from "./parts/MissionTimeAdvancer";
 import { SceneLighting } from "./parts/SceneLighting";
 import { TableauResolver } from "./parts/TableauResolver";
 import { TextureServiceDriver } from "./parts/TextureServiceDriver";
@@ -74,6 +75,7 @@ export function CassiniScene() {
       gl={{ logarithmicDepthBuffer: true, antialias: true }}
     >
       <CameraAndRendererSetup />
+      <MissionTimeAdvancer />
       <SceneEnvironment />
       <TextureServiceDriver />
       <Suspense fallback={null}>
