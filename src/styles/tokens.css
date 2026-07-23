@@ -1,0 +1,56 @@
+:root {
+  --color-bg: #000000;
+  --color-fg: #e8eeff;
+  --color-fg-muted: rgba(232, 238, 255, 0.8);
+  --color-fg-dim: rgba(232, 238, 255, 0.5);
+  --color-fg-faint: rgba(232, 238, 255, 0.22);
+
+  --color-wire: rgba(232, 238, 255, 0.9);
+  --color-wire-dim: rgba(232, 238, 255, 0.32);
+  --color-wire-faint: rgba(232, 238, 255, 0.1);
+
+  --color-accent: #4a9fff;
+  --color-accent-dim: rgba(74, 159, 255, 0.5);
+  --color-accent-wash: rgba(74, 159, 255, 0.09);
+  --color-accent-glow: rgba(74, 159, 255, 0.5);
+
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --tracking-01: 0.1em;
+  --tracking-02: 0.12em;
+  --tracking-03: 0.14em;
+  --tracking-04: 0.16em;
+  --tracking-05: 0.2em;
+
+  --text-9: 12px;
+  --text-11: 13px;
+  --text-12: 14px;
+  --text-14: 16px;
+  --text-18: clamp(16px, 1.6vw, 20px);
+  --text-22: clamp(20px, 2.2vw, 28px);
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --hairline: 1px solid var(--color-fg-dim);
+  --hairline-faint: 1px solid var(--color-fg-faint);
+  --hairline-accent: 1px solid var(--color-accent);
+
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-duration-panel: 420ms;
+  --motion-duration-micro: 240ms;
+
+  --chrome-pad-x: clamp(14px, 2.2vw, 28px);
+  --chrome-pad-y: clamp(12px, 1.8vw, 20px);
+  --edge-inset: clamp(12px, 2vw, 28px);
+  --panel-inset: clamp(14px, 2vw, 28px);
+
+  --panel-bg: rgba(0, 0, 0, 0.55);
+  --panel-bg-heavy: rgba(0, 0, 0, 0.75);
+  --panel-bg-strong: rgba(0, 0, 0, 0.9);
+  --panel-border: rgba(232, 238, 255, 0.14);
+  --panel-blur: 12px;
+
+  --scene-bg: var(--color-bg);
+}
