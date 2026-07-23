@@ -7,3 +7,4 @@ Thumbs.db
 *.log
 .DS_Store
 coverage
+package-lock.json
