@@ -8,8 +8,8 @@ Built with React 18, [React Three Fiber](https://docs.pmnd.rs/react-three-fiber)
 Three.js, zustand, and Vite.
 
 <p align="center">
-  <img src="./source/ss.png" width="250"/>
-  <img src="./source/ss2.png" width="250"/>
+  <img src="./docs/ss.png" width="250"/>
+  <img src="./docs/ss2.png" width="250"/>
 </p>
 
 ## Getting started
