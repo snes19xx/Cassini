@@ -18,3 +18,11 @@ export const TERMINAL_TABLEAU_IDS: ReadonlySet<string> = new Set([
 export function isTerminalTableau(id: string): boolean {
   return TERMINAL_TABLEAU_IDS.has(id);
 }
+
+// Wall-clock seconds for the full mission at 1x playback (displayT 0 to 1).
+// MissionTimeAdvancer divides by this.
+export const FULL_MISSION_SECONDS = 281.4;
+
+// Huygens probe separation, Dec 25 2004. Spacecraft model swap, probe stage
+// animation, and label anchors key off this t.
+export const HUYGENS_SEPARATION_T = 0.361177;
