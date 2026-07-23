@@ -1,7 +1,6 @@
 // src/scenes/cassini/lib/stateAt.ts
 
 import * as THREE from "three";
-import { getCameraOverride } from "../data/cameraOverrides";
 import { ORIENTATION_KEYS } from "../data/orientationKeys";
 import {
   easeOutBackSoft,
@@ -12,12 +11,7 @@ import {
   triangle,
 } from "./easing";
 import { getCartesianState } from "./orbitalMechanics";
-import type {
-  CameraOverrideState,
-  MissionEffects,
-  MissionState,
-  StageState,
-} from "./types";
+import type { MissionEffects, MissionState, StageState } from "./types";
 
 function defaultStage(): StageState {
   return {
@@ -187,14 +181,6 @@ export function stateAt(t: number): MissionState {
     return 70;
   })();
 
-  const overrideEntry = getCameraOverride(t);
-  const cameraOverride: CameraOverrideState | null = overrideEntry
-    ? {
-        position: overrideEntry.position,
-        lookAt: overrideEntry.lookAt,
-      }
-    : null;
-
   return {
     cassini,
     huygens,
@@ -202,6 +188,5 @@ export function stateAt(t: number): MissionState {
     effects,
     orientation,
     cameraRadius,
-    cameraOverride,
   };
 }
