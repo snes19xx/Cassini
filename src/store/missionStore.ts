@@ -11,6 +11,8 @@ export type TitanSpectralMode = "visible" | "vims_ir" | "iss_cb3" | "iss_nac_ir"
 export type EnceladusSpectralMode = "visible" | "vims_ir";
 export type LightingMode = "natural" | "rim" | "full";
 
+const LABEL_MODEL: ActiveModel = "CassiniHuygensA.glb";
+
 interface MissionState {
   currentT: number;
   isPlaying: boolean;
@@ -36,6 +38,10 @@ interface MissionState {
   // Bumped when the same inspection-view button is clicked again, so
   // Spacecraft.tsx can force a re-snap if the user orbited away since.
   inspectionViewNonce: number;
+
+  // Model shown before label mode swapped it to LABEL_MODEL, restored when
+  // labels are toggled back off.
+  _preLabelModel: ActiveModel;
 
   setTime: (t: number) => void;
   togglePlay: () => void;
@@ -74,6 +80,7 @@ export const useMissionStore = create<MissionState>((set) => ({
   cameraResetNonce: 0,
   inspectionView: "top",
   inspectionViewNonce: 0,
+  _preLabelModel: "CassiniHuygensA.glb",
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
@@ -105,6 +112,8 @@ export const useMissionStore = create<MissionState>((set) => ({
       if (!s.showLabels) {
         return {
           showLabels: true,
+          _preLabelModel: s.activeModel,
+          activeModel: LABEL_MODEL,
           cameraResetNonce: s.cameraResetNonce + 1,
           // Default to TOP so labels are visible immediately, no empty
           // intermediate state. Bump nonce so the camera re-snaps even if
@@ -115,6 +124,7 @@ export const useMissionStore = create<MissionState>((set) => ({
       } else {
         return {
           showLabels: false,
+          activeModel: s._preLabelModel,
           cameraResetNonce: s.cameraResetNonce + 1,
           inspectionView: null,
         };
@@ -147,5 +157,6 @@ export const useMissionStore = create<MissionState>((set) => ({
       uiScale: 1,
       cameraResetNonce: s.cameraResetNonce + 1,
       inspectionView: "top",
+      _preLabelModel: "CassiniHuygensA.glb",
     })),
 }));
