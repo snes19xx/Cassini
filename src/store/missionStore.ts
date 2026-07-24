@@ -43,6 +43,7 @@ interface MissionState {
   resetCamera: () => void;
   toggleLabels: () => void;
   toggleAutoRotate: () => void;
+  reset: () => void;
 }
 
 export const useMissionStore = create<MissionState>((set) => ({
@@ -89,4 +90,23 @@ export const useMissionStore = create<MissionState>((set) => ({
   resetCamera: () => set((s) => ({ cameraResetNonce: s.cameraResetNonce + 1 })),
   toggleLabels: () => set((s) => ({ showLabels: !s.showLabels })),
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
+
+  reset: () =>
+    set((s) => ({
+      currentT: 0,
+      isPlaying: false,
+      playbackSpeed: 1,
+      activeComponent: null,
+      openPhaseId: null,
+      renderMode: "blueprint",
+      titanSpectralMode: "visible",
+      enceladusSpectralMode: "visible",
+      lightingMode: "natural",
+      activeModel: "CassiniHuygensA.glb",
+      showPlumes: false,
+      showLabels: false,
+      autoRotate: true,
+      uiScale: 1,
+      cameraResetNonce: s.cameraResetNonce + 1,
+    })),
 }));
