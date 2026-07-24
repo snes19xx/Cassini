@@ -80,6 +80,11 @@ interface MissionState {
   // wins over the stash).
   _preTerminalRenderMode: RenderMode | null;
 
+  // Set when opening a panel/popover auto-paused playback, so closing it
+  // resumes only if the panel itself was the reason it paused.
+  resumeOnPanelClose: boolean;
+  resumeOnPopoverClose: boolean;
+
   setTime: (t: number) => void;
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -127,13 +132,42 @@ export const useMissionStore = create<MissionState>((set) => ({
   finaleCameraMode: "thirdPerson",
   finaleCameraModeNonce: 0,
   _preTerminalRenderMode: null,
+  resumeOnPanelClose: false,
+  resumeOnPopoverClose: false,
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
 
-  setActiveComponent: (activeComponent) => set({ activeComponent }),
-  setOpenPhaseId: (openPhaseId) => set({ openPhaseId }),
+  setActiveComponent: (activeComponent) =>
+    set((s) => {
+      if (activeComponent && s.isPlaying) {
+        return { activeComponent, isPlaying: false, resumeOnPanelClose: true };
+      }
+      if (!activeComponent && s.resumeOnPanelClose) {
+        return {
+          activeComponent: null,
+          isPlaying: true,
+          resumeOnPanelClose: false,
+        };
+      }
+      return { activeComponent };
+    }),
+
+  setOpenPhaseId: (openPhaseId) =>
+    set((s) => {
+      if (openPhaseId && s.isPlaying) {
+        return { openPhaseId, isPlaying: false, resumeOnPopoverClose: true };
+      }
+      if (!openPhaseId && s.resumeOnPopoverClose) {
+        return {
+          openPhaseId: null,
+          isPlaying: true,
+          resumeOnPopoverClose: false,
+        };
+      }
+      return { openPhaseId };
+    }),
   setRenderMode: (renderMode) => {
     // A manual theme pick always clears the terminal restore stash. If the
     // user chooses EDITORIAL mid-descent, scrubbing back out must not yank
