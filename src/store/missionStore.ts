@@ -13,6 +13,19 @@ export type LightingMode = "natural" | "rim" | "full";
 
 const LABEL_MODEL: ActiveModel = "CassiniHuygensA.glb";
 
+// Effective mission-panel visibility: user pin wins, otherwise the
+// per-theme defaults. Shared by InfoPanelGate (render) and the INFOPANEL
+// chrome button (pressed state) so the two can never disagree.
+export const infoPanelVisible = (s: {
+  infoPanelOverride: "on" | "off" | null;
+  renderMode: RenderMode;
+  showLabels: boolean;
+}): boolean =>
+  s.infoPanelOverride !== null
+    ? s.infoPanelOverride === "on"
+    : s.renderMode === "blueprint" ||
+      (s.renderMode === "editorial" && s.showLabels);
+
 interface MissionState {
   currentT: number;
   isPlaying: boolean;
@@ -43,6 +56,10 @@ interface MissionState {
   // labels are toggled back off.
   _preLabelModel: ActiveModel;
 
+  // User pin on the mission info panel. Null defers to infoPanelVisible's
+  // per-theme default.
+  infoPanelOverride: "on" | "off" | null;
+
   setTime: (t: number) => void;
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -59,6 +76,7 @@ interface MissionState {
   toggleLabels: () => void;
   toggleAutoRotate: () => void;
   setInspectionView: (view: InspectionViewId | null) => void;
+  toggleInfoPanel: () => void;
   reset: () => void;
 }
 
@@ -81,6 +99,7 @@ export const useMissionStore = create<MissionState>((set) => ({
   inspectionView: "top",
   inspectionViewNonce: 0,
   _preLabelModel: "CassiniHuygensA.glb",
+  infoPanelOverride: null,
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
@@ -104,6 +123,12 @@ export const useMissionStore = create<MissionState>((set) => ({
     }),
 
   togglePlumes: () => set((s) => ({ showPlumes: !s.showPlumes })),
+
+  // Pin the panel to the opposite of whatever is effectively showing, so
+  // the button always does what it visually promises.
+  toggleInfoPanel: () =>
+    set((s) => ({ infoPanelOverride: infoPanelVisible(s) ? "off" : "on" })),
+
   setActiveModel: (activeModel) => set({ activeModel, showLabels: false }),
   setUiScale: (uiScale) => set({ uiScale }),
   resetCamera: () => set((s) => ({ cameraResetNonce: s.cameraResetNonce + 1 })),
@@ -158,5 +183,6 @@ export const useMissionStore = create<MissionState>((set) => ({
       cameraResetNonce: s.cameraResetNonce + 1,
       inspectionView: "top",
       _preLabelModel: "CassiniHuygensA.glb",
+      infoPanelOverride: null,
     })),
 }));
