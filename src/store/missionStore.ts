@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { InspectionViewId } from "../scenes/cassini/data/inspectionViews";
 
 export type PlaybackSpeed = 1 | 2 | 5 | 10;
 export type RenderMode = "space" | "blueprint" | "editorial";
@@ -28,6 +29,14 @@ interface MissionState {
   uiScale: number;
   cameraResetNonce: number;
 
+  // Guided inspection: which orthogonal view (TOP / FRONT / REAR / MAG) is
+  // active. Only meaningful when showLabels is true on the homepage. Null
+  // means free orbit with labels suppressed.
+  inspectionView: InspectionViewId | null;
+  // Bumped when the same inspection-view button is clicked again, so
+  // Spacecraft.tsx can force a re-snap if the user orbited away since.
+  inspectionViewNonce: number;
+
   setTime: (t: number) => void;
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -43,6 +52,7 @@ interface MissionState {
   resetCamera: () => void;
   toggleLabels: () => void;
   toggleAutoRotate: () => void;
+  setInspectionView: (view: InspectionViewId | null) => void;
   reset: () => void;
 }
 
@@ -62,6 +72,8 @@ export const useMissionStore = create<MissionState>((set) => ({
   autoRotate: true,
   uiScale: 1,
   cameraResetNonce: 0,
+  inspectionView: "top",
+  inspectionViewNonce: 0,
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
@@ -88,8 +100,34 @@ export const useMissionStore = create<MissionState>((set) => ({
   setActiveModel: (activeModel) => set({ activeModel, showLabels: false }),
   setUiScale: (uiScale) => set({ uiScale }),
   resetCamera: () => set((s) => ({ cameraResetNonce: s.cameraResetNonce + 1 })),
-  toggleLabels: () => set((s) => ({ showLabels: !s.showLabels })),
+  toggleLabels: () =>
+    set((s) => {
+      if (!s.showLabels) {
+        return {
+          showLabels: true,
+          cameraResetNonce: s.cameraResetNonce + 1,
+          // Default to TOP so labels are visible immediately, no empty
+          // intermediate state. Bump nonce so the camera re-snaps even if
+          // the previous toggle-off left inspectionView at "top" already.
+          inspectionView: "top",
+          inspectionViewNonce: s.inspectionViewNonce + 1,
+        };
+      } else {
+        return {
+          showLabels: false,
+          cameraResetNonce: s.cameraResetNonce + 1,
+          inspectionView: null,
+        };
+      }
+    }),
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
+
+  setInspectionView: (view) =>
+    set((s) => ({
+      inspectionView: view,
+      inspectionViewNonce:
+        view !== null ? s.inspectionViewNonce + 1 : s.inspectionViewNonce,
+    })),
 
   reset: () =>
     set((s) => ({
@@ -108,5 +146,6 @@ export const useMissionStore = create<MissionState>((set) => ({
       autoRotate: true,
       uiScale: 1,
       cameraResetNonce: s.cameraResetNonce + 1,
+      inspectionView: "top",
     })),
 }));
