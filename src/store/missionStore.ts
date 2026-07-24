@@ -11,6 +11,13 @@ export type TitanSpectralMode = "visible" | "vims_ir" | "iss_cb3" | "iss_nac_ir"
 export type EnceladusSpectralMode = "visible" | "vims_ir";
 export type LightingMode = "natural" | "rim" | "full";
 
+// Ring-dive camera modes, surfaced as a 3-button segmented control while
+// the finale_ring_dive tableau is active.
+//   thirdPerson: chase-cam behind Cassini, Saturn ahead.
+//   pov: first-person from Cassini, looking forward along velocity.
+//   wide: pulled-back external camera framing the whole tilted loop.
+export type FinaleCameraMode = "thirdPerson" | "pov" | "wide";
+
 const LABEL_MODEL: ActiveModel = "CassiniHuygensA.glb";
 
 // Effective mission-panel visibility: user pin wins, otherwise the
@@ -60,12 +67,27 @@ interface MissionState {
   // per-theme default.
   infoPanelOverride: "on" | "off" | null;
 
+  // Consumed by FinaleCameraDirector to pick the chase, first-person, or
+  // pulled-back framing.
+  finaleCameraMode: FinaleCameraMode;
+  // Bumped whenever finaleCameraMode is set, even to its current value, so
+  // FinaleCameraDirector can force a clean re-snap after the camera drifts.
+  finaleCameraModeNonce: number;
+
+  // Theme stashed on entering the terminal descent, restored on exit. Null
+  // when no restore is pending: pre-terminal, entered already in SPACE, or
+  // the user picked a theme manually during the descent (a manual pick
+  // wins over the stash).
+  _preTerminalRenderMode: RenderMode | null;
+
   setTime: (t: number) => void;
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
   setActiveComponent: (id: string | null) => void;
   setOpenPhaseId: (id: string | null) => void;
   setRenderMode: (mode: RenderMode) => void;
+  enterTerminalTheme: () => void;
+  exitTerminalTheme: () => void;
   setTitanSpectralMode: (mode: TitanSpectralMode) => void;
   setEnceladusSpectralMode: (mode: EnceladusSpectralMode) => void;
   toggleLightingMode: () => void;
@@ -77,6 +99,8 @@ interface MissionState {
   toggleAutoRotate: () => void;
   setInspectionView: (view: InspectionViewId | null) => void;
   toggleInfoPanel: () => void;
+  setFinaleCameraMode: (mode: FinaleCameraMode) => void;
+  cycleFinaleCameraMode: () => void;
   reset: () => void;
 }
 
@@ -100,6 +124,9 @@ export const useMissionStore = create<MissionState>((set) => ({
   inspectionViewNonce: 0,
   _preLabelModel: "CassiniHuygensA.glb",
   infoPanelOverride: null,
+  finaleCameraMode: "thirdPerson",
+  finaleCameraModeNonce: 0,
+  _preTerminalRenderMode: null,
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
@@ -107,7 +134,33 @@ export const useMissionStore = create<MissionState>((set) => ({
 
   setActiveComponent: (activeComponent) => set({ activeComponent }),
   setOpenPhaseId: (openPhaseId) => set({ openPhaseId }),
-  setRenderMode: (renderMode) => set({ renderMode }),
+  setRenderMode: (renderMode) => {
+    // A manual theme pick always clears the terminal restore stash. If the
+    // user chooses EDITORIAL mid-descent, scrubbing back out must not yank
+    // them to the stashed pre-terminal theme.
+    set({ renderMode, _preTerminalRenderMode: null });
+  },
+
+  // From SATURN'S ATMOSPHERE onward, BLUEPRINT is disallowed since the
+  // terminal stage is authored against the photoreal sky and the wireframe
+  // breaks it. Only BLUEPRINT gets forced to SPACE; EDITORIAL and SPACE are
+  // left alone.
+  enterTerminalTheme: () =>
+    set((s) =>
+      s.renderMode !== "blueprint"
+        ? s
+        : { _preTerminalRenderMode: s.renderMode, renderMode: "space" },
+    ),
+
+  exitTerminalTheme: () =>
+    set((s) =>
+      s._preTerminalRenderMode === null
+        ? s
+        : {
+            renderMode: s._preTerminalRenderMode,
+            _preTerminalRenderMode: null,
+          },
+    ),
   setTitanSpectralMode: (titanSpectralMode) => set({ titanSpectralMode }),
   setEnceladusSpectralMode: (enceladusSpectralMode) =>
     set({ enceladusSpectralMode }),
@@ -164,6 +217,25 @@ export const useMissionStore = create<MissionState>((set) => ({
         view !== null ? s.inspectionViewNonce + 1 : s.inspectionViewNonce,
     })),
 
+  setFinaleCameraMode: (mode) =>
+    set((s) => ({
+      finaleCameraMode: mode,
+      finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
+    })),
+
+  cycleFinaleCameraMode: () =>
+    set((s) => {
+      const next: Record<FinaleCameraMode, FinaleCameraMode> = {
+        thirdPerson: "pov",
+        pov: "wide",
+        wide: "thirdPerson",
+      };
+      return {
+        finaleCameraMode: next[s.finaleCameraMode],
+        finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
+      };
+    }),
+
   reset: () =>
     set((s) => ({
       currentT: 0,
@@ -184,5 +256,8 @@ export const useMissionStore = create<MissionState>((set) => ({
       inspectionView: "top",
       _preLabelModel: "CassiniHuygensA.glb",
       infoPanelOverride: null,
+      finaleCameraMode: "thirdPerson",
+      finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
+      _preTerminalRenderMode: null,
     })),
 }));
