@@ -1,6 +1,9 @@
 // src/scenes/cassini/parts/TextureServiceDriver.tsx
+//
+// Lifecycle wiring for the moon TextureService: initializes on mount,
+// reacts to render-mode and spectral-mode toggles, ticks every frame.
+// Renders nothing.
 
-import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import {
@@ -10,6 +13,7 @@ import {
   setTitanMode,
   tick,
 } from "../lib/textureService";
+import { useMissionStore } from "@/store/missionStore";
 
 export function TextureServiceDriver() {
   const { gl } = useThree();
