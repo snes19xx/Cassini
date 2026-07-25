@@ -38,6 +38,9 @@ const Q_KEYS = ORIENTATION_KEYS.map((k) => {
   return { t: k.t, q: new THREE.Quaternion().setFromEuler(e) };
 });
 
+// Reused across calls; the returned Euler is always a fresh allocation.
+const _qScratch = new THREE.Quaternion();
+
 function orientationAt(t: number): THREE.Euler {
   // Q_KEYS is non-empty (asserted at module init by ORIENTATION_KEYS),
   // so first/last are always defined. Non-null assertions are safe under
@@ -57,9 +60,8 @@ function orientationAt(t: number): THREE.Euler {
   const frac = lo.t === hi.t ? 0 : (t - lo.t) / (hi.t - lo.t);
   const easedFrac = easeOutBackSoft(Math.max(0, Math.min(1, frac)));
 
-  const q = new THREE.Quaternion();
-  q.slerpQuaternions(lo.q, hi.q, easedFrac);
-  return new THREE.Euler().setFromQuaternion(q, "YXZ");
+  _qScratch.slerpQuaternions(lo.q, hi.q, easedFrac);
+  return new THREE.Euler().setFromQuaternion(_qScratch, "YXZ");
 }
 
 export function stateAt(t: number): MissionState {
