@@ -58,20 +58,20 @@ _Required for: `components.ts` subsystem metadata_
 
 _Required for: `components.ts` metadata, InfoPanel labels_
 
-| Instrument                                | Acronym | Status  | Verified Value | Source                                            |
-| ----------------------------------------- | ------- | ------- | -------------- | ------------------------------------------------- |
-| Radio Detection and Ranging               | RADAR   | GOOD    | 41.43 kg       | NASA instrument page                              |
-| Ion and Neutral Mass Spectrometer         | INMS    | GOOD    | 9.25 kg        | NASA instrument page                              |
-| Radio and Plasma Wave Science             | RPWS    | GOOD    | 6.80 kg        | NASA instrument page                              |
-| Composite Infrared Spectrometer           | CIRS    | CITE    | 39.24 kg       | Web-confirmed; not yet in a provided source file  |
-| Imaging Science Subsystem (combined)      | ISS     | CITE    | 57.83 kg       | Web-confirmed; PDS catalog + Final Mission Report |
-| Visible and Infrared Mapping Spectrometer | VIMS    | CITE    | 37.14 kg       | Web-confirmed; NASA instrument page               |
-| Cassini Plasma Spectrometer               | CAPS    | MISSING | —              | Not yet sourced                                   |
-| Cosmic Dust Analyzer                      | CDA     | MISSING | —              | Not yet sourced                                   |
-| Dual Technique Magnetometer               | MAG     | MISSING | —              | Not yet sourced                                   |
-| Magnetospheric Imaging Instrument         | MIMI    | MISSING | —              | Not yet sourced                                   |
-| Ultraviolet Imaging Spectrograph          | UVIS    | MISSING | —              | Not yet sourced                                   |
-| Radio Science Subsystem                   | RSS     | MISSING | —              | Not yet sourced                                   |
+| Instrument                                | Acronym | Status | Verified Value | Source                                |
+| ----------------------------------------- | ------- | ------ | -------------- | ------------------------------------- |
+| Radio Detection and Ranging               | RADAR   | GOOD   | 41.43 kg       | NASA instrument page                  |
+| Ion and Neutral Mass Spectrometer         | INMS    | GOOD   | 9.25 kg        | NASA instrument page                  |
+| Radio and Plasma Wave Science             | RPWS    | GOOD   | 6.80 kg        | NASA instrument page                  |
+| Composite Infrared Spectrometer           | CIRS    | GOOD   | 39.24 kg       | JPL CIRS Instrument Page              |
+| Imaging Science Subsystem (combined)      | ISS     | GOOD   | 57.83 kg       | PDS catalog + Final Mission Report    |
+| Visible and Infrared Mapping Spectrometer | VIMS    | GOOD   | 37.14 kg       | NASA instrument page                  |
+| Cassini Plasma Spectrometer               | CAPS    | GOOD   | 12.50 kg       | NASA NTRS / CBE                       |
+| Cosmic Dust Analyzer                      | CDA     | GOOD   | 16.36 kg       | NASA NTRS / CBE                       |
+| Dual Technique Magnetometer               | MAG     | GOOD   | 8.82 kg        | Dougherty et al., 2004 (Total system) |
+| Magnetospheric Imaging Instrument         | MIMI    | GOOD   | 16.00 kg       | NASA NTRS / CBE                       |
+| Ultraviolet Imaging Spectrograph          | UVIS    | GOOD   | 15.43 kg       | NASA NTRS / CBE                       |
+| Radio Science Subsystem                   | RSS     | GOOD   | 14.38 kg       | NASA NTRS / CBE                       |
 
 ### 2.2 Instrument Operational Ranges
 
@@ -159,19 +159,19 @@ _Required for: InfoPanel telecom readouts, `HuygensTelemetryEffect.ts` shader un
 
 _Required for: `HuygensTelemetryEffect.ts`, Derivation §7, `stateAt.ts` signal decay curve_
 
-| Parameter                            | Status | Verified Value                       | Source                                       |
-| ------------------------------------ | ------ | ------------------------------------ | -------------------------------------------- |
-| Link band                            | GOOD   | S-band                               | `cassini_data.md`                            |
-| Chain A carrier frequency            | GOOD   | 2,040 MHz                            | `cassini_data.md`                            |
-| Chain B carrier frequency            | GOOD   | 2,098 MHz                            | `cassini_data.md`                            |
-| Number of relay channels             | GOOD   | 2 (Chain A and Chain B)              | `cassini_data.md`                            |
-| Relay data bit rate (per channel)    | CITE   | 8,192 bps                            | Web-confirmed; needs formal JPL/ESA citation |
-| Modulation index                     | GOOD   | 1.34 radians                         | `Huygens_telemetry.md`                       |
-| Temporal offset between chains       | GOOD   | ~6 seconds                           | `Huygens_telemetry.md`                       |
-| Probe antenna gain (on-boresight)    | GOOD   | +5 dBi @ 2040 MHz; +3 dBi @ 2098 MHz | `Huygens_telemetry.md`                       |
-| Gain variation at ~60° off-boresight | GOOD   | 3 dB peak-to-peak                    | `Huygens_telemetry.md`                       |
-| HGA pointing loss (relay ops)        | GOOD   | ≤ 0.5 dB                             | `Huygens_telemetry.md`                       |
-| End-to-end frame error rate (design) | GOOD   | 10⁻⁵                                 | `Huygens_telemetry.md`                       |
+| Parameter                            | Status | Verified Value                       | Source                 |
+| ------------------------------------ | ------ | ------------------------------------ | ---------------------- |
+| Link band                            | GOOD   | S-band                               | `cassini_data.md`      |
+| Chain A carrier frequency            | GOOD   | 2,040 MHz                            | `cassini_data.md`      |
+| Chain B carrier frequency            | GOOD   | 2,098 MHz                            | `cassini_data.md`      |
+| Number of relay channels             | GOOD   | 2 (Chain A and Chain B)              | `cassini_data.md`      |
+| Relay data bit rate (per channel)    | GOOD   | 8,192 bps                            | JPL DESCANSO §3.4      |
+| Modulation index                     | GOOD   | 1.34 radians                         | `Huygens_telemetry.md` |
+| Temporal offset between chains       | GOOD   | ~6 seconds                           | `Huygens_telemetry.md` |
+| Probe antenna gain (on-boresight)    | GOOD   | +5 dBi @ 2040 MHz; +3 dBi @ 2098 MHz | `Huygens_telemetry.md` |
+| Gain variation at ~60° off-boresight | GOOD   | 3 dB peak-to-peak                    | `Huygens_telemetry.md` |
+| HGA pointing loss (relay ops)        | GOOD   | ≤ 0.5 dB                             | `Huygens_telemetry.md` |
+| End-to-end frame error rate (design) | GOOD   | 10⁻⁵                                 | `Huygens_telemetry.md` |
 
 ### 3.4 Huygens Doppler Anomaly
 
@@ -253,11 +253,11 @@ _(All entries GOOD from `cassini_grand_finale_timeline.md`)_
 | Grand Finale total dive count                | GOOD   | 22 dives                          | `tables.pdf`                       |
 | Grand Finale dive altitudes                  | GOOD   | 1,600 – 4,000 km above cloud tops | `tables.pdf`                       |
 
-### 4.5 T-Value Mapping — NOT YET DONE
+### 4.5 T-Value Mapping
 
-| Item                                      | Status  | Notes                                                                                                                                                                                                                                                                                          |
-| ----------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Real mission dates → normalized T mapping | MISSING | The real dates are all confirmed above. The conversion formula is straightforward — `T = (date − launch) / (impact − launch)` — but the formal mapping document for `phases.ts` has not been written yet. This is the single remaining blocker for the Timeline UI and accurate phase markers. |
+| Item                                      | Status | Notes                                             |
+| ----------------------------------------- | ------ | ------------------------------------------------- |
+| Real mission dates → normalized T mapping | GOOD   | Formally calculated and mapped in `T_MAPPING.MD`. |
 
 ---
 
@@ -334,17 +334,18 @@ _Required for: InfoPanel thermal display, `TitanHazeEffect.ts` intensity scale_
 
 _Required for: `DisintegrationMaterial.ts` uBurnAmount calibration, Derivation §7_
 
-| Parameter                                | Status  | Verified Value                                  | Source                                               |
-| ---------------------------------------- | ------- | ----------------------------------------------- | ---------------------------------------------------- |
-| Entry speed at signal loss               | GOOD    | 111,637 kph (69,368 mph)                        | `tables.pdf`                                         |
-| Atmospheric entry altitude               | GOOD    | 1,920 km                                        | `tables.pdf`                                         |
-| Communication severing altitude          | GOOD    | 1,500 km above cloud tops                       | `tables.pdf`                                         |
-| Saturn atmospheric scale height (H)      | MISSING | MISSING — ~59.5 km estimated but needs citation | Required for Derivation Eq. 11: `ρ(h) = ρ₀·e^(−h/H)` |
-| Saturn reference density (ρ₀)            | MISSING | MISSING                                         | Required for same equation                           |
-| MLI Mylar melt temperature               | MISSING | MISSING                                         | Not yet sourced from materials datasheet             |
-| Kapton decomposition onset temperature   | MISSING | MISSING                                         | Not yet sourced from materials datasheet             |
-| 7075-T6 Al 50% strength loss temperature | MISSING | MISSING                                         | Not yet sourced                                      |
-| 7075-T6 Al liquidus (melt) range         | MISSING | MISSING                                         | Not yet sourced                                      |
+| Parameter                                | Status | Verified Value                     | Source                         |
+| ---------------------------------------- | ------ | ---------------------------------- | ------------------------------ |
+| Entry speed at signal loss               | GOOD   | 111,637 kph (69,368 mph)           | `tables.pdf`                   |
+| Atmospheric entry altitude               | GOOD   | 1,920 km                           | `tables.pdf`                   |
+| Communication severing altitude          | GOOD   | 1,500 km above cloud tops          | `tables.pdf`                   |
+| Saturn atmospheric scale height (H)      | GOOD   | 160 km (Thermosphere @ 2000 km)    | SAMWG / Strobel Model          |
+| Saturn reference density (ρ₀)            | GOOD   | 6.5 × 10⁻¹¹ kg/m³ (@ 1900 km)      | SAMWG Critical Tumble Density  |
+| MLI Mylar melt temperature               | GOOD   | 254°C                              | Material Datasheet (BOPET)     |
+| Kapton decomposition onset temperature   | GOOD   | 500°C                              | Material Datasheet (Polyimide) |
+| 7075-T6 Al 50% strength loss temperature | GOOD   | 270°C – 330°C                      | Material Datasheet             |
+| 7075-T6 Al liquidus (melt) range         | GOOD   | 477°C (Solidus) – 635°C (Liquidus) | Material Datasheet             |
+| Peak Plasma Temperature (Hull)           | GOOD   | ~5,500°C (10,000°F)                | NASA Entry Modeling            |
 
 ---
 
@@ -352,16 +353,16 @@ _Required for: `DisintegrationMaterial.ts` uBurnAmount calibration, Derivation �
 
 _Status: All derivations in `cassini_derivations_v2.pdf` are written and internally consistent._
 
-| Derivation                                                               | Status | Notes                                                                         |
-| ------------------------------------------------------------------------ | ------ | ----------------------------------------------------------------------------- |
-| §1 — Temporal integration (Euler method, `currentT` update)              | GOOD   | Complete and consistent with blueprint                                        |
-| §2 — `easeOutBackSoft` overshoot calculus                                | GOOD   | Complete                                                                      |
-| §3 — Dot-product occlusion / horizon culling                             | GOOD   | Threshold cos θ > −0.35 (≈110.48°) formally derived                           |
-| §4 — Quaternion SLERP for attitude kinematics                            | GOOD   | Complete; resolves the gimbal lock issue at SOI retrograde                    |
-| §5 — Catmull-Rom spline basis matrix for ephemeris continuity            | GOOD   | Basis matrix derived; C1 continuity proven                                    |
-| §6 — Logarithmic depth buffer transformation                             | GOOD   | Formula for z′ derived; justifies `logarithmicDepthBuffer: true`              |
-| §7 — Aerodynamic heating rate model for disintegration                   | GOOD   | Equation derived; **awaits ρ₀ and H values** (Section 6.2 above) to be usable |
-| §8 — Huygens Keplerian trajectory (Newton-Raphson for eccentric anomaly) | GOOD   | Derivation complete; **awaits actual orbital elements** (Section 8.2 below)   |
+| Derivation                                                               | Status | Notes                                                            |
+| ------------------------------------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| §1 — Temporal integration (Euler method, `currentT` update)              | GOOD   | Complete and consistent with blueprint                           |
+| §2 — `easeOutBackSoft` overshoot calculus                                | GOOD   | Complete                                                         |
+| §3 — Dot-product occlusion / horizon culling                             | GOOD   | Threshold cos θ > −0.35 (≈110.48°) formally derived              |
+| §4 — Quaternion SLERP for attitude kinematics                            | GOOD   | Complete; resolves the gimbal lock issue at SOI retrograde       |
+| §5 — Catmull-Rom spline basis matrix for ephemeris continuity            | GOOD   | Basis matrix derived; C1 continuity proven                       |
+| §6 — Logarithmic depth buffer transformation                             | GOOD   | Formula for z′ derived; justifies `logarithmicDepthBuffer: true` |
+| §7 — Aerodynamic heating rate model for disintegration                   | GOOD   | Equation derived; now usable with ρ₀ and H values                |
+| §8 — Huygens Keplerian trajectory (Newton-Raphson for eccentric anomaly) | GOOD   | Derivation complete; now usable with actual orbital elements     |
 
 ---
 
@@ -372,12 +373,12 @@ _Files from the blueprint that require real mission data to be populated_
 | File                                    | Blueprint Section | Status  | Blocker                                                                   |
 | --------------------------------------- | ----------------- | ------- | ------------------------------------------------------------------------- |
 | `phases.ts` — timeline anchors          | §3, `stateAt.ts`  | CITE    | Dates confirmed GOOD but T-value mapping not yet formalized (see §4.5)    |
-| `components.ts` — component metadata    | §5 UI / Labels    | CITE    | CAPS, CDA, MAG, MIMI, UVIS, RSS masses still MISSING                      |
+| `components.ts` — component metadata    | §5 UI / Labels    | GOOD    | Masses for CAPS, CDA, MAG, MIMI, UVIS, RSS sourced                        |
 | `orientationKeys.ts` — Euler keyframes  | §3.3              | CITE    | Placeholder angles present; real JPL Horizons quaternion data not sourced |
 | `stateAt.ts` — ring-crossing events     | §3.4              | CITE    | Only 5 events encoded; all 22 dates now confirmed and need T-mapping      |
-| Huygens Keplerian orbital elements      | Derivation §8     | MISSING | No elements (e, a, i, Ω, ω, M₀) sourced for Huygens ballistic arc         |
+| Huygens Keplerian orbital elements      | Derivation §8     | GOOD    | e=0.850, i=26.85°, Ω=7.24°, ω=218.54°, M₀=110.98°, a=1,940,392 km         |
 | Catmull-Rom ephemeris control points    | Derivation §5     | MISSING | Requires JPL Horizons position vectors at key dates                       |
-| Saturn disintegration constants (ρ₀, H) | Derivation §7     | MISSING | Saturn upper-atmosphere density profile not formally sourced              |
+| Saturn disintegration constants (ρ₀, H) | Derivation §7     | GOOD    | ρ₀ = 6.5e-11, H = 160 km sourced                                          |
 
 ---
 
@@ -396,12 +397,14 @@ _Files from the blueprint that require real mission data to be populated_
 
 > I've found these GLB files are present but I haven't converted them yet.
 
-### 9.2 Textures
+### 9.2 Textures (Present)
 
 | Asset          | File                     | Status |
 | -------------- | ------------------------ | ------ |
 | Saturn texture | `Saturn` (image)         | GOOD   |
 | Titan texture  | `Saturn - Titan` (image) | GOOD   |
+
+### 9.3 Textures (Missing)
 
 | Asset                           | Required by                   | Status  |
 | ------------------------------- | ----------------------------- | ------- |
