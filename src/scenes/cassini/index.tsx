@@ -22,13 +22,16 @@ function SceneControls() {
       s.autoRotate &&
       !(s.showLabels && s.inspectionView !== null && s.currentT < 0.001),
   );
-  const zoom = useMissionStore((s) => {
+  // Two scalar selectors instead of one object selector: the object form
+  // returned a fresh {min, max} every call, so zustand's equality check
+  // never passed and this component re-rendered on every store write.
+  const zoomMin = useMissionStore((s) => {
     const tab = getActiveTableau(s.currentT);
-    const isHomepage = s.currentT < 0.001;
-    return {
-      min: isHomepage ? tab.zoom.minDist * 0.7 : tab.zoom.minDist,
-      max: isHomepage ? tab.zoom.maxDist * 1.2 : tab.zoom.maxDist,
-    };
+    return s.currentT < 0.001 ? tab.zoom.minDist * 0.7 : tab.zoom.minDist;
+  });
+  const zoomMax = useMissionStore((s) => {
+    const tab = getActiveTableau(s.currentT);
+    return s.currentT < 0.001 ? tab.zoom.maxDist * 1.2 : tab.zoom.maxDist;
   });
   const autoRotateSpeed = useMissionStore((s) =>
     getActiveTableau(s.currentT).kind === "moon" ? 0.25 : 0.5,
@@ -39,8 +42,8 @@ function SceneControls() {
       autoRotate={autoRotate}
       autoRotateSpeed={autoRotateSpeed}
       makeDefault
-      minDistance={zoom.min}
-      maxDistance={zoom.max}
+      minDistance={zoomMin}
+      maxDistance={zoomMax}
       enablePan={!inspectionLocked}
       enableZoom={!inspectionLocked}
       enableRotate={!inspectionLocked}
