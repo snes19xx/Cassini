@@ -1,7 +1,9 @@
 // src/scenes/cassini/lib/stateAt.ts
 
 import * as THREE from "three";
+import { HUYGENS_SEPARATION_T } from "../data/missionConstants";
 import { ORIENTATION_KEYS } from "../data/orientationKeys";
+import { RING_CROSSING_T_VALUES } from "../data/phases";
 import {
   easeOutBackSoft,
   easeOutCubic,
@@ -11,7 +13,11 @@ import {
   triangle,
 } from "./easing";
 import { getCartesianState } from "./orbitalMechanics";
-import type { MissionEffects, MissionState, StageState } from "./types";
+import type {
+  MissionEffects,
+  MissionState,
+  StageState,
+} from "./types";
 
 function defaultStage(): StageState {
   return {
@@ -94,21 +100,17 @@ export function stateAt(t: number): MissionState {
     effects.propellant = Math.max(0, 0.055 - norm(t, 0.98, 1.0) * 0.055);
   }
 
-  const crossings = [
-    0.980471, 0.981357, 0.982242, 0.983127, 0.984012, 0.9849, 0.98579, 0.986678,
-    0.987566, 0.988454, 0.989344, 0.990233, 0.991122, 0.992011, 0.992899,
-    0.993788, 0.994677, 0.995565, 0.996453, 0.99734, 0.998228, 0.999115,
-  ];
-
+  // Trigger times come from the same list phases.ts uses for the ring
+  // crossing tableaus, so the flash always lines up with the label.
   effects.ringCrossing = 0;
-  for (const ct of crossings) {
+  for (const ct of RING_CROSSING_T_VALUES) {
     effects.ringCrossing = Math.max(
       effects.ringCrossing,
       triangle(t, ct - 0.0005, ct, ct + 0.0005),
     );
   }
 
-  const sepStart = 0.361177;
+  const sepStart = HUYGENS_SEPARATION_T;
   const entryStart = 0.363966;
 
   if (t > sepStart) {
