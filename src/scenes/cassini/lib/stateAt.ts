@@ -1,7 +1,10 @@
 // src/scenes/cassini/lib/stateAt.ts
 
 import * as THREE from "three";
-import { HUYGENS_SEPARATION_T } from "../data/missionConstants";
+import {
+  DISINTEGRATION_T_START,
+  HUYGENS_SEPARATION_T,
+} from "../data/missionConstants";
 import { ORIENTATION_KEYS } from "../data/orientationKeys";
 import { RING_CROSSING_T_VALUES } from "../data/phases";
 import {
@@ -159,8 +162,18 @@ export function stateAt(t: number): MissionState {
     }
   }
 
-  if (t > 0.98) {
-    const burnProgress = norm(t, 0.98, 1.0);
+  // Heating starts well after the ring dive begins, so Cassini stays cool
+  // through all the crossings and only glows nearing the atmosphere.
+  const HEAT_ONSET_T = 0.9974;
+  const DISINTEGRATION_START = DISINTEGRATION_T_START;
+  if (t > HEAT_ONSET_T) {
+    let burnProgress: number;
+    if (t < DISINTEGRATION_START) {
+      const f = norm(t, HEAT_ONSET_T, DISINTEGRATION_START);
+      burnProgress = f * f * 0.3;
+    } else {
+      burnProgress = 0.3 + norm(t, DISINTEGRATION_START, 1.0) * 0.7;
+    }
     effects.disintegration = burnProgress * burnProgress;
     effects.atmosphericEntry = smoothStep(burnProgress);
 
