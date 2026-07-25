@@ -88,13 +88,13 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     displayName: "ENCELADUS",
     hook: "A tiny ice moon hiding a global subsurface ocean. Cassini's most astrobiologically significant target.",
     events: [
-      ev(2005, 7, 13, "First close Enceladus flyby"),
+      ev(2005, 7, 13, "South-pole surprise — youthful terrain, water-vapor cloud"),
       ev(2006, 3, 8, "Geyser plumes confirm subsurface liquid water"),
       ev(2007, 10, 9, "Tiger-stripe fractures imaged glowing with activity"),
       ev(2008, 3, 12, "Complex organic molecules detected in plumes"),
       ev(2008, 10, 8, "16-mile flyby — closest of any Cassini target"),
       ev(2008, 12, 14, "South pole confirmed geologically active"),
-      ev(2011, 6, 21, "Global subsurface ocean confirmed via gravity"),
+      ev(2011, 6, 21, "Salt-rich ice grains point to a hidden ocean"),
       ev(2014, 7, 27, "101 distinct geyser sources mapped"),
       ev(2015, 12, 18, "Final close pass over the plumes"),
     ],
@@ -115,7 +115,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     displayName: "MIMAS",
     hook: 'The "Death Star" moon — its 130 km Herschel crater dwarfs the body itself. Cassini\'s later libration analysis hinted at a possible internal ocean.',
     events: [
-      ev(2010, 2, 12, "Herschel crater imaged at high resolution"),
+      ev(2010, 2, 12, 'Hi-res "Pac-Man" thermal map + Herschel crater imaged'),
       ev(2014, 10, 16, "Libration analysis suggests internal ocean"),
     ],
   },
@@ -138,7 +138,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     events: [
       ev(2005, 10, 11, "First close Dione flyby"),
       ev(2012, 3, 1, "Molecular oxygen detected in exosphere"),
-      ev(2015, 8, 17, "Final close encounter"),
+      ev(2015, 8, 16, "Final close encounter"),
     ],
   },
 
@@ -150,7 +150,33 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
       ev(2005, 11, 26, "First close Rhea flyby"),
       ev(2010, 3, 2, "Closest Rhea pass — 101 km altitude"),
       ev(2010, 11, 28, "Oxygen + CO₂ exosphere announced"),
-      ev(2016, 3, 29, "Final visit to the icy moons"),
+      ev(2016, 3, 29, "Return to the icy-moon realm — dual Rhea view"),
+    ],
+  },
+
+  family_portrait: {
+    id: "family_portrait",
+    displayName: "FAMILY PORTRAIT",
+    // Timeline dates here read ≈2014 (tToDateMs is linear); the real
+    // quintet photo is July 29, 2011 — the true date lives in the copy,
+    // per the "cinematic, not a sim" rule.
+    hook: "July 29, 2011 — Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
+    events: [
+      ev(2011, 7, 29, "Quintet in one frame — Janus, Pandora, Enceladus, Rhea, Mimas"),
+      ev(2011, 9, 15, "Five-moon portrait released — PIA14573"),
+      ev(2013, 12, 3, "North-pole hexagonal jet stream captured top-down"),
+    ],
+  },
+
+  three_crescents: {
+    id: "three_crescents",
+    displayName: "THREE CRESCENTS",
+    hook: "Titan (3,200 mi), Rhea (949 mi) and Mimas (246 mi) as crescents in one frame — March 25, 2015. Titan looks fuzzy because only its cloud layers are seen, and its atmosphere refracts sunlight around the limb so its crescent wraps a little further than an airless body's. Rhea's icy surface is rough with craters; tiny Mimas carries the scars of its own violent history.",
+    events: [
+      ev(2015, 3, 25, "Three-crescent portrait: Titan, Rhea, Mimas"),
+      // Release date per the "Triple Crescents" NASA image article
+      // (Triple Crescents - NASA.pdf, JUN 22 2015) — was May 21.
+      ev(2015, 6, 22, "Image article published — PIA18322"),
     ],
   },
 
