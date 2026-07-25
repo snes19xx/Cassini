@@ -59,6 +59,9 @@ export const BODY_LABELS: BodyLabel[] = [
   { bodyId: "tethys",    name: "TETHYS",    surfaceFeatures: [] },
   { bodyId: "rhea",      name: "RHEA",      surfaceFeatures: [] },
   { bodyId: "dione",     name: "DIONE",     surfaceFeatures: [] },
+  // PIA14573 FAMILY PORTRAIT small moons (2026-07-07).
+  { bodyId: "janus",     name: "JANUS",     surfaceFeatures: [] },
+  { bodyId: "pandora",   name: "PANDORA",   surfaceFeatures: [] },
 ];
 
 /** Find the BodyLabel for a given body id, or null if none. */

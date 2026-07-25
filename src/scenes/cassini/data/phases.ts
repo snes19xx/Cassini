@@ -184,8 +184,13 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     id: "grand_finale",
     displayName: "GRAND FINALE",
     hook: "Cassini's final five months: 22 dives between Saturn and its rings, ending with disintegration in the planet's atmosphere on Sep 15, 2017.",
+    // The April 2017 additions (2026-07-12, from Timeline_NASA.pdf) all
+    // fall inside RING DIVE's date window, so they highlight live.
     events: [
       ev(2016, 11, 29, "F-ring orbits begin"),
+      ev(2017, 4, 12, "Hydrogen in Enceladus plume — chemical energy for life"),
+      ev(2017, 4, 19, "Earth photographed between Saturn's rings"),
+      ev(2017, 4, 23, "127th and final Titan flyby"),
       ev(2017, 4, 25, "First ring dive — flash burst"),
       ev(2017, 4, 26, "Grand Finale begins — pitches into Big Empty"),
       ev(2017, 5, 24, "Saturn solstice — maximum axial tilt"),
@@ -222,10 +227,12 @@ export function findActiveEvent(
   return best;
 }
 
-// 22 ring-crossing flashes during Grand Finale. Used by the visual layer
-// (RingCrossingFlash effect), independent of the InfoPanel event list.
+// Ring-crossing flash trigger times. Was 22 historical entries (17 ring
+// dives + 5 Final Five). Reduced 2026-05-24 per crossings.md: ring_dive
+// is now a single-crossing half-revolution Kepler orbit, so only ONE
+// flash fires in its window. The Final Five atmospheric crossings remain.
+// Sync with stateAt.ts — both files consume the same conceptual list.
 export const RING_CROSSING_T_VALUES: number[] = [
-  0.980481, 0.981357, 0.982242, 0.983127, 0.984012, 0.9849, 0.98579, 0.986678,
-  0.987566, 0.988454, 0.989344, 0.990233, 0.991122, 0.992011, 0.992899,
-  0.993788, 0.994677, 0.995565, 0.996453, 0.99734, 0.998228, 0.999115,
+  0.9902,    // ring_dive: -X ring-plane crossing inside the visible ring band
+  0.995565, 0.996453, 0.99734, 0.998228, 0.999115, // Final Five
 ];
