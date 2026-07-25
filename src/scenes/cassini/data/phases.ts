@@ -48,15 +48,23 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     id: "saturn",
     displayName: "SATURN",
     hook: "Cassini arrived at Saturn in 2004 and orbited for 13 years, mapping the rings, atmosphere, and seasons in unprecedented detail.",
+    // Audited vs docs/Timeline_NASA.pdf 2026-07-12 (timeline_analysis.md).
+    // The 2004 approach events all fall INSIDE this tableau's date window,
+    // so they highlight live during the arrival. The old "Three-moon
+    // portrait Sep 2011" entry was a garbled PIA18322 reference (that's
+    // Titan/Mimas/Rhea, Mar 2015 — owned by THREE CRESCENTS) and was
+    // removed; the hexagon entry moved to FAMILY PORTRAIT, whose window
+    // contains its date.
     events: [
       ev(2002, 10, 31, "First long-distance image of Saturn"),
+      ev(2004, 4, 7, "Two storms merge — only the second ever observed"),
+      ev(2004, 5, 31, "Two new moons discovered — Methone and Pallene"),
+      ev(2004, 6, 10, "Phoebe flyby — Cassini's first moon encounter"),
       ev(2004, 6, 30, "Saturn Orbit Insertion — 96-minute retrograde burn"),
       ev(2006, 9, 14, "Faint outer rings discovered edge-on against the sun"),
       ev(2009, 8, 10, "Saturn Equinox — kilometre-long ring shadows"),
-      ev(2011, 9, 15, "Three-moon portrait: Rhea, Enceladus, Mimas"),
       ev(2012, 7, 8, "High-angle ring fine-scale structure"),
       ev(2013, 7, 18, '"Wave at Saturn" — Earth photographed in eclipse'),
-      ev(2013, 12, 3, "North-pole hexagonal jet stream captured top-down"),
     ],
   },
 
