@@ -12,9 +12,10 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { HUYGENS_SEPARATION_T } from "../data/missionConstants";
 import { getActiveTableau } from "../data/tableaus";
 
-const SEP_START = 0.361177;
+const SEP_START = HUYGENS_SEPARATION_T;
 const TOUCHDOWN = 0.395;
 const FADE_END = 0.4;
 

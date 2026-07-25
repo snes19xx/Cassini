@@ -6,6 +6,7 @@ import { useLiveLabelAnchors } from "../../hooks/useLiveLabelAnchors";
 import type { AnchorPoint } from "../../hooks/useProjectedPoints";
 import { useMissionStore } from "../../store/missionStore";
 import { INSPECTION_VIEWS } from "./data/inspectionViews";
+import { HUYGENS_SEPARATION_T } from "./data/missionConstants";
 import { getActiveTableau } from "./data/tableaus";
 import { stateAt } from "./lib/stateAt";
 import { CassiniHuygensA, type CassiniAAnchors } from "./parts/CassiniHuygensA";
@@ -267,7 +268,7 @@ export function Spacecraft() {
   const currentT = useMissionStore((s) => s.currentT);
   const autoRotate = useMissionStore((s) => s.autoRotate);
 
-  const huygensHasSeparated = currentT >= 0.361177;
+  const huygensHasSeparated = currentT >= HUYGENS_SEPARATION_T;
 
   // Post-separation: swap the full-stack model for the Cassini-only
   // model so the disconnected Huygens probe doesn't remain attached.

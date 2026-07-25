@@ -8,6 +8,7 @@ import {
 } from "@/scenes/cassini/data/bodyLabels";
 import { COMPONENTS } from "@/scenes/cassini/data/components";
 import { INSPECTION_VIEWS } from "@/scenes/cassini/data/inspectionViews";
+import { HUYGENS_SEPARATION_T } from "@/scenes/cassini/data/missionConstants";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
 import { labelAnchorsRef } from "@/scenes/cassini/Spacecraft";
 import { useMissionStore } from "@/store/missionStore";
@@ -64,7 +65,7 @@ export function Projector() {
   const moonLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const surfaceLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const huygensHasSeparated = currentT >= 0.361177;
+  const huygensHasSeparated = currentT >= HUYGENS_SEPARATION_T;
 
   useFrame(() => {
     try {
