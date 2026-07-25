@@ -1,7 +1,12 @@
 // src/scenes/cassini/lib/stateAt.ts
 
 import * as THREE from "three";
+import {
+  DISINTEGRATION_T_START,
+  HUYGENS_SEPARATION_T,
+} from "../data/missionConstants";
 import { ORIENTATION_KEYS } from "../data/orientationKeys";
+import { RING_CROSSING_T_VALUES } from "../data/phases";
 import {
   easeOutBackSoft,
   easeOutCubic,
@@ -11,7 +16,11 @@ import {
   triangle,
 } from "./easing";
 import { getCartesianState } from "./orbitalMechanics";
-import type { MissionEffects, MissionState, StageState } from "./types";
+import type {
+  MissionEffects,
+  MissionState,
+  StageState,
+} from "./types";
 
 function defaultStage(): StageState {
   return {
@@ -28,6 +37,9 @@ const Q_KEYS = ORIENTATION_KEYS.map((k) => {
   const e = new THREE.Euler(k.euler[0], k.euler[1], k.euler[2], "YXZ");
   return { t: k.t, q: new THREE.Quaternion().setFromEuler(e) };
 });
+
+// Reused across calls; the returned Euler is always a fresh allocation.
+const _qScratch = new THREE.Quaternion();
 
 function orientationAt(t: number): THREE.Euler {
   // Q_KEYS is non-empty (asserted at module init by ORIENTATION_KEYS),
@@ -48,9 +60,8 @@ function orientationAt(t: number): THREE.Euler {
   const frac = lo.t === hi.t ? 0 : (t - lo.t) / (hi.t - lo.t);
   const easedFrac = easeOutBackSoft(Math.max(0, Math.min(1, frac)));
 
-  const q = new THREE.Quaternion();
-  q.slerpQuaternions(lo.q, hi.q, easedFrac);
-  return new THREE.Euler().setFromQuaternion(q, "YXZ");
+  _qScratch.slerpQuaternions(lo.q, hi.q, easedFrac);
+  return new THREE.Euler().setFromQuaternion(_qScratch, "YXZ");
 }
 
 export function stateAt(t: number): MissionState {
@@ -94,21 +105,17 @@ export function stateAt(t: number): MissionState {
     effects.propellant = Math.max(0, 0.055 - norm(t, 0.98, 1.0) * 0.055);
   }
 
-  const crossings = [
-    0.980471, 0.981357, 0.982242, 0.983127, 0.984012, 0.9849, 0.98579, 0.986678,
-    0.987566, 0.988454, 0.989344, 0.990233, 0.991122, 0.992011, 0.992899,
-    0.993788, 0.994677, 0.995565, 0.996453, 0.99734, 0.998228, 0.999115,
-  ];
-
+  // Trigger times come from the same list phases.ts uses for the ring
+  // crossing tableaus, so the flash always lines up with the label.
   effects.ringCrossing = 0;
-  for (const ct of crossings) {
+  for (const ct of RING_CROSSING_T_VALUES) {
     effects.ringCrossing = Math.max(
       effects.ringCrossing,
       triangle(t, ct - 0.0005, ct, ct + 0.0005),
     );
   }
 
-  const sepStart = 0.361177;
+  const sepStart = HUYGENS_SEPARATION_T;
   const entryStart = 0.363966;
 
   if (t > sepStart) {
@@ -157,8 +164,18 @@ export function stateAt(t: number): MissionState {
     }
   }
 
-  if (t > 0.98) {
-    const burnProgress = norm(t, 0.98, 1.0);
+  // Heating starts well after the ring dive begins, so Cassini stays cool
+  // through all the crossings and only glows nearing the atmosphere.
+  const HEAT_ONSET_T = 0.9974;
+  const DISINTEGRATION_START = DISINTEGRATION_T_START;
+  if (t > HEAT_ONSET_T) {
+    let burnProgress: number;
+    if (t < DISINTEGRATION_START) {
+      const f = norm(t, HEAT_ONSET_T, DISINTEGRATION_START);
+      burnProgress = f * f * 0.3;
+    } else {
+      burnProgress = 0.3 + norm(t, DISINTEGRATION_START, 1.0) * 0.7;
+    }
     effects.disintegration = burnProgress * burnProgress;
     effects.atmosphericEntry = smoothStep(burnProgress);
 
