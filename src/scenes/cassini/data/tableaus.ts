@@ -355,28 +355,11 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 9. Late Saturn Beauty (hexagon, equinox-style) ──────────────────────
-  // Saturn dominant, no moon. Used for the late-mission Saturn beauty shots.
-  {
-    id: "saturn_beauty",
-    kind: "saturn_focus",
-    tStart: 0.810,
-    tEnd: 0.960,
-    label: "SATURN STUDIES",
-    camera: {
-      pos: [0, 320, 480],
-      lookAt: [0, 0, 0],
-    },
-    zoom: { minDist: 200, maxDist: 4000 },
-    effects: { rings: true },
-  },
-
-  // ── 10. Grand Finale ────────────────────────────────────────────────────
   // Saturn fills frame, ring-crossings flash, Cassini disintegrates.
   {
     id: "grand_finale",
     kind: "finale",
-    tStart: 0.960,
+    tStart: 0.810,
     tEnd: 1.0001, // include t=1.0 inclusively
     label: "THE GRAND FINALE",
     camera: {
@@ -411,7 +394,7 @@ export function findActiveTableauIndex(t: number): number {
 /**
  * Map a tableau to its `BODY_CONTENT` key (in `phases.ts`).
  *   - moon tableaus use their `body` field
- *   - both saturn_focus tableaus (arrival + studies) share `"saturn"`
+ *   - saturn_focus (arrival) uses `"saturn"`
  *   - finale uses `"grand_finale"`
  *   - cruise has no body content (returns null, InfoPanel shows cruise UI)
  */
