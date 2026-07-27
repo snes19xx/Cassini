@@ -23,6 +23,39 @@ export interface SaturnBackdrop {
   pos: [number, number, number];
   /** Uniform scale applied to the Saturn group (rings included). */
   scale: number;
+  /**
+   * Optional orientation of the whole Saturn group, XYZ euler in degrees.
+   * Default [0,0,0]. family_portrait tips this a few degrees: at zero tilt
+   * the camera sits exactly in the ring plane and the rings collapse to a
+   * hairline.
+   */
+  rotDeg?: [number, number, number];
+}
+
+/**
+ * A moon placed at an explicit position inside a multi-moon tableau (the
+ * NASA group-portrait scenes), instead of sitting at the tableau's origin.
+ */
+export interface TableauMoonPlacement {
+  /** Matches the textureService MoonId set. */
+  body: string;
+  pos: [number, number, number];
+  /** Same stylized-scale system as moonEffectiveRadius. */
+  effectiveRadius: number;
+  /**
+   * Tidally locked, so spin axis = orbit normal: tilt from the ring-plane
+   * normal by the moon's orbital inclination to Saturn's equator. Degrees.
+   */
+  axialTiltDeg?: number;
+  /** Sidereal rotation period in hours, equal to orbital period (tidal lock). */
+  spinPeriodHours?: number;
+  /**
+   * Hand-tuned drift rate about the backdrop Saturn's ring axis, rad/s of
+   * mission display time. The backdrop sits at a photo-composed distance
+   * rather than true orbital radii, so true periods either freeze near
+   * moons or fling far ones out of frame.
+   */
+  orbitRadPerSec?: number;
 }
 
 export interface ZoomClamps {
@@ -35,7 +68,16 @@ export interface ZoomClamps {
 export interface CameraPreset {
   pos: [number, number, number];
   lookAt: [number, number, number];
+  /**
+   * Optional per-tableau focal length in degrees (default 45). The NASA
+   * group portraits use a narrow fov, a real long-lens shot, so distant
+   * bodies compress into one frame while dollying in still separates them.
+   */
+  fov?: number;
 }
+
+// Every path that changes camera fov must restore it to the tableau's value.
+export const DEFAULT_TABLEAU_FOV = 45;
 
 export interface Tableau {
   id: string;
@@ -58,6 +100,12 @@ export interface Tableau {
    * Mimas smallest) without depending on per-flyby scale data.
    */
   moonEffectiveRadius?: number;
+  /**
+   * Multi-moon composition (group-portrait tableaus). Each moon renders at
+   * its own position/size; `body`/`moonEffectiveRadius` stay unset. moons[0]
+   * gets the hi-res texture slot, so the dominant foreground moon goes first.
+   */
+  moons?: TableauMoonPlacement[];
   /** Camera framing the user sees on tableau enter (resets via JUMP-TO). */
   camera: CameraPreset;
   /**
@@ -70,6 +118,25 @@ export interface Tableau {
   /** Bounds OrbitControls' zoom range while this tableau is active. */
   zoom: ZoomClamps;
   /**
+   * Optional override for OrbitControls' autoRotateSpeed (default is
+   * kind/fov-derived). family_portrait sets 0: through its 6° lens a few
+   * degrees of drift slides a wing moon out of frame, so the moons' own
+   * axial spin provides motion instead.
+   */
+  autoRotateSpeed?: number;
+  /**
+   * Optional OrbitControls rotation clamps, radians. Group-portrait
+   * compositions place bodies far off the orbit target; without this the
+   * user can orbit straight through a background moon. Azimuth 0 faces +Z,
+   * polar is measured from +Y (pi/2 = equatorial).
+   */
+  orbitLimits?: {
+    minAzimuth: number;
+    maxAzimuth: number;
+    minPolar: number;
+    maxPolar: number;
+  };
+  /**
    * Optional Saturn rendered at a fixed offset for visual context. Only set
    * for moon tableaus — saturn_focus / finale render Saturn at origin instead.
    * Per-moon variance gives each tableau its own composition.
@@ -80,6 +147,8 @@ export interface Tableau {
     huygensDescent?: boolean;     // Titan tableau: show Huygens probe + DISR channels
     plumes?: boolean;             // Enceladus tableau: south-pole geyser jets
     rings?: boolean;              // Saturn shown with rings (default true when saturn rendered)
+    crescentLighting?: boolean;   // backlit sun rig, thin crescents (three_crescents)
+    hideCassini?: boolean;        // "WE are Cassini" shots, the spacecraft model is the camera
     grandFinaleBurn?: boolean;    // Cassini disintegration FX
     soiBurn?: boolean;            // SOI engine burn glow
   };
