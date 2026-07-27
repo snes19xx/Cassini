@@ -355,11 +355,27 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
+  // Recreation of PIA14573 ("Quintet of Moons"). A 6-degree telephoto lens
+  // compresses five moons hundreds of thousands of km apart into one frame.
+  {
+    id: "family_portrait",
+    kind: "moon",
+    tStart: 0.810,
+    tEnd: 0.870,
+    label: "FAMILY PORTRAIT",
+    cassiniOffset: [0, -30, 900],
+    camera: {
+      pos: [0, 12, 600],
+      lookAt: [0, 12, 0],
+      fov: 6,
+    },
+  },
+
   // Saturn fills frame, ring-crossings flash, Cassini disintegrates.
   {
     id: "grand_finale",
     kind: "finale",
-    tStart: 0.810,
+    tStart: 0.870,
     tEnd: 1.0001, // include t=1.0 inclusively
     label: "THE GRAND FINALE",
     camera: {
