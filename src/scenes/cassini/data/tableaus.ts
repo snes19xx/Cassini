@@ -59,9 +59,9 @@ export interface TableauMoonPlacement {
 }
 
 export interface ZoomClamps {
-  /** Minimum camera distance to the tableau target — prevents zooming inside subject. */
+  /** Minimum camera distance to the tableau target, prevents zooming inside the subject. */
   minDist: number;
-  /** Maximum camera distance — prevents subject shrinking to a dot. */
+  /** Maximum camera distance, prevents the subject shrinking to a dot. */
   maxDist: number;
 }
 
@@ -85,7 +85,7 @@ export interface Tableau {
   /** Inclusive start, exclusive end. Windows are non-overlapping. */
   tStart: number;
   tEnd: number;
-  /** Phase label shown in chrome — usually matches a phase in phases.ts. */
+  /** Phase label shown in chrome, usually matches a phase in phases.ts. */
   label: string;
   /** Body identifier for moon tableaus (titan/iapetus/enceladus/mimas/rhea/dione). */
   body?: string;
@@ -138,11 +138,11 @@ export interface Tableau {
   };
   /**
    * Optional Saturn rendered at a fixed offset for visual context. Only set
-   * for moon tableaus — saturn_focus / finale render Saturn at origin instead.
+   * for moon tableaus; saturn_focus / finale render Saturn at origin instead.
    * Per-moon variance gives each tableau its own composition.
    */
   saturnBackdrop?: SaturnBackdrop;
-  /** Per-tableau effects toggled by the resolver (huygens descent, plumes…). */
+  /** Per-tableau effects toggled by the resolver (huygens descent, plumes, etc). */
   effects?: {
     huygensDescent?: boolean;     // Titan tableau: show Huygens probe + DISR channels
     plumes?: boolean;             // Enceladus tableau: south-pole geyser jets
@@ -155,16 +155,12 @@ export interface Tableau {
 }
 
 // Saturn body radius is 180; rings extend to 419. With moons at fixed effective
-// radius ~25–50, putting Saturn at distance ≥1500 keeps it visibly far without
-// crowding the moon. Scale exaggerates: real Saturn would be ~1°, we use 5–15°.
+// radius ~25-50, putting Saturn at distance >=1500 keeps it visibly far without
+// crowding the moon. Scale is exaggerated: real Saturn subtends ~1 degree; here it's 5-15.
 
 export const TABLEAUS: Tableau[] = [
-  // ── 1. Cruise / Pre-SOI ─────────────────────────────────────────────────
-  // Cassini alone, Earth → Saturn cruise. No Saturn, no moons.
-  // Shortened (was 0.0→0.336) to make room for a long arrival approach
-  // where Saturn visibly grows from a dot to full size — user feedback
-  // was that at their playback speed the previous 0.336→0.353 window
-  // was too brief to perceive any growth.
+  // No Saturn, no moons yet: pure cruise. Window is short so the arrival
+  // burn below has room to show Saturn growing from a dot to full size.
   {
     id: "cruise_early",
     kind: "cruise",
@@ -178,17 +174,11 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 18, maxDist: 200 },
   },
 
-  // ── 2. Saturn Arrival / SOI ─────────────────────────────────────────────
-  // Saturn approach + orbit insertion. Saturn grows from a tiny dot at
-  // tStart to full size by tEnd; the SOI burn (handled in stateAt.ts)
-  // fires at t≈0.336, which lands ~85% through this widened window so
-  // the burn happens against a near-full-sized Saturn.
-  //
-  // Framing: chase-cam behind Cassini, Saturn ahead at origin. Cassini
-  // sits at a fixed +Z offset so it stays in the foreground while Saturn
-  // grows to fill the background. JUMP-TO lands mid-window (jumpT 0.28)
-  // where the scale ramp puts Saturn at ~"football size" — landing at
-  // tStart drops the user at scale=0 which reads as "nothing happened."
+  // Saturn grows from a dot at tStart to full size by tEnd; the SOI burn
+  // (stateAt.ts) fires most of the way through, against a near-full Saturn.
+  // Chase-cam behind Cassini keeps it foreground while Saturn fills the
+  // background. JUMP-TO lands mid-ramp rather than at tStart, so Saturn
+  // already reads as something instead of a blank dot.
   {
     id: "saturn_arrival",
     kind: "saturn_focus",
@@ -205,9 +195,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true, soiBurn: true },
   },
 
-  // ── 3. Titan + Huygens Landing ──────────────────────────────────────────
-  // Big set-piece: Titan dominant, Huygens probe descends, DISR channel toggle.
-  // Titan is far from Saturn IRL (1.22 M km, ~5.6° apparent), so Saturn reads small.
+  // Huygens probe descends here (HuygensSeparation.tsx). Titan sits 1.22M km
+  // from Saturn (~5.6° apparent), so the backdrop reads small.
   {
     id: "titan_huygens",
     kind: "moon",
@@ -232,8 +221,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { huygensDescent: true, rings: true },
   },
 
-  // ── 4. Enceladus / Cryovolcanism ────────────────────────────────────────
-  // Enceladus is close to Saturn (~238k km, ~29° apparent) — backdrop reads big.
+  // Enceladus sits close to Saturn (~238k km, ~29° apparent), so the backdrop reads big.
   {
     id: "enceladus",
     kind: "moon",
@@ -255,8 +243,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 5. Iapetus / Yin–Yang ───────────────────────────────────────────────
-  // Iapetus is the farthest of these moons (3.56 M km, ~1.9°) — Saturn smallest.
+  // Farthest of these moons (3.56M km, ~1.9° apparent), so Saturn is smallest here.
   {
     id: "iapetus",
     kind: "moon",
@@ -278,8 +265,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 6. Mimas / Herschel Crater ──────────────────────────────────────────
-  // Mimas is closest to Saturn (185k km, ~37°) — backdrop largest.
+  // Closest of these moons to Saturn (185k km, ~37° apparent), so the backdrop is largest.
   {
     id: "mimas",
     kind: "moon",
@@ -301,9 +287,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 7. Tethys / Ithaca Chasma ───────────────────────────────────────────
-  // New tableau (user request). Tethys is third-closest of these (294k km,
-  // ~23° apparent) — backdrop between Enceladus and Dione in scale.
+  // Third-closest of these moons (294k km, ~23° apparent); backdrop sits
+  // between Enceladus and Dione in scale.
   {
     id: "tethys",
     kind: "moon",
@@ -325,9 +310,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 8. Dione / Wisps ────────────────────────────────────────────────────
-  // Dione (377k km, ~18°). User: from Dione onward Saturn can be a bit
-  // exaggerated for "cooler" look — but still smaller than Tethys.
+  // Dione (377k km, ~18° apparent). Backdrop runs a touch large here for
+  // visual weight, though still smaller than Tethys.
   {
     id: "dione",
     kind: "moon",
@@ -349,8 +333,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 9. Rhea / Exosphere ─────────────────────────────────────────────────
-  // Rhea (527k km, ~13°). Saturn smaller than at Dione, larger than at Titan.
+  // Rhea (527k km, ~13° apparent): backdrop smaller than at Dione, larger than at Titan.
   {
     id: "rhea",
     kind: "moon",
@@ -430,7 +413,7 @@ export function findActiveTableauIndex(t: number): number {
  *   - moon tableaus use their `body` field
  *   - both saturn_focus tableaus (arrival + studies) share `"saturn"`
  *   - finale uses `"grand_finale"`
- *   - cruise has no body content (returns null → InfoPanel shows cruise UI)
+ *   - cruise has no body content (returns null, InfoPanel shows cruise UI)
  */
 export function getBodyContentId(tab: Tableau): string | null {
   if (tab.body) return tab.body;
@@ -440,7 +423,7 @@ export function getBodyContentId(tab: Tableau): string | null {
 }
 
 /**
- * JUMP-TO label → tableau id mapping. Each label resolves to a single tableau
+ * JUMP-TO label to tableau id mapping. Each label resolves to a single tableau
  * (no peak-cycling). For SATURN we pick the arrival; for moon labels we pick
  * the corresponding moon tableau.
  */
