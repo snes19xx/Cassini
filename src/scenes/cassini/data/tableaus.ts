@@ -381,6 +381,25 @@ export const TABLEAUS: Tableau[] = [
       lookAt: [0, 12, 0],
       fov: 6,
     },
+    zoom: { minDist: 60, maxDist: 4000 },
+    // Moon spins + orbital drift carry the motion here; auto-rotate would
+    // wreck the tight 6-degree frame.
+    autoRotateSpeed: 0,
+    // Keep the camera near the ring plane.
+    orbitLimits: {
+      minAzimuth: -0.4,
+      maxAzimuth: 0.4,
+      minPolar: (80 * Math.PI) / 180,
+      maxPolar: (100 * Math.PI) / 180,
+    },
+    saturnBackdrop: {
+      pos: [1191, 0, -6298],
+      scale: 3.35,
+      // Slight pitch/roll opens the ring band and gives it the photo's
+      // diagonal, instead of collapsing to a hairline at zero tilt.
+      rotDeg: [1.5, 0, 2],
+    },
+    effects: { hideCassini: true, rings: true },
   },
 
   // Saturn fills frame, ring-crossings flash, Cassini disintegrates.
