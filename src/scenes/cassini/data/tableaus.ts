@@ -363,6 +363,18 @@ export const TABLEAUS: Tableau[] = [
     tStart: 0.810,
     tEnd: 0.870,
     label: "FAMILY PORTRAIT",
+    // moons[0] gets the hi-res texture slot, so the dominant foreground
+    // body (Rhea) goes first. axialTiltDeg/spinPeriodHours follow each
+    // moon's tidal lock (spin axis = orbit normal, spin period = orbital
+    // period). orbitRadPerSec is hand-tuned screen drift about the ring
+    // axis; negative is leftward, so the group parades into frame.
+    moons: [
+      { body: "rhea", pos: [27.6, 12.3, 271.2], effectiveRadius: 7.64, axialTiltDeg: 0.35, spinPeriodHours: 108.4, orbitRadPerSec: -6.5e-5 },
+      { body: "mimas", pos: [24.0, 13.7, 170.7], effectiveRadius: 1.98, axialTiltDeg: 1.57, spinPeriodHours: 22.6, orbitRadPerSec: -1.37e-4 },
+      { body: "enceladus", pos: [4.7, 27.7, -299.9], effectiveRadius: 2.52, axialTiltDeg: 0.01, spinPeriodHours: 32.9, orbitRadPerSec: -3.1e-4 },
+      { body: "pandora", pos: [-5.0, 11.2, 27.0], effectiveRadius: 0.41, axialTiltDeg: 0.05, spinPeriodHours: 15.1, orbitRadPerSec: -2.33e-4 },
+      { body: "janus", pos: [-31.0, 16.7, 86.0], effectiveRadius: 0.9, axialTiltDeg: 0.16, spinPeriodHours: 16.7, orbitRadPerSec: -1.11e-4 },
+    ],
     cassiniOffset: [0, -30, 900],
     camera: {
       pos: [0, 12, 600],
