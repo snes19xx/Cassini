@@ -240,7 +240,7 @@ export const TABLEAUS: Tableau[] = [
       pos: [-1100, 80, -1300],
       scale: 1.05,
     },
-    effects: { rings: true },
+    effects: { rings: true, plumes: true },
   },
 
   // Farthest of these moons (3.56M km, ~1.9° apparent), so Saturn is smallest here.
