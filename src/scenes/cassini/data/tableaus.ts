@@ -595,11 +595,16 @@ export function findActiveTableauIndex(t: number): number {
 /**
  * Map a tableau to its `BODY_CONTENT` key (in `phases.ts`).
  *   - moon tableaus use their `body` field
+ *   - group portraits (three_crescents / family_portrait) get their own keys
  *   - saturn_focus (arrival) uses `"saturn"`
  *   - finale uses `"grand_finale"`
  *   - cruise has no body content (returns null, InfoPanel shows cruise UI)
  */
 export function getBodyContentId(tab: Tableau): string | null {
+  // No single focal body to inherit from, so these get their own entries.
+  if (tab.id === "three_crescents" || tab.id === "family_portrait") {
+    return tab.id;
+  }
   if (tab.body) return tab.body;
   if (tab.kind === "saturn_focus") return "saturn";
   if (tab.kind === "finale") return "grand_finale";
@@ -609,7 +614,8 @@ export function getBodyContentId(tab: Tableau): string | null {
 /**
  * JUMP-TO label to tableau id mapping. Each label resolves to a single tableau
  * (no peak-cycling). For SATURN we pick the arrival; for moon labels we pick
- * the corresponding moon tableau.
+ * the corresponding moon tableau. FINALE lands on the first of the seven
+ * finale tableaus; scrub or play to advance through the rest.
  */
 export const JUMP_TO_TABLEAU: Record<string, string> = {
   SATURN: "saturn_arrival",
@@ -620,5 +626,7 @@ export const JUMP_TO_TABLEAU: Record<string, string> = {
   TETHYS: "tethys",
   RHEA: "rhea",
   DIONE: "dione",
-  FINALE: "grand_finale",
+  FAMILY: "family_portrait",
+  CRESCENTS: "three_crescents",
+  FINALE: "finale_approach",
 };
