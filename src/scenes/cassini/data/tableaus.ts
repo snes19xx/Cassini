@@ -6,6 +6,11 @@
 // backdrop. The timeline maps `currentT` to exactly one active tableau via
 // `getActiveTableau(t)`. Tableau windows are non-overlapping and cover [0,1].
 //
+import {
+  DISINTEGRATION_T_START,
+  TERMINAL_T_START,
+} from "./missionConstants";
+
 // This replaces the continuous-physics flyby system: instead of moons moving
 // along Catmull-Rom splines around a moving Saturn, each moon sits at a fixed
 // world position inside its tableau, Cassini sits next to it, the user can
@@ -402,18 +407,167 @@ export const TABLEAUS: Tableau[] = [
     effects: { hideCassini: true, rings: true },
   },
 
-  // Saturn fills frame, ring-crossings flash, Cassini disintegrates.
+  // PIA18322 recreation: three backlit crescents in black space. Saturn
+  // sits in the far background purely for compositional depth (the real
+  // photo doesn't include it), scaled to read at roughly frame height
+  // through this 14-degree lens without dominating.
+  //
+  // Long-lens shot: real camera-to-moon distances span a 4.2:1 ratio
+  // (Mimas 1300, Rhea 2600, Titan 5400), so dollying in pulls the trio
+  // apart instead of scaling together. hideCassini keeps the spacecraft
+  // model out of frame; orbitLimits keep the camera from swinging in
+  // behind the composition.
   {
-    id: "grand_finale",
-    kind: "finale",
+    id: "three_crescents",
+    kind: "moon",
     tStart: 0.870,
-    tEnd: 1.0001, // include t=1.0 inclusively
-    label: "THE GRAND FINALE",
+    tEnd: 0.945,
+    label: "THREE CRESCENTS",
+    moons: [
+      { body: "titan", pos: [283, -66, -2515], effectiveRadius: 476 },
+      { body: "rhea", pos: [-160, 58, 285], effectiveRadius: 78 },
+      { body: "mimas", pos: [-45, -96, 1585], effectiveRadius: 13 },
+    ],
+    cassiniOffset: [0, -40, 3150],
     camera: {
-      pos: [220, 60, 380],
+      pos: [0, 0, 2885],
+      lookAt: [0, 0, 0],
+      fov: 14,
+    },
+    zoom: { minDist: 500, maxDist: 9000 },
+    orbitLimits: {
+      minAzimuth: -0.6,
+      maxAzimuth: 0.6,
+      minPolar: Math.PI / 3,
+      maxPolar: (2 * Math.PI) / 3,
+    },
+    saturnBackdrop: {
+      pos: [-1400, 400, -11500],
+      scale: 1.8,
+    },
+    effects: { crescentLighting: true, hideCassini: true, rings: true },
+  },
+
+  // Elliptical approach: Cassini hangs at apoapse above the north pole,
+  // then swings down into the polar pass. Saturn sits upper-frame rather
+  // than centered, so the descent reads as a dive rather than a flyover.
+  {
+    id: "finale_approach",
+    kind: "finale",
+    tStart: 0.945,
+    tEnd: 0.955,
+    label: "FINAL APPROACH",
+    cassiniOffset: [250, 450, 250],
+    camera: {
+      pos: [800, 600, 1200],
+      lookAt: [50, -100, 100],
+    },
+    zoom: { minDist: 200, maxDist: 5000 },
+    effects: { rings: true },
+  },
+
+  // Top-down over the north pole, hexagon storm in frame.
+  {
+    id: "finale_polar",
+    kind: "finale",
+    tStart: 0.955,
+    tEnd: 0.961,
+    label: "POLAR PASSAGE",
+    cassiniOffset: [60, 420, 90],
+    camera: {
+      pos: [40, 900, 60],
       lookAt: [0, 0, 0],
     },
-    zoom: { minDist: 150, maxDist: 3500 },
+    zoom: { minDist: 200, maxDist: 3000 },
+    effects: { rings: true },
+  },
+
+  // Over-the-shoulder behind Cassini with the ring plane ahead. Camera
+  // sits close behind and slightly above Cassini so it reads foreground
+  // instead of shrinking against the rings.
+  {
+    id: "finale_ring_edge",
+    kind: "finale",
+    tStart: 0.961,
+    tEnd: 0.963,
+    label: "INTO THE RINGS",
+    cassiniOffset: [460, 4, 180],
+    camera: {
+      pos: [477, 12, 186],
+      lookAt: [432, 4, 169],
+    },
+    zoom: { minDist: 12, maxDist: 2000 },
+    effects: { rings: true },
+  },
+
+  // One full Kepler revolution just outside the F-ring's outer edge.
+  // cassiniOffset/camera are the static wide-mode pose; a per-frame
+  // trajectory takes over position while this tableau is active.
+  {
+    id: "finale_swing_around",
+    kind: "finale",
+    tStart: 0.963,
+    tEnd: 0.978,
+    label: "SWING AROUND",
+    cassiniOffset: [460, 0, 0],
+    camera: {
+      pos: [1500, 700, 1500],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 400, maxDist: 5000 },
+    effects: { rings: true },
+  },
+
+  // Half-revolution Kepler orbit, apoapse to periapse, crossing INSIDE the
+  // visible ring band rather than just outside it like the swing above.
+  // cassiniOffset is the apoapse start position.
+  {
+    id: "finale_ring_dive",
+    kind: "finale",
+    tStart: 0.978,
+    tEnd: TERMINAL_T_START,
+    label: "RING DIVE",
+    cassiniOffset: [0, 697, 61],
+    camera: {
+      pos: [1500, 700, 1500],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 400, maxDist: 5000 },
+    effects: { rings: true },
+  },
+
+  // Committed terminal plunge: no more orbits, Cassini is falling into the
+  // planet. cassiniOffset is the fall's start point for reference; actual
+  // position is driven per-frame once the plunge system lands.
+  {
+    id: "finale_atmospheric",
+    kind: "finale",
+    tStart: TERMINAL_T_START,
+    tEnd: DISINTEGRATION_T_START,
+    label: "SATURN'S ATMOSPHERE",
+    cassiniOffset: [0, -194, -17],
+    camera: {
+      pos: [0, -218, -20],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 30, maxDist: 2500 },
+    effects: { rings: true },
+  },
+
+  // Break-up, plasma, white-out, end card. Continues the same plunge as
+  // the previous tableau so the boundary has no pop.
+  {
+    id: "finale_disintegration",
+    kind: "finale",
+    tStart: DISINTEGRATION_T_START,
+    tEnd: 1.0001, // include t=1.0 inclusively
+    label: "END OF MISSION",
+    cassiniOffset: [0, -2, -178],
+    camera: {
+      pos: [0, 12, -216],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 20, maxDist: 2500 },
     effects: { rings: true, grandFinaleBurn: true },
   },
 ];
