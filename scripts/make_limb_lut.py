@@ -1,43 +1,29 @@
 """
-make_limb_lut.py:
-Generates a 32×512 limb-gradient LUT from a Cassini natural-color image.
+make_limb_lut.py: bake a 32x512 limb-gradient LUT from a Cassini
+natural-color image, for the finale atmospheric shell shader.
 
----------------
-The finale's atmospheric shell shader needs to render the color of Saturn's
-atmosphere at every viewing angle, from the sub-camera point (looking
-straight down at cloud tops) all the way to the silhouette edge where the
-atmosphere fades into space. Computing all that will be expensive and would 
-look like an ugly PS2 graphics if I do it with regular procedural math in the shader.
+Real Cassini photons beat a procedural fresnel/Rayleigh approximation,
+which reads as flat CG next to the photoreal moon textures. This samples
+radial lines outward from Saturn's disk past the limb into space and
+reduces them to a single 1-D color gradient; the shader indexes into it
+with edgeFrac = 1 - dot(viewDir, surfaceNormal).
 
-Instead, Take a Cassini ISS natural-color
-image (color-calibrated R+G+B filter composite), find Saturn's disk, walk
-many radial lines outward from the disk center past the limb into deep
-space, and reduce those radials to a single 1-D color gradient. The
-shader samples this gradient with the standard "limb fraction"
-edgeFrac = 1 - dot(viewDir, surfaceNormal), and the result is colors
-that came directly from Cassini's sensor. I am expecting this to look like 
-Saturn's actual atmosphere.
-
-USAGE
------
+Usage:
     python scripts/finale/bake_limb_lut.py \\
         --input PIA21046_Approaching_Northern_Summer.tif \\
         --output public/textures/finale/cassini_saturn_limb_lut.png \\
         --preview
 
-FLAGS
------
+Flags:
     --input PATH            Source Cassini TIFF/PNG/JPG (required).
-    --output PATH           Destination 32×512 PNG (required).
+    --output PATH           Destination 32x512 PNG (required).
     --center X,Y            Manual disk center in image pixels.
     --radius R              Manual disk radius in image pixels.
     --n-radials N           Number of radial sampling lines (default 90).
     --inner-fraction F      Inner sample radius / disk radius (default 0.30).
     --outer-fraction F      Outer sample radius / disk radius (default 1.30).
-    --arc-deg D             Total angular extent of sampling arc, in
-                            degrees (default 360 = full disk).
-    --arc-center DEG        Center angle of sampling arc, CCW from +x
-                            (default 0).
+    --arc-deg D             Sampling arc extent in degrees (default 360).
+    --arc-center DEG        Arc center angle, CCW from +x (default 0).
     --preview               Save a debug PNG showing where we sampled.
 """
 
@@ -62,17 +48,16 @@ def detect_saturn_disk(rgb: np.ndarray) -> tuple[tuple[float, float], float]:
     # Erode aggressively so only the planet body survives.
     eroded = ndimage.binary_erosion(mask, iterations=25)
 
-    # Largest remaining connected component is the disk fs.
+    # Largest remaining connected component is the disk.
     labels, n_labels = ndimage.label(eroded)
     if n_labels == 0:
         raise RuntimeError(
-            "Disk not found-? Try --center and --radius manually."
+            "Could not detect Saturn's disk. Try --center and --radius manually."
         )
     sizes = ndimage.sum(eroded, labels, index=np.arange(1, n_labels + 1))
     disk_label = int(np.argmax(sizes)) + 1
     disk_mask = labels == disk_label
 
-    # Centroid:
     cy, cx = ndimage.center_of_mass(disk_mask)
 
     # Radius: 80th percentile of distances from centroid to disk pixels.
@@ -83,7 +68,7 @@ def detect_saturn_disk(rgb: np.ndarray) -> tuple[tuple[float, float], float]:
     return (float(cx), float(cy)), radius
 
 
-# Radial sampling 
+# Radial sampling
 
 def sample_radials(
     rgb: np.ndarray,
@@ -108,7 +93,7 @@ def sample_radials(
     cx, cy = center
     h, w = rgb.shape[:2]
 
-    # Angles in radians,
+    # Angles in radians.
     angles = np.deg2rad(
         np.linspace(
             arc_center_deg - arc_half_width_deg,
@@ -146,7 +131,7 @@ def sample_radials(
     return samples  # (n_radials, n_samples, 3), float
 
 
-# Reduction to LUT 
+# Reduction to LUT
 
 def reduce_to_lut(
     samples: np.ndarray, out_width: int = 32, out_height: int = 512
@@ -164,12 +149,12 @@ def reduce_to_lut(
             axis=1,
         )
 
-    # Tile horizontally :
+    # Tile horizontally.
     lut = np.broadcast_to(profile[:, None, :], (out_height, out_width, 3)).copy()
     return np.clip(lut, 0, 255).astype(np.uint8)
 
 
-# Preview (debug artifact) 
+# Preview (debug artifact)
 
 def save_preview(
     rgb: np.ndarray,
@@ -183,7 +168,7 @@ def save_preview(
 ) -> None:
     """
     Write a debug PNG with the inner/outer sample radii overlaid, plus
-    red dots along the outer radius indicating sample angles. 
+    red dots along the outer radius indicating sample angles.
     """
     preview = rgb.copy()
     cx, cy = center
