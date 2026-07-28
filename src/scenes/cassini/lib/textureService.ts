@@ -38,7 +38,12 @@ export type MoonId =
   | "mimas"
   | "tethys"
   | "dione"
-  | "rhea";
+  | "rhea"
+  // No dedicated assets: janus and pandora render under 20 px in their
+  // one tableau, so they borrow the Mimas texture (grey, cratered,
+  // indistinguishable at that size).
+  | "janus"
+  | "pandora";
 
 export const ALL_MOONS: MoonId[] = [
   "titan",
@@ -48,6 +53,8 @@ export const ALL_MOONS: MoonId[] = [
   "tethys",
   "dione",
   "rhea",
+  "janus",
+  "pandora",
 ];
 
 // Tunables
@@ -79,6 +86,9 @@ const PLACEHOLDER_PATH: Record<MoonId, string> = {
   dione: "/textures/placeholders/dione_ph.webp",
   tethys: "/textures/placeholders/tethys_ph.webp",
   titan: "/textures/placeholders/titan_visible_ph.webp",
+  // Borrowed Mimas assets (see MoonId comment), browser-cached, no new fetch.
+  janus: "/textures/placeholders/mimas_ph.webp",
+  pandora: "/textures/placeholders/mimas_ph.webp",
 };
 
 const OPTIMIZED_PATH: Record<MoonId, string> = {
@@ -89,9 +99,14 @@ const OPTIMIZED_PATH: Record<MoonId, string> = {
   dione: "/textures/optimized/dione_opt.webp",
   tethys: "/textures/optimized/tethys_opt.webp",
   titan: "/textures/optimized/titan_visible__opt.webp",
+  // Never promoted in practice, only moons[0] owns the hi-res slot and
+  // that's always Rhea in their one tableau. Entries exist for type
+  // completeness.
+  janus: "/textures/optimized/mimas_opt.webp",
+  pandora: "/textures/optimized/mimas_opt.webp",
 };
 
-// Titan spectral mode → (placeholder, optimized) paths.
+// Titan spectral mode to (placeholder, optimized) paths.
 // Modes match TitanSpectralMode in missionStore.ts and the imaging
 // definitions in cassini_imaging.md.
 //
@@ -111,7 +126,7 @@ const TITAN_OPTIMIZED_BY_MODE: Record<string, string> = {
   iss_nac_ir: "/textures/optimized/titan_near_IR_opt.webp",
 };
 
-// Enceladus spectral mode → paths. Only two modes today.
+// Enceladus spectral mode to paths. Only two modes today.
 const ENCELADUS_PLACEHOLDER_BY_MODE: Record<string, string> = {
   visible: "/textures/placeholders/enceladus_ph.webp",
   vims_ir: "/textures/placeholders/enceladus_IR_ph.webp",
@@ -178,7 +193,7 @@ const listeners = new Map<MoonId, Set<() => void>>();
 // Deferred disposal queue. We can't dispose a texture in the same tick we
 // rebind it to a placeholder: React's effect hasn't committed the new
 // material.map yet, so the next frame would render with a disposed GL
-// texture handle (GL error → possible context loss → SCENE FAULT). Every
+// texture handle (GL error, possible context loss, SCENE FAULT). Every
 // tick flushes the previous tick's pending disposals.
 const pendingDisposals: THREE.Texture[] = [];
 
@@ -308,7 +323,7 @@ async function loadTexture(
 
 /**
  * Load every moon placeholder PLUS every spectral-mode placeholder. All
- * are kept always-resident (one placeholder per asset is ~10 KB WebP →
+ * are kept always-resident (one placeholder per asset is ~10 KB WebP,
  * ~60 KB total across the entire 7-moon + 4-titan-mode + 2-enceladus-mode
  * set, well below the always-resident budget). Preloading every spectral
  * variant up front is what makes the user's spectral-button click feel
@@ -319,7 +334,7 @@ export async function initialize(gl: THREE.WebGLRenderer) {
   if (initialized) return;
   initialized = true;
 
-  // Collect every placeholder URL we may need across body × spectral-mode.
+  // Collect every placeholder URL we may need across body x spectral-mode.
   const allUrls = new Set<string>();
   for (const body of ALL_MOONS) {
     if (body === "titan") {
@@ -373,22 +388,30 @@ export async function initialize(gl: THREE.WebGLRenderer) {
  * moon's grace overlapped the next moon's window, and the in-order
  * iteration matched the wrong body.
  */
+// Multi-moon tableaus (group portraits) list their dominant moon first;
+// that one gets the optimized slot, the others stay on placeholders.
+const hiresBodyOf = (tab: (typeof TABLEAUS)[number]): string | null =>
+  tab.body ?? tab.moons?.[0]?.body ?? null;
+
 function activeHiresOwner(t: number): MoonId | null {
   const active = getActiveTableau(t);
-  if (active.kind === "moon" && active.body) {
-    return active.body as MoonId;
+  if (active.kind === "moon") {
+    const body = hiresBodyOf(active);
+    if (body) return body as MoonId;
   }
   for (const tab of TABLEAUS) {
-    if (tab.kind !== "moon" || !tab.body) continue;
+    if (tab.kind !== "moon") continue;
+    const body = hiresBodyOf(tab);
+    if (!body) continue;
     if (t >= tab.tStart - PROMOTE_LEAD_T && t < tab.tStart) {
-      return tab.body as MoonId;
+      return body as MoonId;
     }
   }
   return null;
 }
 
 /**
- * Eviction handshake: rebind placeholder → DEFER dispose → drop cache.
+ * Eviction handshake: rebind placeholder, DEFER dispose, drop cache.
  * Dispose runs on the next tick, by then React will have committed the
  * placeholder rebind to `material.map`, so we never render a frame with
  * a disposed GL handle.
