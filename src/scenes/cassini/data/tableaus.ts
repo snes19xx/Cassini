@@ -6,6 +6,11 @@
 // backdrop. The timeline maps `currentT` to exactly one active tableau via
 // `getActiveTableau(t)`. Tableau windows are non-overlapping and cover [0,1].
 //
+import {
+  DISINTEGRATION_T_START,
+  TERMINAL_T_START,
+} from "./missionConstants";
+
 // This replaces the continuous-physics flyby system: instead of moons moving
 // along Catmull-Rom splines around a moving Saturn, each moon sits at a fixed
 // world position inside its tableau, Cassini sits next to it, the user can
@@ -23,19 +28,61 @@ export interface SaturnBackdrop {
   pos: [number, number, number];
   /** Uniform scale applied to the Saturn group (rings included). */
   scale: number;
+  /**
+   * Optional orientation of the whole Saturn group, XYZ euler in degrees.
+   * Default [0,0,0]. family_portrait tips this a few degrees: at zero tilt
+   * the camera sits exactly in the ring plane and the rings collapse to a
+   * hairline.
+   */
+  rotDeg?: [number, number, number];
+}
+
+/**
+ * A moon placed at an explicit position inside a multi-moon tableau (the
+ * NASA group-portrait scenes), instead of sitting at the tableau's origin.
+ */
+export interface TableauMoonPlacement {
+  /** Matches the textureService MoonId set. */
+  body: string;
+  pos: [number, number, number];
+  /** Same stylized-scale system as moonEffectiveRadius. */
+  effectiveRadius: number;
+  /**
+   * Tidally locked, so spin axis = orbit normal: tilt from the ring-plane
+   * normal by the moon's orbital inclination to Saturn's equator. Degrees.
+   */
+  axialTiltDeg?: number;
+  /** Sidereal rotation period in hours, equal to orbital period (tidal lock). */
+  spinPeriodHours?: number;
+  /**
+   * Hand-tuned drift rate about the backdrop Saturn's ring axis, rad/s of
+   * mission display time. The backdrop sits at a photo-composed distance
+   * rather than true orbital radii, so true periods either freeze near
+   * moons or fling far ones out of frame.
+   */
+  orbitRadPerSec?: number;
 }
 
 export interface ZoomClamps {
-  /** Minimum camera distance to the tableau target — prevents zooming inside subject. */
+  /** Minimum camera distance to the tableau target, prevents zooming inside the subject. */
   minDist: number;
-  /** Maximum camera distance — prevents subject shrinking to a dot. */
+  /** Maximum camera distance, prevents the subject shrinking to a dot. */
   maxDist: number;
 }
 
 export interface CameraPreset {
   pos: [number, number, number];
   lookAt: [number, number, number];
+  /**
+   * Optional per-tableau focal length in degrees (default 45). The NASA
+   * group portraits use a narrow fov, a real long-lens shot, so distant
+   * bodies compress into one frame while dollying in still separates them.
+   */
+  fov?: number;
 }
+
+// Every path that changes camera fov must restore it to the tableau's value.
+export const DEFAULT_TABLEAU_FOV = 45;
 
 export interface Tableau {
   id: string;
@@ -43,7 +90,7 @@ export interface Tableau {
   /** Inclusive start, exclusive end. Windows are non-overlapping. */
   tStart: number;
   tEnd: number;
-  /** Phase label shown in chrome — usually matches a phase in phases.ts. */
+  /** Phase label shown in chrome, usually matches a phase in phases.ts. */
   label: string;
   /** Body identifier for moon tableaus (titan/iapetus/enceladus/mimas/rhea/dione). */
   body?: string;
@@ -58,6 +105,12 @@ export interface Tableau {
    * Mimas smallest) without depending on per-flyby scale data.
    */
   moonEffectiveRadius?: number;
+  /**
+   * Multi-moon composition (group-portrait tableaus). Each moon renders at
+   * its own position/size; `body`/`moonEffectiveRadius` stay unset. moons[0]
+   * gets the hi-res texture slot, so the dominant foreground moon goes first.
+   */
+  moons?: TableauMoonPlacement[];
   /** Camera framing the user sees on tableau enter (resets via JUMP-TO). */
   camera: CameraPreset;
   /**
@@ -70,32 +123,49 @@ export interface Tableau {
   /** Bounds OrbitControls' zoom range while this tableau is active. */
   zoom: ZoomClamps;
   /**
+   * Optional override for OrbitControls' autoRotateSpeed (default is
+   * kind/fov-derived). family_portrait sets 0: through its 6° lens a few
+   * degrees of drift slides a wing moon out of frame, so the moons' own
+   * axial spin provides motion instead.
+   */
+  autoRotateSpeed?: number;
+  /**
+   * Optional OrbitControls rotation clamps, radians. Group-portrait
+   * compositions place bodies far off the orbit target; without this the
+   * user can orbit straight through a background moon. Azimuth 0 faces +Z,
+   * polar is measured from +Y (pi/2 = equatorial).
+   */
+  orbitLimits?: {
+    minAzimuth: number;
+    maxAzimuth: number;
+    minPolar: number;
+    maxPolar: number;
+  };
+  /**
    * Optional Saturn rendered at a fixed offset for visual context. Only set
-   * for moon tableaus — saturn_focus / finale render Saturn at origin instead.
+   * for moon tableaus; saturn_focus / finale render Saturn at origin instead.
    * Per-moon variance gives each tableau its own composition.
    */
   saturnBackdrop?: SaturnBackdrop;
-  /** Per-tableau effects toggled by the resolver (huygens descent, plumes…). */
+  /** Per-tableau effects toggled by the resolver (huygens descent, plumes, etc). */
   effects?: {
     huygensDescent?: boolean;     // Titan tableau: show Huygens probe + DISR channels
     plumes?: boolean;             // Enceladus tableau: south-pole geyser jets
     rings?: boolean;              // Saturn shown with rings (default true when saturn rendered)
+    crescentLighting?: boolean;   // backlit sun rig, thin crescents (three_crescents)
+    hideCassini?: boolean;        // "WE are Cassini" shots, the spacecraft model is the camera
     grandFinaleBurn?: boolean;    // Cassini disintegration FX
     soiBurn?: boolean;            // SOI engine burn glow
   };
 }
 
 // Saturn body radius is 180; rings extend to 419. With moons at fixed effective
-// radius ~25–50, putting Saturn at distance ≥1500 keeps it visibly far without
-// crowding the moon. Scale exaggerates: real Saturn would be ~1°, we use 5–15°.
+// radius ~25-50, putting Saturn at distance >=1500 keeps it visibly far without
+// crowding the moon. Scale is exaggerated: real Saturn subtends ~1 degree; here it's 5-15.
 
 export const TABLEAUS: Tableau[] = [
-  // ── 1. Cruise / Pre-SOI ─────────────────────────────────────────────────
-  // Cassini alone, Earth → Saturn cruise. No Saturn, no moons.
-  // Shortened (was 0.0→0.336) to make room for a long arrival approach
-  // where Saturn visibly grows from a dot to full size — user feedback
-  // was that at their playback speed the previous 0.336→0.353 window
-  // was too brief to perceive any growth.
+  // No Saturn, no moons yet: pure cruise. Window is short so the arrival
+  // burn below has room to show Saturn growing from a dot to full size.
   {
     id: "cruise_early",
     kind: "cruise",
@@ -109,17 +179,11 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 18, maxDist: 200 },
   },
 
-  // ── 2. Saturn Arrival / SOI ─────────────────────────────────────────────
-  // Saturn approach + orbit insertion. Saturn grows from a tiny dot at
-  // tStart to full size by tEnd; the SOI burn (handled in stateAt.ts)
-  // fires at t≈0.336, which lands ~85% through this widened window so
-  // the burn happens against a near-full-sized Saturn.
-  //
-  // Framing: chase-cam behind Cassini, Saturn ahead at origin. Cassini
-  // sits at a fixed +Z offset so it stays in the foreground while Saturn
-  // grows to fill the background. JUMP-TO lands mid-window (jumpT 0.28)
-  // where the scale ramp puts Saturn at ~"football size" — landing at
-  // tStart drops the user at scale=0 which reads as "nothing happened."
+  // Saturn grows from a dot at tStart to full size by tEnd; the SOI burn
+  // (stateAt.ts) fires most of the way through, against a near-full Saturn.
+  // Chase-cam behind Cassini keeps it foreground while Saturn fills the
+  // background. JUMP-TO lands mid-ramp rather than at tStart, so Saturn
+  // already reads as something instead of a blank dot.
   {
     id: "saturn_arrival",
     kind: "saturn_focus",
@@ -136,9 +200,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true, soiBurn: true },
   },
 
-  // ── 3. Titan + Huygens Landing ──────────────────────────────────────────
-  // Big set-piece: Titan dominant, Huygens probe descends, DISR channel toggle.
-  // Titan is far from Saturn IRL (1.22 M km, ~5.6° apparent), so Saturn reads small.
+  // Huygens probe descends here (HuygensSeparation.tsx). Titan sits 1.22M km
+  // from Saturn (~5.6° apparent), so the backdrop reads small.
   {
     id: "titan_huygens",
     kind: "moon",
@@ -163,8 +226,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { huygensDescent: true, rings: true },
   },
 
-  // ── 4. Enceladus / Cryovolcanism ────────────────────────────────────────
-  // Enceladus is close to Saturn (~238k km, ~29° apparent) — backdrop reads big.
+  // Enceladus sits close to Saturn (~238k km, ~29° apparent), so the backdrop reads big.
   {
     id: "enceladus",
     kind: "moon",
@@ -183,11 +245,10 @@ export const TABLEAUS: Tableau[] = [
       pos: [-1100, 80, -1300],
       scale: 1.05,
     },
-    effects: { rings: true },
+    effects: { rings: true, plumes: true },
   },
 
-  // ── 5. Iapetus / Yin–Yang ───────────────────────────────────────────────
-  // Iapetus is the farthest of these moons (3.56 M km, ~1.9°) — Saturn smallest.
+  // Farthest of these moons (3.56M km, ~1.9° apparent), so Saturn is smallest here.
   {
     id: "iapetus",
     kind: "moon",
@@ -209,8 +270,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 6. Mimas / Herschel Crater ──────────────────────────────────────────
-  // Mimas is closest to Saturn (185k km, ~37°) — backdrop largest.
+  // Closest of these moons to Saturn (185k km, ~37° apparent), so the backdrop is largest.
   {
     id: "mimas",
     kind: "moon",
@@ -232,9 +292,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 7. Tethys / Ithaca Chasma ───────────────────────────────────────────
-  // New tableau (user request). Tethys is third-closest of these (294k km,
-  // ~23° apparent) — backdrop between Enceladus and Dione in scale.
+  // Third-closest of these moons (294k km, ~23° apparent); backdrop sits
+  // between Enceladus and Dione in scale.
   {
     id: "tethys",
     kind: "moon",
@@ -256,9 +315,8 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 8. Dione / Wisps ────────────────────────────────────────────────────
-  // Dione (377k km, ~18°). User: from Dione onward Saturn can be a bit
-  // exaggerated for "cooler" look — but still smaller than Tethys.
+  // Dione (377k km, ~18° apparent). Backdrop runs a touch large here for
+  // visual weight, though still smaller than Tethys.
   {
     id: "dione",
     kind: "moon",
@@ -280,8 +338,7 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 9. Rhea / Exosphere ─────────────────────────────────────────────────
-  // Rhea (527k km, ~13°). Saturn smaller than at Dione, larger than at Titan.
+  // Rhea (527k km, ~13° apparent): backdrop smaller than at Dione, larger than at Titan.
   {
     id: "rhea",
     kind: "moon",
@@ -303,35 +360,214 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // ── 9. Late Saturn Beauty (hexagon, equinox-style) ──────────────────────
-  // Saturn dominant, no moon. Used for the late-mission Saturn beauty shots.
+  // Recreation of PIA14573 ("Quintet of Moons"). A 6-degree telephoto lens
+  // compresses five moons hundreds of thousands of km apart into one frame.
   {
-    id: "saturn_beauty",
-    kind: "saturn_focus",
+    id: "family_portrait",
+    kind: "moon",
     tStart: 0.810,
-    tEnd: 0.960,
-    label: "SATURN STUDIES",
+    tEnd: 0.870,
+    label: "FAMILY PORTRAIT",
+    // moons[0] gets the hi-res texture slot, so the dominant foreground
+    // body (Rhea) goes first. axialTiltDeg/spinPeriodHours follow each
+    // moon's tidal lock (spin axis = orbit normal, spin period = orbital
+    // period). orbitRadPerSec is hand-tuned screen drift about the ring
+    // axis; negative is leftward, so the group parades into frame.
+    moons: [
+      { body: "rhea", pos: [27.6, 12.3, 271.2], effectiveRadius: 7.64, axialTiltDeg: 0.35, spinPeriodHours: 108.4, orbitRadPerSec: -6.5e-5 },
+      { body: "mimas", pos: [24.0, 13.7, 170.7], effectiveRadius: 1.98, axialTiltDeg: 1.57, spinPeriodHours: 22.6, orbitRadPerSec: -1.37e-4 },
+      { body: "enceladus", pos: [4.7, 27.7, -299.9], effectiveRadius: 2.52, axialTiltDeg: 0.01, spinPeriodHours: 32.9, orbitRadPerSec: -3.1e-4 },
+      { body: "pandora", pos: [-5.0, 11.2, 27.0], effectiveRadius: 0.41, axialTiltDeg: 0.05, spinPeriodHours: 15.1, orbitRadPerSec: -2.33e-4 },
+      { body: "janus", pos: [-31.0, 16.7, 86.0], effectiveRadius: 0.9, axialTiltDeg: 0.16, spinPeriodHours: 16.7, orbitRadPerSec: -1.11e-4 },
+    ],
+    cassiniOffset: [0, -30, 900],
     camera: {
-      pos: [0, 320, 480],
-      lookAt: [0, 0, 0],
+      pos: [0, 12, 600],
+      lookAt: [0, 12, 0],
+      fov: 6,
     },
-    zoom: { minDist: 200, maxDist: 4000 },
+    zoom: { minDist: 60, maxDist: 4000 },
+    // Moon spins + orbital drift carry the motion here; auto-rotate would
+    // wreck the tight 6-degree frame.
+    autoRotateSpeed: 0,
+    // Keep the camera near the ring plane.
+    orbitLimits: {
+      minAzimuth: -0.4,
+      maxAzimuth: 0.4,
+      minPolar: (80 * Math.PI) / 180,
+      maxPolar: (100 * Math.PI) / 180,
+    },
+    saturnBackdrop: {
+      pos: [1191, 0, -6298],
+      scale: 3.35,
+      // Slight pitch/roll opens the ring band and gives it the photo's
+      // diagonal, instead of collapsing to a hairline at zero tilt.
+      rotDeg: [1.5, 0, 2],
+    },
+    effects: { hideCassini: true, rings: true },
+  },
+
+  // PIA18322 recreation: three backlit crescents in black space. Saturn
+  // sits in the far background purely for compositional depth (the real
+  // photo doesn't include it), scaled to read at roughly frame height
+  // through this 14-degree lens without dominating.
+  //
+  // Long-lens shot: real camera-to-moon distances span a 4.2:1 ratio
+  // (Mimas 1300, Rhea 2600, Titan 5400), so dollying in pulls the trio
+  // apart instead of scaling together. hideCassini keeps the spacecraft
+  // model out of frame; orbitLimits keep the camera from swinging in
+  // behind the composition.
+  {
+    id: "three_crescents",
+    kind: "moon",
+    tStart: 0.870,
+    tEnd: 0.945,
+    label: "THREE CRESCENTS",
+    moons: [
+      { body: "titan", pos: [283, -66, -2515], effectiveRadius: 476 },
+      { body: "rhea", pos: [-160, 58, 285], effectiveRadius: 78 },
+      { body: "mimas", pos: [-45, -96, 1585], effectiveRadius: 13 },
+    ],
+    cassiniOffset: [0, -40, 3150],
+    camera: {
+      pos: [0, 0, 2885],
+      lookAt: [0, 0, 0],
+      fov: 14,
+    },
+    zoom: { minDist: 500, maxDist: 9000 },
+    orbitLimits: {
+      minAzimuth: -0.6,
+      maxAzimuth: 0.6,
+      minPolar: Math.PI / 3,
+      maxPolar: (2 * Math.PI) / 3,
+    },
+    saturnBackdrop: {
+      pos: [-1400, 400, -11500],
+      scale: 1.8,
+    },
+    effects: { crescentLighting: true, hideCassini: true, rings: true },
+  },
+
+  // Elliptical approach: Cassini hangs at apoapse above the north pole,
+  // then swings down into the polar pass. Saturn sits upper-frame rather
+  // than centered, so the descent reads as a dive rather than a flyover.
+  {
+    id: "finale_approach",
+    kind: "finale",
+    tStart: 0.945,
+    tEnd: 0.955,
+    label: "FINAL APPROACH",
+    cassiniOffset: [250, 450, 250],
+    camera: {
+      pos: [800, 600, 1200],
+      lookAt: [50, -100, 100],
+    },
+    zoom: { minDist: 200, maxDist: 5000 },
     effects: { rings: true },
   },
 
-  // ── 10. Grand Finale ────────────────────────────────────────────────────
-  // Saturn fills frame, ring-crossings flash, Cassini disintegrates.
+  // Top-down over the north pole, hexagon storm in frame.
   {
-    id: "grand_finale",
+    id: "finale_polar",
     kind: "finale",
-    tStart: 0.960,
-    tEnd: 1.0001, // include t=1.0 inclusively
-    label: "THE GRAND FINALE",
+    tStart: 0.955,
+    tEnd: 0.961,
+    label: "POLAR PASSAGE",
+    cassiniOffset: [60, 420, 90],
     camera: {
-      pos: [220, 60, 380],
+      pos: [40, 900, 60],
       lookAt: [0, 0, 0],
     },
-    zoom: { minDist: 150, maxDist: 3500 },
+    zoom: { minDist: 200, maxDist: 3000 },
+    effects: { rings: true },
+  },
+
+  // Over-the-shoulder behind Cassini with the ring plane ahead. Camera
+  // sits close behind and slightly above Cassini so it reads foreground
+  // instead of shrinking against the rings.
+  {
+    id: "finale_ring_edge",
+    kind: "finale",
+    tStart: 0.961,
+    tEnd: 0.963,
+    label: "INTO THE RINGS",
+    cassiniOffset: [460, 4, 180],
+    camera: {
+      pos: [477, 12, 186],
+      lookAt: [432, 4, 169],
+    },
+    zoom: { minDist: 12, maxDist: 2000 },
+    effects: { rings: true },
+  },
+
+  // One full Kepler revolution just outside the F-ring's outer edge.
+  // cassiniOffset/camera are the static wide-mode pose; a per-frame
+  // trajectory takes over position while this tableau is active.
+  {
+    id: "finale_swing_around",
+    kind: "finale",
+    tStart: 0.963,
+    tEnd: 0.978,
+    label: "SWING AROUND",
+    cassiniOffset: [460, 0, 0],
+    camera: {
+      pos: [1500, 700, 1500],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 400, maxDist: 5000 },
+    effects: { rings: true },
+  },
+
+  // Half-revolution Kepler orbit, apoapse to periapse, crossing INSIDE the
+  // visible ring band rather than just outside it like the swing above.
+  // cassiniOffset is the apoapse start position.
+  {
+    id: "finale_ring_dive",
+    kind: "finale",
+    tStart: 0.978,
+    tEnd: TERMINAL_T_START,
+    label: "RING DIVE",
+    cassiniOffset: [0, 697, 61],
+    camera: {
+      pos: [1500, 700, 1500],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 400, maxDist: 5000 },
+    effects: { rings: true },
+  },
+
+  // Committed terminal plunge: no more orbits, Cassini is falling into the
+  // planet. cassiniOffset is the fall's start point for reference; actual
+  // position is driven per-frame once the plunge system lands.
+  {
+    id: "finale_atmospheric",
+    kind: "finale",
+    tStart: TERMINAL_T_START,
+    tEnd: DISINTEGRATION_T_START,
+    label: "SATURN'S ATMOSPHERE",
+    cassiniOffset: [0, -194, -17],
+    camera: {
+      pos: [0, -218, -20],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 30, maxDist: 2500 },
+    effects: { rings: true },
+  },
+
+  // Break-up, plasma, white-out, end card. Continues the same plunge as
+  // the previous tableau so the boundary has no pop.
+  {
+    id: "finale_disintegration",
+    kind: "finale",
+    tStart: DISINTEGRATION_T_START,
+    tEnd: 1.0001, // include t=1.0 inclusively
+    label: "END OF MISSION",
+    cassiniOffset: [0, -2, -178],
+    camera: {
+      pos: [0, 12, -216],
+      lookAt: [0, 0, 0],
+    },
+    zoom: { minDist: 20, maxDist: 2500 },
     effects: { rings: true, grandFinaleBurn: true },
   },
 ];
@@ -359,11 +595,16 @@ export function findActiveTableauIndex(t: number): number {
 /**
  * Map a tableau to its `BODY_CONTENT` key (in `phases.ts`).
  *   - moon tableaus use their `body` field
- *   - both saturn_focus tableaus (arrival + studies) share `"saturn"`
+ *   - group portraits (three_crescents / family_portrait) get their own keys
+ *   - saturn_focus (arrival) uses `"saturn"`
  *   - finale uses `"grand_finale"`
- *   - cruise has no body content (returns null → InfoPanel shows cruise UI)
+ *   - cruise has no body content (returns null, InfoPanel shows cruise UI)
  */
 export function getBodyContentId(tab: Tableau): string | null {
+  // No single focal body to inherit from, so these get their own entries.
+  if (tab.id === "three_crescents" || tab.id === "family_portrait") {
+    return tab.id;
+  }
   if (tab.body) return tab.body;
   if (tab.kind === "saturn_focus") return "saturn";
   if (tab.kind === "finale") return "grand_finale";
@@ -371,9 +612,10 @@ export function getBodyContentId(tab: Tableau): string | null {
 }
 
 /**
- * JUMP-TO label → tableau id mapping. Each label resolves to a single tableau
+ * JUMP-TO label to tableau id mapping. Each label resolves to a single tableau
  * (no peak-cycling). For SATURN we pick the arrival; for moon labels we pick
- * the corresponding moon tableau.
+ * the corresponding moon tableau. FINALE lands on the first of the seven
+ * finale tableaus; scrub or play to advance through the rest.
  */
 export const JUMP_TO_TABLEAU: Record<string, string> = {
   SATURN: "saturn_arrival",
@@ -384,5 +626,7 @@ export const JUMP_TO_TABLEAU: Record<string, string> = {
   TETHYS: "tethys",
   RHEA: "rhea",
   DIONE: "dione",
-  FINALE: "grand_finale",
+  FAMILY: "family_portrait",
+  CRESCENTS: "three_crescents",
+  FINALE: "finale_approach",
 };
