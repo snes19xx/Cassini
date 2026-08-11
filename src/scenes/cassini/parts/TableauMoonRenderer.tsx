@@ -26,6 +26,8 @@ interface MoonTarget {
   px: number;
   py: number;
   pz: number;
+  tiltRad: number;
+  spinRadPerSec: number;
 }
 
 const BODY_RADIUS: Record<string, number> = {
@@ -38,6 +40,10 @@ const BODY_RADIUS: Record<string, number> = {
   tethys: 3.31,
 };
 
+// Stylized speed-up on the true (tidally-locked) rotation periods, same
+// trick as SaturnBody's 600x/1200x — real periods read as static.
+const MOON_SPIN_FACTOR = 3000;
+
 // Single-body tableaus put the focal moon at the origin; multi-moon
 // tableaus (the group-portrait scenes) read each moon's own placement.
 function resolveMoonTarget(
@@ -47,15 +53,27 @@ function resolveMoonTarget(
 ): MoonTarget | null {
   if (tab.kind !== "moon") return null;
   if (tab.body === body && tab.moonEffectiveRadius) {
-    return { scale: tab.moonEffectiveRadius / realR, px: 0, py: 0, pz: 0 };
+    return {
+      scale: tab.moonEffectiveRadius / realR,
+      px: 0,
+      py: 0,
+      pz: 0,
+      tiltRad: 0,
+      spinRadPerSec: 0,
+    };
   }
   const placement = tab.moons?.find((m) => m.body === body);
   if (placement) {
+    const baseRate = placement.spinPeriodHours
+      ? (2 * Math.PI) / (placement.spinPeriodHours * 3600)
+      : 0;
     return {
       scale: placement.effectiveRadius / realR,
       px: placement.pos[0],
       py: placement.pos[1],
       pz: placement.pos[2],
+      tiltRad: ((placement.axialTiltDeg ?? 0) * Math.PI) / 180,
+      spinRadPerSec: baseRate * MOON_SPIN_FACTOR,
     };
   }
   return null;
@@ -109,6 +127,10 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
 
   const realR = BODY_RADIUS[body] ?? 5;
   const groupRef = useRef<THREE.Group>(null);
+  // tilt (axial lean) wraps spin (rotation about that tilted axis) — two
+  // nested groups keep the spin axis unambiguous.
+  const tiltRef = useRef<THREE.Group>(null);
+  const spinRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
   const livePosRef = useRef(new THREE.Vector3());
 
@@ -180,6 +202,18 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       } else if (moonWorldPositions.has(body)) {
         moonWorldPositions.delete(body);
       }
+
+      // Tilt snaps (never on-screen mid-change); spin accumulates and
+      // simply freezes in tableaus without a rate.
+      if (tiltRef.current) {
+        const tilt = target ? target.tiltRad : 0;
+        if (tiltRef.current.rotation.z !== tilt) {
+          tiltRef.current.rotation.z = tilt;
+        }
+      }
+      if (spinRef.current && target && target.spinRadPerSec > 0) {
+        spinRef.current.rotation.y += delta * target.spinRadPerSec;
+      }
     } catch (err) {
       console.error(`[MoonMesh:${body} useFrame] swallowed error`, err);
     }
@@ -188,14 +222,21 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const showSpace = renderMode !== "blueprint";
   return (
     <group ref={groupRef} visible={false}>
-      <mesh visible={showSpace}>
-        <sphereGeometry args={[realR, 96, 48]} />
-        <primitive object={spaceMaterialRef.current} attach="material" />
-      </mesh>
-      <mesh visible={!showSpace}>
-        <sphereGeometry args={[realR, 96, 48]} />
-        <primitive object={blueprintMaterialRef.current} attach="material" />
-      </mesh>
+      <group ref={tiltRef}>
+        <group ref={spinRef}>
+          <mesh visible={showSpace}>
+            <sphereGeometry args={[realR, 96, 48]} />
+            <primitive object={spaceMaterialRef.current} attach="material" />
+          </mesh>
+          <mesh visible={!showSpace}>
+            <sphereGeometry args={[realR, 96, 48]} />
+            <primitive
+              object={blueprintMaterialRef.current}
+              attach="material"
+            />
+          </mesh>
+        </group>
+      </group>
     </group>
   );
 }
