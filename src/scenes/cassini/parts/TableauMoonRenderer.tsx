@@ -5,9 +5,11 @@
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import * as THREE from "three";
+import { FULL_MISSION_SECONDS } from "../data/missionConstants";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
+import { missionToDisplay } from "../lib/tRemap";
 import {
   ALL_MOONS,
   Binding,
@@ -16,9 +18,7 @@ import {
   subscribe,
 } from "../lib/textureService";
 
-// World position of every currently visible tableau moon, written each
-// frame by its MoonMesh. Labels Projector reads this for multi-moon
-// tableau tracking.
+// Live world position per visible moon, read by the labels Projector.
 export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
 
 interface MoonTarget {
@@ -28,6 +28,7 @@ interface MoonTarget {
   pz: number;
   tiltRad: number;
   spinRadPerSec: number;
+  orbitRadPerSec: number;
 }
 
 const BODY_RADIUS: Record<string, number> = {
@@ -40,12 +41,91 @@ const BODY_RADIUS: Record<string, number> = {
   tethys: 3.31,
 };
 
-// Stylized speed-up on the true (tidally-locked) rotation periods, same
-// trick as SaturnBody's 600x/1200x — real periods read as static.
+// True tidally-locked periods read as static, so speed them up.
 const MOON_SPIN_FACTOR = 3000;
 
-// Single-body tableaus put the focal moon at the origin; multi-moon
-// tableaus (the group-portrait scenes) read each moon's own placement.
+// Drift is keyed to mission display time so scrubbing stays deterministic.
+const _orbAxis = new THREE.Vector3();
+const _orbEuler = new THREE.Euler();
+const _orbOffset = new THREE.Vector3();
+
+// PIA23175. Quad sits through the moon centre so the near side occludes it.
+const PLUME_VERT = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_vertex>
+  varying vec2 vP;
+  void main() {
+    vP = position.xy;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    #include <logdepthbuf_vertex>
+  }
+`;
+
+const PLUME_FRAG = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_fragment>
+  uniform float uIntensity;
+  uniform float uTime;
+  varying vec2 vP;
+
+  float hash1(float x) {
+    return fract(sin(x * 12.9898) * 43758.5453);
+  }
+
+  void main() {
+    #include <logdepthbuf_fragment>
+    // Moon-centred, in radius units. Keep in sync with PLUME_CENTER_Y.
+    vec2 p = vP + vec2(0.0, -1.2);
+    float d = length(p);
+
+    // Kills the sliver that peeks past the silhouette at glancing angles.
+    float outsideDisc = smoothstep(0.982, 1.005, d);
+    if (outsideDisc <= 0.0) discard;
+
+    float jets = 0.0;
+    for (int i = 0; i < 10; i++) {
+      float fi = float(i);
+      // Source angle from straight-down, jittered across the stripes.
+      float a = -0.5 + 1.0 * (fi / 9.0) + (hash1(fi * 7.3) - 0.5) * 0.08;
+      vec2 s = vec2(sin(a), -cos(a));
+      float ca = a + (hash1(fi * 13.7) - 0.5) * 0.24;
+      vec2 dir = vec2(sin(ca), -cos(ca));
+      vec2 v = p - s;
+      float t = dot(v, dir);
+      if (t < 0.0) continue;
+      float q = dot(v, vec2(-dir.y, dir.x));
+      float w = (0.55 + 0.45 * hash1(fi * 3.1)) *
+                (0.85 + 0.15 * sin(uTime * 0.7 + fi * 2.1));
+      float sigma = 0.020 + t * (0.055 + 0.04 * hash1(fi * 5.9));
+      jets += exp(-q * q / (2.0 * sigma * sigma)) * exp(-t * 2.7) * w;
+    }
+
+    // Merged haze the jets feed, in a cone just wider than the jet arc.
+    float ang = acos(clamp(dot(p / max(d, 1e-4), vec2(0.0, -1.0)), -1.0, 1.0));
+    float fog = exp(-max(d - 1.0, 0.0) * 2.1) *
+                (1.0 - smoothstep(0.42, 0.8, ang));
+
+    // Guard bands so the quad's own edges never print.
+    float guard = (1.0 - smoothstep(1.45, 1.78, abs(p.x))) *
+                  smoothstep(-2.8, -2.45, p.y);
+
+    float I = (jets * 0.75 + fog * 0.22) * outsideDisc * guard * uIntensity;
+    // Dither breaks additive banding in the soft fog.
+    I -= (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.012;
+    if (I < 0.004) discard;
+
+    vec3 col = mix(vec3(0.55, 0.72, 1.0), vec3(0.95, 0.98, 1.0),
+                   clamp(I, 0.0, 1.0));
+    gl_FragColor = vec4(col, clamp(I, 0.0, 1.0));
+  }
+`;
+
+// Radius units; PLUME_FRAG's coordinate shift must match.
+const PLUME_CENTER_Y = -1.2;
+
+const _plumeCam = new THREE.Vector3();
+
+// Single-body tableaus centre the moon; multi-moon ones read placements.
 function resolveMoonTarget(
   tab: Tableau,
   body: string,
@@ -60,6 +140,7 @@ function resolveMoonTarget(
       pz: 0,
       tiltRad: 0,
       spinRadPerSec: 0,
+      orbitRadPerSec: 0,
     };
   }
   const placement = tab.moons?.find((m) => m.body === body);
@@ -74,6 +155,7 @@ function resolveMoonTarget(
       pz: placement.pos[2],
       tiltRad: ((placement.axialTiltDeg ?? 0) * Math.PI) / 180,
       spinRadPerSec: baseRate * MOON_SPIN_FACTOR,
+      orbitRadPerSec: placement.orbitRadPerSec ?? 0,
     };
   }
   return null;
@@ -127,12 +209,33 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
 
   const realR = BODY_RADIUS[body] ?? 5;
   const groupRef = useRef<THREE.Group>(null);
-  // tilt (axial lean) wraps spin (rotation about that tilted axis) — two
-  // nested groups keep the spin axis unambiguous.
+  // Nested so the body spins about its own tilted axis.
   const tiltRef = useRef<THREE.Group>(null);
   const spinRef = useRef<THREE.Group>(null);
+  const plumeRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
   const livePosRef = useRef(new THREE.Vector3());
+
+  const plumeMaterial = useMemo(() => {
+    if (body !== "enceladus") return null;
+    return new THREE.ShaderMaterial({
+      vertexShader: PLUME_VERT,
+      fragmentShader: PLUME_FRAG,
+      uniforms: {
+        uIntensity: { value: 0.8 },
+        uTime: { value: 0 },
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+  }, [body]);
+  useEffect(() => {
+    return () => {
+      plumeMaterial?.dispose();
+    };
+  }, [plumeMaterial]);
 
   useEffect(() => {
     if (!groupRef.current) return;
@@ -153,7 +256,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
     // eslint-disable-next-line react-hooks
   }, [cameraResetNonce]);
 
-  useFrame((_, deltaRaw) => {
+  useFrame((frameState, deltaRaw) => {
     if (!groupRef.current) return;
     const delta = Number.isFinite(deltaRaw)
       ? Math.min(0.1, Math.max(0, deltaRaw))
@@ -175,15 +278,41 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       }
 
       if (target) {
+        let tx = target.px;
+        let ty = target.py;
+        let tz = target.pz;
+        // Swing the placement about the backdrop's ring axis, prograde.
+        const sat = tab.saturnBackdrop;
+        if (sat && target.orbitRadPerSec !== 0) {
+          const elapsedSec =
+            Math.max(0, missionToDisplay(t) - missionToDisplay(tab.tStart)) *
+            FULL_MISSION_SECONDS;
+          const theta = target.orbitRadPerSec * elapsedSec;
+          _orbAxis.set(0, 1, 0);
+          if (sat.rotDeg) {
+            _orbEuler.set(
+              (sat.rotDeg[0] * Math.PI) / 180,
+              (sat.rotDeg[1] * Math.PI) / 180,
+              (sat.rotDeg[2] * Math.PI) / 180,
+            );
+            _orbAxis.applyEuler(_orbEuler);
+          }
+          _orbOffset.set(tx - sat.pos[0], ty - sat.pos[1], tz - sat.pos[2]);
+          _orbOffset.applyAxisAngle(_orbAxis, theta);
+          tx = sat.pos[0] + _orbOffset.x;
+          ty = sat.pos[1] + _orbOffset.y;
+          tz = sat.pos[2] + _orbOffset.z;
+        }
+
         const lp = livePosRef.current;
         if (liveScaleRef.current < 0.001) {
-          lp.set(target.px, target.py, target.pz);
+          lp.set(tx, ty, tz);
         } else {
-          lp.x = THREE.MathUtils.damp(lp.x, target.px, 3.5, delta);
-          lp.y = THREE.MathUtils.damp(lp.y, target.py, 3.5, delta);
-          lp.z = THREE.MathUtils.damp(lp.z, target.pz, 3.5, delta);
+          lp.x = THREE.MathUtils.damp(lp.x, tx, 3.5, delta);
+          lp.y = THREE.MathUtils.damp(lp.y, ty, 3.5, delta);
+          lp.z = THREE.MathUtils.damp(lp.z, tz, 3.5, delta);
           if (!Number.isFinite(lp.x + lp.y + lp.z)) {
-            lp.set(target.px, target.py, target.pz);
+            lp.set(tx, ty, tz);
           }
         }
         groupRef.current.position.copy(lp);
@@ -203,8 +332,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
         moonWorldPositions.delete(body);
       }
 
-      // Tilt snaps (never on-screen mid-change); spin accumulates and
-      // simply freezes in tableaus without a rate.
+      // Spin freezes in tableaus without a rate; phase is never reset.
       if (tiltRef.current) {
         const tilt = target ? target.tiltRad : 0;
         if (tiltRef.current.rotation.z !== tilt) {
@@ -213,6 +341,22 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       }
       if (spinRef.current && target && target.spinRadPerSec > 0) {
         spinRef.current.rotation.y += delta * target.spinRadPerSec;
+      }
+
+      // Y-billboard so the jets rise off the limb from any orbit azimuth.
+      if (plumeRef.current && plumeMaterial) {
+        const plumesVisible =
+          !!target &&
+          tab.body === body &&
+          tab.effects?.plumes === true &&
+          renderMode !== "blueprint";
+        plumeRef.current.visible = plumesVisible;
+        if (plumesVisible) {
+          _plumeCam.copy(frameState.camera.position);
+          groupRef.current.worldToLocal(_plumeCam);
+          plumeRef.current.rotation.y = Math.atan2(_plumeCam.x, _plumeCam.z);
+          plumeMaterial.uniforms.uTime!.value += delta;
+        }
       }
     } catch (err) {
       console.error(`[MoonMesh:${body} useFrame] swallowed error`, err);
@@ -237,6 +381,20 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
           </mesh>
         </group>
       </group>
+      {plumeMaterial && (
+        /* Quad geometry is authored in radius units; mesh scale maps those
+           to this body. The [0, y, 0] offset survives the Y-billboard. */
+        <group ref={plumeRef} visible={false}>
+          <mesh
+            position={[0, PLUME_CENTER_Y * realR, 0]}
+            scale={realR}
+            renderOrder={11}
+          >
+            <planeGeometry args={[3.6, 3.2]} />
+            <primitive object={plumeMaterial} attach="material" />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
