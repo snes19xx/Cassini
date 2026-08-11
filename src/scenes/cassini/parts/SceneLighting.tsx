@@ -9,9 +9,22 @@
 import { useMissionStore } from "@/store/missionStore";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { getActiveTableau } from "../data/tableaus";
+
+// Sun position for the crescent-lit tableaus. Behind and below-left of the
+// moons relative to the +Z camera so each body shows a thin blown-white
+// crescent on its lower-left limb (PIA18322). Exported so
+// TableauMoonRenderer's Titan haze shell can match it.
+export const CRESCENT_SUN_POS: [number, number, number] = [-260, -160, -700];
 
 export function SceneLighting({ renderMode }: { renderMode: string }) {
   const lightingMode = useMissionStore((s) => s.lightingMode);
+  // Crescent tableaus swap the whole natural rig for a single backlit sun
+  // and near-zero fill: night sides must read pure black against space, not
+  // lifted grey.
+  const crescent = useMissionStore(
+    (s) => getActiveTableau(s.currentT).effects?.crescentLighting === true,
+  );
 
   // SUN:
   const sunRef = useRef<THREE.DirectionalLight>(null);
@@ -34,10 +47,44 @@ export function SceneLighting({ renderMode }: { renderMode: string }) {
         ref.current.layers.enable(1);
       }
     }
-  }, [renderMode, lightingMode]);
+  }, [renderMode, lightingMode, crescent]);
 
   switch (renderMode) {
     case "space":
+      if (crescent) {
+        return (
+          <>
+            <directionalLight
+              ref={sunRef}
+              position={CRESCENT_SUN_POS}
+              intensity={2.6}
+              color="#ffffff"
+            />
+            <ambientLight intensity={0.03} color="#1a2040" />
+            {lightingMode === "full" && (
+              <>
+                <ambientLight
+                  ref={fullAmbientRef}
+                  intensity={1.5}
+                  color="#ffffff"
+                />
+                <directionalLight
+                  ref={fullKeyRef}
+                  position={[-400, 80, 200]}
+                  intensity={1.2}
+                  color="#ffffff"
+                />
+                <directionalLight
+                  ref={fullFillRef}
+                  position={[400, -80, -200]}
+                  intensity={1.2}
+                  color="#ffffff"
+                />
+              </>
+            )}
+          </>
+        );
+      }
       return (
         <>
           <directionalLight
