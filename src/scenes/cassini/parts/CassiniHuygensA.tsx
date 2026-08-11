@@ -57,6 +57,9 @@ export function CassiniHuygensA({
   const { nodes, materials } = useGLTF(
     "/assets/CassiniHuygensA.glb",
   ) as GLTFResult;
+
+  // Clamp metalness: with no env map, metallic surfaces have nothing to
+  // reflect but direct light, which clips to white under boosted sun.
   useEffect(() => {
     Object.values(materials).forEach((m) => {
       if (m instanceof THREE.MeshStandardMaterial) {
