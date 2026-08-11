@@ -1,4 +1,10 @@
 // src/scenes/cassini/parts/SaturnGroup.tsx
+//
+// Positions and scales Saturn (body + rings) as a group: centered and full
+// scale as the focal subject, offset and smaller as a moon-tableau backdrop.
+// No parent axial tilt: Cassini spent most of the mission near Saturn's
+// equatorial plane, so from the spacecraft Saturn never reads as tilted the
+// way it does from Earth.
 
 import { SaturnBody } from "./SaturnBody";
 import { SaturnRings } from "./SaturnRings";
