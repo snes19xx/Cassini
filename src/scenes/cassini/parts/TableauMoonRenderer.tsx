@@ -1,4 +1,8 @@
 // src/scenes/cassini/parts/TableauMoonRenderer.tsx
+//
+// All moon meshes pre-mount and stay mounted; per-frame damping picks
+// which one is active instead of mount/unmount on every tableau swap.
+
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useSyncExternalStore } from "react";
@@ -11,6 +15,11 @@ import {
   getBinding,
   subscribe,
 } from "../lib/textureService";
+
+// World position of every currently visible tableau moon, written each
+// frame by its MoonMesh. Labels Projector reads this for multi-moon
+// tableau tracking.
+export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
 
 const BODY_RADIUS: Record<string, number> = {
   titan: 7.69,
