@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { TextureLoader } from "three";
 import { getActiveTableau } from "../data/tableaus";
+import { makeLogDepthShaderMaterial } from "../lib/logDepthShaderMaterial";
 
 const SATURN_R = 180;
 const SATURN_TEXTURE_PATH = "/textures/optimized/saturn_opt.webp";
@@ -77,8 +78,11 @@ void main() {
 `;
 
 // Grazing-camera material for the terminal plunge deck (see DECK_FRAG).
+// DECK_VERT/DECK_FRAG already carry their own logdepthbuf chunks, so the
+// factory passes them through untouched; this just keeps every scene
+// material going through the same construction path.
 function createTerminalDeckMaterial(): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
+  return makeLogDepthShaderMaterial({
     vertexShader: DECK_VERT,
     fragmentShader: DECK_FRAG,
     uniforms: {
