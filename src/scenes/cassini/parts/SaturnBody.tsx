@@ -10,6 +10,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { TextureLoader } from "three";
+import { isTerminalTableau as isTerminalTableauId } from "../data/missionConstants";
 import { getActiveTableau } from "../data/tableaus";
 import { makeLogDepthShaderMaterial } from "../lib/logDepthShaderMaterial";
 
@@ -167,6 +168,9 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
   const [stormTexture, setStormTexture] = useState<THREE.Texture | null>(
     cachedStormTexture,
   );
+  const isTerminal = useMissionStore((s) =>
+    isTerminalTableauId(getActiveTableau(s.currentT).id),
+  );
 
   // Kick off the loads on first mount
   useEffect(() => {
@@ -233,34 +237,42 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
   if (!deckMaterialRef.current) {
     deckMaterialRef.current = createTerminalDeckMaterial();
   }
-  // Bind the texture into the space material whenever it (re)resolves.
+  // Bind the active map into the space material: the storm texture during
+  // the terminal plunge, the normal Saturn map everywhere else.
   useEffect(() => {
-    if (spaceMaterialRef.current && texture) {
-      spaceMaterialRef.current.map = texture;
-      spaceMaterialRef.current.color = new THREE.Color("#ffffff");
-      spaceMaterialRef.current.needsUpdate = true;
+    const mat = spaceMaterialRef.current;
+    if (mat) {
+      const active = isTerminal && stormTexture ? stormTexture : texture;
+      if (active) {
+        mat.map = active;
+        mat.color = new THREE.Color("#ffffff");
+        mat.needsUpdate = true;
+      }
     }
-  }, [texture]);
-  // Deck shader prefers the storm map, falling back to the base texture if
-  // the storm fetch hasn't landed yet.
-  useEffect(() => {
     const deck = deckMaterialRef.current;
-    const deckTex = stormTexture ?? texture;
-    if (deck && deckTex) {
-      deck.uniforms.uMap!.value = deckTex;
-      deck.uniforms.uHasMap!.value = 1;
-      deck.needsUpdate = true;
+    if (deck) {
+      const deckTex = stormTexture ?? texture;
+      if (deckTex) {
+        deck.uniforms.uMap!.value = deckTex;
+        deck.uniforms.uHasMap!.value = 1;
+        deck.needsUpdate = true;
+      }
     }
-  }, [texture, stormTexture]);
+  }, [texture, stormTexture, isTerminal]);
+  // Terminal plunge swaps in the soft-deck shader; blueprint mode keeps its
+  // wireframe throughout.
   const material =
     renderMode === "blueprint"
       ? blueprintMaterialRef.current
-      : spaceMaterialRef.current;
+      : isTerminal
+        ? deckMaterialRef.current
+        : spaceMaterialRef.current;
 
   // Spin well past realism (true 10.7h rotation reads as static, since the
   // bands are near-axisymmetric). Slower when Saturn is a backdrop behind
   // a moon than when it's the focal subject, so it doesn't upstage the
-  // foreground.
+  // foreground. Near-still during the terminal plunge, where the camera
+  // grazes the cloud tops and the normal spin would whip the deck by.
   useFrame((_, deltaRaw) => {
     try {
       if (!meshRef.current) return;
@@ -268,13 +280,34 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
         ? Math.min(0.1, Math.max(0, deltaRaw))
         : 0;
       const tab = getActiveTableau(useMissionStore.getState().currentT);
-      const factor = tab.kind === "moon" ? 600 : 1200;
+      const terminal = isTerminalTableauId(tab.id);
+      const factor = terminal ? 12 : tab.kind === "moon" ? 600 : 1200;
       meshRef.current.rotation.y +=
         delta * ((2 * Math.PI) / (10.7 * 3600)) * factor;
+
+      // React's `visible` prop below only updates on the commit after
+      // currentT crosses into the terminal window, and that commit is the
+      // one that stalls on the terminal stage's synchronous shader compiles
+      // - so the stale sphere stays painted for the whole stall. This
+      // priority-0 callback sees the fresh t and hides it in the same frame
+      // the boundary is crossed instead.
+      const vis = renderMode === "blueprint" ? true : !terminal;
+      if (meshRef.current.visible !== vis) meshRef.current.visible = vis;
     } catch (err) {
       console.error("[SaturnBody useFrame] swallowed error", err);
     }
   });
 
-  return <mesh ref={meshRef} geometry={geometry} material={material} />;
+  // No planet-sphere is visible from inside the atmosphere; SkyDome paints
+  // the whole world there instead. Blueprint mode keeps its wireframe.
+  const visible = renderMode === "blueprint" ? true : !isTerminal;
+
+  return (
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      material={material}
+      visible={visible}
+    />
+  );
 }
