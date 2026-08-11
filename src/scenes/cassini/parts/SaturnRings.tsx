@@ -1,5 +1,8 @@
 // src/scenes/cassini/parts/SaturnRings.tsx
 //
+// Saturn's ring plane. Same never-suspends texture pattern as SaturnBody:
+// manual TextureLoader, starts transparent, fades in once the map lands
+// instead of flashing an untextured stripe.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame } from "@react-three/fiber";
@@ -74,6 +77,8 @@ export function SaturnRings({ renderMode }: { renderMode: string }) {
       PHI_SEGMENTS,
     );
 
+    // RingGeometry lays vertices out as concentric rings of SEGMENTS+1
+    // each, so the ring index doubles as an exact 0..1 radial u.
     const uv = g.attributes.uv;
     if (uv) {
       const vertsPerRing = SEGMENTS + 1;
