@@ -7,7 +7,7 @@ import { useMissionStore } from "@/store/missionStore";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import * as THREE from "three";
-import { getActiveTableau } from "../data/tableaus";
+import { getActiveTableau, type Tableau } from "../data/tableaus";
 import {
   ALL_MOONS,
   Binding,
@@ -21,6 +21,13 @@ import {
 // tableau tracking.
 export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
 
+interface MoonTarget {
+  scale: number;
+  px: number;
+  py: number;
+  pz: number;
+}
+
 const BODY_RADIUS: Record<string, number> = {
   titan: 7.69,
   iapetus: 4.39,
@@ -30,6 +37,29 @@ const BODY_RADIUS: Record<string, number> = {
   dione: 3.36,
   tethys: 3.31,
 };
+
+// Single-body tableaus put the focal moon at the origin; multi-moon
+// tableaus (the group-portrait scenes) read each moon's own placement.
+function resolveMoonTarget(
+  tab: Tableau,
+  body: string,
+  realR: number,
+): MoonTarget | null {
+  if (tab.kind !== "moon") return null;
+  if (tab.body === body && tab.moonEffectiveRadius) {
+    return { scale: tab.moonEffectiveRadius / realR, px: 0, py: 0, pz: 0 };
+  }
+  const placement = tab.moons?.find((m) => m.body === body);
+  if (placement) {
+    return {
+      scale: placement.effectiveRadius / realR,
+      px: placement.pos[0],
+      py: placement.pos[1],
+      pz: placement.pos[2],
+    };
+  }
+  return null;
+}
 
 function useMoonBinding(body: MoonId): Binding {
   return useSyncExternalStore(
@@ -80,18 +110,19 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const realR = BODY_RADIUS[body] ?? 5;
   const groupRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
+  const livePosRef = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (!groupRef.current) return;
     const t = useMissionStore.getState().currentT;
     const tab = getActiveTableau(t);
-    const isActive =
-      tab.kind === "moon" && tab.body === body && !!tab.moonEffectiveRadius;
-    if (isActive) {
-      const target = (tab.moonEffectiveRadius ?? 0) / realR;
-      liveScaleRef.current = target;
-      groupRef.current.scale.setScalar(Math.max(0.00001, target));
-      groupRef.current.visible = target > 0.001;
+    const target = resolveMoonTarget(tab, body, realR);
+    if (target) {
+      liveScaleRef.current = target.scale;
+      livePosRef.current.set(target.px, target.py, target.pz);
+      groupRef.current.scale.setScalar(Math.max(0.00001, target.scale));
+      groupRef.current.position.copy(livePosRef.current);
+      groupRef.current.visible = target.scale > 0.001;
     } else {
       liveScaleRef.current = 0;
       groupRef.current.scale.setScalar(0.00001);
@@ -108,19 +139,47 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
     try {
       const t = useMissionStore.getState().currentT;
       const tab = getActiveTableau(t);
-      const isActive =
-        tab.kind === "moon" && tab.body === body && !!tab.moonEffectiveRadius;
-      const target = isActive ? (tab.moonEffectiveRadius ?? 0) / realR : 0;
+      const target = resolveMoonTarget(tab, body, realR);
+      const targetScale = target ? target.scale : 0;
 
       liveScaleRef.current = THREE.MathUtils.damp(
         liveScaleRef.current,
-        target,
+        targetScale,
         4,
         delta,
       );
-      if (!Number.isFinite(liveScaleRef.current)) liveScaleRef.current = target;
+      if (!Number.isFinite(liveScaleRef.current)) {
+        liveScaleRef.current = targetScale;
+      }
+
+      if (target) {
+        const lp = livePosRef.current;
+        if (liveScaleRef.current < 0.001) {
+          lp.set(target.px, target.py, target.pz);
+        } else {
+          lp.x = THREE.MathUtils.damp(lp.x, target.px, 3.5, delta);
+          lp.y = THREE.MathUtils.damp(lp.y, target.py, 3.5, delta);
+          lp.z = THREE.MathUtils.damp(lp.z, target.pz, 3.5, delta);
+          if (!Number.isFinite(lp.x + lp.y + lp.z)) {
+            lp.set(target.px, target.py, target.pz);
+          }
+        }
+        groupRef.current.position.copy(lp);
+      }
+
       groupRef.current.scale.setScalar(Math.max(0.00001, liveScaleRef.current));
       groupRef.current.visible = liveScaleRef.current > 0.001;
+
+      if (groupRef.current.visible && tab.moons) {
+        let anchor = moonWorldPositions.get(body);
+        if (!anchor) {
+          anchor = new THREE.Vector3();
+          moonWorldPositions.set(body, anchor);
+        }
+        anchor.copy(groupRef.current.position);
+      } else if (moonWorldPositions.has(body)) {
+        moonWorldPositions.delete(body);
+      }
     } catch (err) {
       console.error(`[MoonMesh:${body} useFrame] swallowed error`, err);
     }
