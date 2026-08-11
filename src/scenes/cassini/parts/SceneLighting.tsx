@@ -1,4 +1,10 @@
 // src/scenes/cassini/parts/SceneLighting.tsx
+//
+// Per-renderMode light rigs. Saturn opts into layer 1 (SaturnBody/SaturnRings
+// call mesh.layers.set(1)) so it only receives the sun and a dim ambient in
+// natural/rim modes, staying clear of the hemisphere/fill/rim lights that
+// warm and tint the moons. FULL mode is the exception: it deliberately lights
+// both layers from all sides.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useEffect, useRef } from "react";
