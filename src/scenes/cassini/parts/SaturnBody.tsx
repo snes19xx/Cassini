@@ -1,5 +1,9 @@
 // src/scenes/cassini/parts/SaturnBody.tsx
 //
+// Saturn's sphere and texture. Loads with a manual TextureLoader instead of
+// useLoader so mounting doesn't suspend: Saturn sits inside TableauResolver
+// next to the seven pre-mounted moons, and a suspended fetch there blanked
+// the whole tree until the texture landed.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -10,6 +14,46 @@ import { getActiveTableau } from "../data/tableaus";
 
 const SATURN_R = 180;
 const SATURN_TEXTURE_PATH = "/textures/optimized/saturn_opt.webp";
+
+// Scene runs logarithmicDepthBuffer: true, so a raw ShaderMaterial has to
+// inject the logdepthbuf_* chunks itself or its depth writes land in the
+// wrong space and z-fight against the rings.
+const DECK_VERT = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec2 vUv;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPos;
+void main() {
+  vUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorldPos = wp.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * wp;
+  #include <logdepthbuf_vertex>
+}
+`;
+
+const DECK_FRAG = /* glsl */ `
+uniform vec3 uHazeColor;
+void main() {
+  gl_FragColor = vec4(uHazeColor, 1.0);
+}
+`;
+
+// Grazing-camera material for the terminal plunge deck (see DECK_FRAG).
+function createTerminalDeckMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: DECK_VERT,
+    fragmentShader: DECK_FRAG,
+    uniforms: {
+      uMap: { value: null },
+      uHasMap: { value: 0 },
+      uSunDir: { value: new THREE.Vector3(-400, 80, 200).normalize() },
+      uHazeColor: { value: new THREE.Color(0.86, 0.8, 0.66) },
+    },
+  });
+}
 
 const sharedLoader = new TextureLoader();
 let cachedSaturnTexture: THREE.Texture | null = null;
@@ -43,7 +87,7 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
     cachedSaturnTexture,
   );
 
-  // Kick off the load on first moun
+  // Kick off the load on first mount
   useEffect(() => {
     if (texture) return;
     let cancelled = false;
@@ -92,6 +136,10 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
       opacity: 0.07,
     });
   }
+  const deckMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
+  if (!deckMaterialRef.current) {
+    deckMaterialRef.current = createTerminalDeckMaterial();
+  }
   // Bind the texture into the space material whenever it (re)resolves.
   useEffect(() => {
     if (spaceMaterialRef.current && texture) {
@@ -105,10 +153,10 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
       ? blueprintMaterialRef.current
       : spaceMaterialRef.current;
 
-  // Visible slow spin. Saturn's bands are near-axisymmetric around the
-  // polar axis, so polar-axis rotation is hard to perceive unless the
-  // speed is bumped well above realism. The factor is context-dependent:
-
+  // Spin well past realism (true 10.7h rotation reads as static, since the
+  // bands are near-axisymmetric). Slower when Saturn is a backdrop behind
+  // a moon than when it's the focal subject, so it doesn't upstage the
+  // foreground.
   useFrame((_, deltaRaw) => {
     try {
       if (!meshRef.current) return;
