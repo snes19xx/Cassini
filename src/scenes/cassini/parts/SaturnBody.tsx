@@ -14,6 +14,9 @@ import { getActiveTableau } from "../data/tableaus";
 
 const SATURN_R = 180;
 const SATURN_TEXTURE_PATH = "/textures/optimized/saturn_opt.webp";
+// Dramatic storm map for the terminal deck only. Saturn keeps its normal
+// texture everywhere else, right up to the atmosphere entry.
+const STORM_TEXTURE_PATH = "/textures/finale/saturn_storm_8k.webp";
 
 // Scene runs logarithmicDepthBuffer: true, so a raw ShaderMaterial has to
 // inject the logdepthbuf_* chunks itself or its depth writes land in the
@@ -35,9 +38,41 @@ void main() {
 `;
 
 const DECK_FRAG = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform sampler2D uMap;
+uniform float uHasMap;
+uniform vec3 uSunDir;
 uniform vec3 uHazeColor;
+varying vec2 vUv;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPos;
 void main() {
-  gl_FragColor = vec4(uHazeColor, 1.0);
+  #include <logdepthbuf_fragment>
+  vec3 N = normalize(vWorldNormal);
+  vec3 V = normalize(cameraPosition - vWorldPos);
+
+  // The raw storm map (hexagon included) is a saturated olive. Drive the
+  // swirl detail off its luma instead of its hue, and re-tint cream so it
+  // reads as brightness variation against the atmosphere, not a green ball.
+  vec3 tex = mix(vec3(0.85, 0.78, 0.64), texture2D(uMap, vUv).rgb, uHasMap);
+  float luma = dot(tex, vec3(0.299, 0.587, 0.114));
+  // Contrast for the swirls, but capped short of white so the deck stays
+  // close to the haze color instead of reading as a bright ball in the sky.
+  luma = clamp((luma - 0.5) * 1.5 + 0.5, 0.0, 1.0);
+  vec3 cloud = vec3(0.80, 0.74, 0.60);
+  vec3 deck = cloud * (0.52 + 0.42 * luma);
+
+  float sun = dot(N, normalize(uSunDir)) * 0.5 + 0.5;
+  deck *= mix(0.92, 1.06, clamp(sun, 0.0, 1.0));
+
+  // Dissolve the grazing limb straight into the haze color over a wide band
+  // so the deck melts into the atmosphere with no hard silhouette edge.
+  float ndv = max(dot(N, V), 0.0);
+  float limb = 1.0 - smoothstep(0.0, 0.85, ndv);
+  deck = mix(deck, uHazeColor, limb);
+
+  gl_FragColor = vec4(deck, 1.0);
 }
 `;
 
@@ -58,25 +93,64 @@ function createTerminalDeckMaterial(): THREE.ShaderMaterial {
 const sharedLoader = new TextureLoader();
 let cachedSaturnTexture: THREE.Texture | null = null;
 let saturnLoadPromise: Promise<THREE.Texture | null> | null = null;
+let cachedStormTexture: THREE.Texture | null = null;
+let stormLoadPromise: Promise<THREE.Texture | null> | null = null;
 
-function loadSaturnTexture(): Promise<THREE.Texture | null> {
-  if (cachedSaturnTexture) return Promise.resolve(cachedSaturnTexture);
-  if (saturnLoadPromise) return saturnLoadPromise;
-  saturnLoadPromise = new Promise((resolve) => {
+function loadTextureOnce(
+  path: string,
+  getCache: () => THREE.Texture | null,
+  setCache: (t: THREE.Texture) => void,
+  getPromise: () => Promise<THREE.Texture | null> | null,
+  setPromise: (p: Promise<THREE.Texture | null>) => void,
+): Promise<THREE.Texture | null> {
+  const cached = getCache();
+  if (cached) return Promise.resolve(cached);
+  const existing = getPromise();
+  if (existing) return existing;
+  const p = new Promise<THREE.Texture | null>((resolve) => {
     sharedLoader.load(
-      SATURN_TEXTURE_PATH,
+      path,
       (tex) => {
-        cachedSaturnTexture = tex;
+        setCache(tex);
         resolve(tex);
       },
       undefined,
       (err) => {
-        console.warn(`[SaturnBody] failed to load ${SATURN_TEXTURE_PATH}`, err);
+        console.warn(`[SaturnBody] failed to load ${path}`, err);
         resolve(null);
       },
     );
   });
-  return saturnLoadPromise;
+  setPromise(p);
+  return p;
+}
+
+function loadSaturnTexture(): Promise<THREE.Texture | null> {
+  return loadTextureOnce(
+    SATURN_TEXTURE_PATH,
+    () => cachedSaturnTexture,
+    (t) => {
+      cachedSaturnTexture = t;
+    },
+    () => saturnLoadPromise,
+    (p) => {
+      saturnLoadPromise = p;
+    },
+  );
+}
+
+function loadStormTexture(): Promise<THREE.Texture | null> {
+  return loadTextureOnce(
+    STORM_TEXTURE_PATH,
+    () => cachedStormTexture,
+    (t) => {
+      cachedStormTexture = t;
+    },
+    () => stormLoadPromise,
+    (p) => {
+      stormLoadPromise = p;
+    },
+  );
 }
 
 export function SaturnBody({ renderMode }: { renderMode: string }) {
@@ -86,28 +160,43 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(
     cachedSaturnTexture,
   );
+  const [stormTexture, setStormTexture] = useState<THREE.Texture | null>(
+    cachedStormTexture,
+  );
 
-  // Kick off the load on first mount
+  // Kick off the loads on first mount
   useEffect(() => {
-    if (texture) return;
     let cancelled = false;
-    loadSaturnTexture().then((tex) => {
-      if (!cancelled && tex) setTexture(tex);
-    });
+    if (!texture) {
+      loadSaturnTexture().then((tex) => {
+        if (!cancelled && tex) setTexture(tex);
+      });
+    }
+    if (!stormTexture) {
+      loadStormTexture().then((tex) => {
+        if (!cancelled && tex) setStormTexture(tex);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [texture]);
+  }, [texture, stormTexture]);
 
   useEffect(() => {
-    if (!texture) return;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = Math.min(16, gl.capabilities.getMaxAnisotropy());
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = true;
-    texture.needsUpdate = true;
-  }, [texture, gl]);
+    const maxAniso = Math.min(16, gl.capabilities.getMaxAnisotropy());
+    for (const tex of [texture, stormTexture]) {
+      if (!tex) continue;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAniso;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      // Storm map ships upside down relative to the standard equirectangular
+      // convention the other textures use.
+      if (tex === stormTexture) tex.flipY = false;
+      tex.needsUpdate = true;
+    }
+  }, [texture, stormTexture, gl]);
 
   useEffect(() => {
     if (meshRef.current) meshRef.current.layers.set(1);
@@ -148,6 +237,17 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
       spaceMaterialRef.current.needsUpdate = true;
     }
   }, [texture]);
+  // Deck shader prefers the storm map, falling back to the base texture if
+  // the storm fetch hasn't landed yet.
+  useEffect(() => {
+    const deck = deckMaterialRef.current;
+    const deckTex = stormTexture ?? texture;
+    if (deck && deckTex) {
+      deck.uniforms.uMap!.value = deckTex;
+      deck.uniforms.uHasMap!.value = 1;
+      deck.needsUpdate = true;
+    }
+  }, [texture, stormTexture]);
   const material =
     renderMode === "blueprint"
       ? blueprintMaterialRef.current
