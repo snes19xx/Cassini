@@ -4,7 +4,7 @@
 // Huygens descent portion of the Titan tableau and plays out as:
 //
 //   1. Probe spring-releases off Cassini
-//   2. Probe falls toward Titan with accelerating ease but it's barely noticeable maybe I will improve it later
+//   2. Probe falls toward Titan with accelerating ease
 //   3. Probe fades out as it enters Titan's haze
 
 import { useMissionStore } from "@/store/missionStore";
@@ -19,7 +19,20 @@ const SEP_START = HUYGENS_SEPARATION_T;
 const TOUCHDOWN = 0.395;
 const FADE_END = 0.4;
 
-export function HuygensSeparation({ currentT }: { currentT: number }) {
+// Sentinels for the selector below: outside the descent window it pins
+// currentT to a constant, so zustand's Object.is check skips a re-render
+// on every frame for the ~96% of the mission outside this tiny window.
+const BEFORE_WINDOW = -1;
+const AFTER_WINDOW = 2;
+
+export function HuygensSeparation() {
+  const currentT = useMissionStore((s) =>
+    s.currentT < SEP_START
+      ? BEFORE_WINDOW
+      : s.currentT > FADE_END
+        ? AFTER_WINDOW
+        : s.currentT,
+  );
   const { scene } = useGLTF("/assets/CassiniHuygensAwithout_Cassini.glb");
   const clonedScene = useMemo(() => scene.clone(), [scene]);
   const renderMode = useMissionStore((s) => s.renderMode);
@@ -90,7 +103,7 @@ export function HuygensSeparation({ currentT }: { currentT: number }) {
     }
   });
 
-  if (currentT < SEP_START || currentT > FADE_END) return null;
+  if (currentT === BEFORE_WINDOW || currentT === AFTER_WINDOW) return null;
   const tableau = getActiveTableau(currentT);
   if (tableau.id !== "titan_huygens") return null;
 

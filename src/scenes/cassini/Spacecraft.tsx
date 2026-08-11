@@ -461,7 +461,7 @@ export function Spacecraft() {
           huygensHasSeparated={huygensHasSeparated}
           modelScale={modelScale}
         />
-        <HuygensSeparation currentT={currentT} />
+        <HuygensSeparation />
         <RingCrossingFlash />
       </group>
     );
@@ -478,7 +478,7 @@ export function Spacecraft() {
       />
       {activeModel !== "CassiniHuygensAwithout_Cassini.glb" &&
         activeModel !== "CassiniHuygensAwithoutHyugens.glb" && (
-          <HuygensSeparation currentT={currentT} />
+          <HuygensSeparation />
         )}
       <RingCrossingFlash />
     </group>
