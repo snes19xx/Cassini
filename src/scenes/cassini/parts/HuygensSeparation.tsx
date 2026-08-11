@@ -6,6 +6,9 @@
 //   1. Probe spring-releases off Cassini
 //   2. Probe falls toward Titan with accelerating ease
 //   3. Probe fades out as it enters Titan's haze
+//
+// Rendered as a sibling of the spacecraft model at world origin, so the
+// position below lerps from the tableau's Cassini offset to Titan's origin.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useGLTF } from "@react-three/drei";
@@ -107,6 +110,7 @@ export function HuygensSeparation() {
   const tableau = getActiveTableau(currentT);
   if (tableau.id !== "titan_huygens") return null;
 
+  // p ramps 0->1 across SEP_START..TOUCHDOWN.
   const p = Math.min(
     1,
     Math.max(0, (currentT - SEP_START) / (TOUCHDOWN - SEP_START)),
@@ -114,6 +118,7 @@ export function HuygensSeparation() {
 
   const startOffset = tableau.cassiniOffset ?? [0, 0, 0];
   const fallEase = Math.pow(p, 2.2);
+  // Sine-shaped perpendicular offset for the spring-release kick off the bus.
   const lateralBump = Math.sin(p * Math.PI) * 4.0;
 
   const position: [number, number, number] = [
