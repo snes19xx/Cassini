@@ -349,6 +349,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
           !!target &&
           tab.body === body &&
           tab.effects?.plumes === true &&
+          useMissionStore.getState().showPlumes &&
           renderMode !== "blueprint";
         plumeRef.current.visible = plumesVisible;
         if (plumesVisible) {
