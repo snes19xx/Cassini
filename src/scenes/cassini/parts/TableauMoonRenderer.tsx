@@ -4,8 +4,16 @@
 // which one is active instead of mount/unmount on every tableau swap.
 
 import { useMissionStore } from "@/store/missionStore";
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import * as THREE from "three";
 import { FULL_MISSION_SECONDS } from "../data/missionConstants";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
@@ -40,7 +48,51 @@ const BODY_RADIUS: Record<string, number> = {
   rhea: 4.59,
   dione: 3.36,
   tethys: 3.31,
+  // Arbitrary, since placements scale by effectiveRadius/BODY_RADIUS.
+  janus: 0.9,
+  pandora: 0.41,
 };
+
+// Fetched lazily; PANDORA.glb alone is ~1.9 MB.
+const SMALL_MOON_GLB: Record<string, string> = {
+  janus: "/assets/JANUS.glb",
+  pandora: "/assets/PANDORA.glb",
+};
+
+// Same no-map MeshStandardMaterial program as the pre-texture fallback.
+const smallMoonMaterial = new THREE.MeshStandardMaterial({
+  color: "#66645f",
+  roughness: 0.95,
+  metalness: 0.0,
+});
+
+/**
+ * Recentered on its bounding sphere and scaled so that sphere's radius
+ * equals `radius`, so placement scaling lands the true rendered size.
+ */
+function SmallMoonGLB({ url, radius }: { url: string; radius: number }) {
+  const { scene } = useGLTF(url);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    const sphere = new THREE.Box3()
+      .setFromObject(clone)
+      .getBoundingSphere(new THREE.Sphere());
+    const s = radius / (sphere.radius || 1);
+    clone.scale.setScalar(s);
+    clone.position.set(
+      -sphere.center.x * s,
+      -sphere.center.y * s,
+      -sphere.center.z * s,
+    );
+    clone.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        (o as THREE.Mesh).material = smallMoonMaterial;
+      }
+    });
+    return clone;
+  }, [scene, radius]);
+  return <primitive object={model} />;
+}
 
 // True tidally-locked periods read as static, so speed them up.
 const MOON_SPIN_FACTOR = 3000;
@@ -215,6 +267,18 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
 
   const binding = useMoonBinding(body);
+
+  // Latches on first entry and stays latched; drei caches the parsed GLB.
+  const glbUrl = SMALL_MOON_GLB[body];
+  const glbWanted = useMissionStore(
+    (s) =>
+      glbUrl !== undefined &&
+      getActiveTableau(s.currentT).moons?.some((m) => m.body === body) === true,
+  );
+  const [glbLatched, setGlbLatched] = useState(false);
+  useEffect(() => {
+    if (glbWanted) setGlbLatched(true);
+  }, [glbWanted]);
   const spaceMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const blueprintMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
   if (!spaceMaterialRef.current) {
@@ -455,21 +519,32 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   });
 
   const showSpace = renderMode !== "blueprint";
+  // Doubles as the GLB moons' loading fallback and blueprint form.
+  const sphereBody = (
+    <>
+      <mesh visible={showSpace}>
+        <sphereGeometry args={[realR, 96, 48]} />
+        <primitive object={spaceMaterialRef.current} attach="material" />
+      </mesh>
+      <mesh visible={!showSpace}>
+        <sphereGeometry args={[realR, 96, 48]} />
+        <primitive object={blueprintMaterialRef.current} attach="material" />
+      </mesh>
+    </>
+  );
   return (
     <group ref={groupRef} visible={false}>
       <group ref={tiltRef}>
         <group ref={spinRef}>
-          <mesh visible={showSpace}>
-            <sphereGeometry args={[realR, 96, 48]} />
-            <primitive object={spaceMaterialRef.current} attach="material" />
-          </mesh>
-          <mesh visible={!showSpace}>
-            <sphereGeometry args={[realR, 96, 48]} />
-            <primitive
-              object={blueprintMaterialRef.current}
-              attach="material"
-            />
-          </mesh>
+          {glbUrl && glbLatched && showSpace ? (
+            /* Own boundary: a suspension reaching TableauResolver's would
+               blank every pre-mounted body. */
+            <Suspense fallback={sphereBody}>
+              <SmallMoonGLB url={glbUrl} radius={realR} />
+            </Suspense>
+          ) : (
+            sphereBody
+          )}
         </group>
       </group>
       {hazeMaterial && (

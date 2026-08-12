@@ -16,10 +16,14 @@ export function useActiveTableauId(): string {
   return useMissionStore((s) => getActiveTableau(s.currentT).id);
 }
 
+const NO_ROT: [number, number, number] = [0, 0, 0];
+
 function targetSaturnTransform(t: number): {
   pos: THREE.Vector3;
   scale: number;
   visible: boolean;
+  /** Group orientation, XYZ euler DEGREES (saturnBackdrop.rotDeg). */
+  rotDeg: [number, number, number];
 } {
   const tab = getActiveTableau(t);
 
@@ -29,9 +33,19 @@ function targetSaturnTransform(t: number): {
       const p = Math.max(0, Math.min(1, (t - tab.tStart) / span));
       const pEff = Math.min(1, p / 0.55);
       const eased = pEff * pEff * (3 - 2 * pEff);
-      return { pos: new THREE.Vector3(0, 0, 0), scale: eased, visible: true };
+      return {
+        pos: new THREE.Vector3(0, 0, 0),
+        scale: eased,
+        visible: true,
+        rotDeg: NO_ROT,
+      };
     }
-    return { pos: new THREE.Vector3(0, 0, 0), scale: 1, visible: true };
+    return {
+      pos: new THREE.Vector3(0, 0, 0),
+      scale: 1,
+      visible: true,
+      rotDeg: NO_ROT,
+    };
   }
 
   if (tab.kind === "moon" && tab.saturnBackdrop) {
@@ -40,11 +54,17 @@ function targetSaturnTransform(t: number): {
       pos: new THREE.Vector3(px, py, pz),
       scale: tab.saturnBackdrop.scale,
       visible: true,
+      rotDeg: tab.saturnBackdrop.rotDeg ?? NO_ROT,
     };
   }
 
-  // cruise / moon without backdrop — Saturn hidden.
-  return { pos: new THREE.Vector3(-9999, 0, 0), scale: 0, visible: false };
+  // cruise / moon without backdrop: Saturn hidden.
+  return {
+    pos: new THREE.Vector3(-9999, 0, 0),
+    scale: 0,
+    visible: false,
+    rotDeg: NO_ROT,
+  };
 }
 
 function GlobalSaturn({ renderMode }: { renderMode: string }) {
@@ -70,6 +90,12 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
         lastTabIdRef.current = tab.id;
         tabEnterAtMsRef.current = performance.now();
         groupRef.current.position.copy(target.pos);
+        // Orientation snaps with position, never damped.
+        groupRef.current.rotation.set(
+          (target.rotDeg[0] * Math.PI) / 180,
+          (target.rotDeg[1] * Math.PI) / 180,
+          (target.rotDeg[2] * Math.PI) / 180,
+        );
 
         if (!target.visible) {
           liveScaleRef.current = 0;
@@ -80,6 +106,11 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       if (nonceChanged) {
         lastNonceRef.current = cameraResetNonce;
         groupRef.current.position.copy(target.pos);
+        groupRef.current.rotation.set(
+          (target.rotDeg[0] * Math.PI) / 180,
+          (target.rotDeg[1] * Math.PI) / 180,
+          (target.rotDeg[2] * Math.PI) / 180,
+        );
         // Push the enter timestamp back so the gate below is satisfied
         // immediately.
         tabEnterAtMsRef.current = 0;
