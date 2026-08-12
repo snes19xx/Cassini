@@ -10,6 +10,7 @@ import * as THREE from "three";
 import { FULL_MISSION_SECONDS } from "../data/missionConstants";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
 import { missionToDisplay } from "../lib/tRemap";
+import { CRESCENT_SUN_POS } from "./SceneLighting";
 import {
   ALL_MOONS,
   Binding,
@@ -48,6 +49,47 @@ const MOON_SPIN_FACTOR = 3000;
 const _orbAxis = new THREE.Vector3();
 const _orbEuler = new THREE.Euler();
 const _orbOffset = new THREE.Vector3();
+
+// PIA18322: refraction wraps Titan's crescent past the terminator.
+const HAZE_VERT = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_vertex>
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+    #include <logdepthbuf_vertex>
+  }
+`;
+
+const HAZE_FRAG = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_fragment>
+  uniform vec3 uSunDir;
+  uniform vec3 uColor;
+  uniform float uIntensity;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    #include <logdepthbuf_fragment>
+    vec3 N = normalize(vWorldNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    float ndv = abs(dot(N, V));
+    // Dies before the shell's silhouette, so no detached ring with a gap.
+    float limb = smoothstep(0.0, 0.16, ndv) * pow(1.0 - ndv, 5.0);
+    // Starts below the terminator so the crescent wraps a little further.
+    float wrap = smoothstep(-0.18, 0.45, dot(N, uSunDir));
+    float a = limb * wrap * uIntensity;
+    if (a < 0.003) discard;
+    gl_FragColor = vec4(uColor, a);
+  }
+`;
+
+const _hazeMoonPos = new THREE.Vector3();
+const _hazeSunDir = new THREE.Vector3();
 
 // PIA23175. Quad sits through the moon centre so the near side occludes it.
 const PLUME_VERT = /* glsl */ `
@@ -212,9 +254,35 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   // Nested so the body spins about its own tilted axis.
   const tiltRef = useRef<THREE.Group>(null);
   const spinRef = useRef<THREE.Group>(null);
+  const hazeRef = useRef<THREE.Mesh>(null);
   const plumeRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
   const livePosRef = useRef(new THREE.Vector3());
+
+  const hazeMaterial = useMemo(() => {
+    if (body !== "titan") return null;
+    return new THREE.ShaderMaterial({
+      vertexShader: HAZE_VERT,
+      fragmentShader: HAZE_FRAG,
+      uniforms: {
+        uSunDir: {
+          value: new THREE.Vector3(...CRESCENT_SUN_POS).normalize(),
+        },
+        // Near white so the additive pass doesn't re-yellow Titan.
+        uColor: { value: new THREE.Color(1.0, 0.93, 0.85) },
+        uIntensity: { value: 1.4 },
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.FrontSide,
+    });
+  }, [body]);
+  useEffect(() => {
+    return () => {
+      hazeMaterial?.dispose();
+    };
+  }, [hazeMaterial]);
 
   const plumeMaterial = useMemo(() => {
     if (body !== "enceladus") return null;
@@ -343,6 +411,28 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
         spinRef.current.rotation.y += delta * target.spinRadPerSec;
       }
 
+      if (hazeRef.current && hazeMaterial) {
+        const hazeVisible =
+          !!target &&
+          tab.effects?.crescentLighting === true &&
+          renderMode !== "blueprint";
+        hazeRef.current.visible = hazeVisible;
+        if (hazeVisible) {
+          // FULL front-lights the moon, so aim the glow from the camera.
+          const sun = hazeMaterial.uniforms.uSunDir!.value as THREE.Vector3;
+          if (useMissionStore.getState().lightingMode === "full") {
+            groupRef.current.getWorldPosition(_hazeMoonPos);
+            _hazeSunDir
+              .copy(frameState.camera.position)
+              .sub(_hazeMoonPos)
+              .normalize();
+            sun.copy(_hazeSunDir);
+          } else {
+            sun.set(...CRESCENT_SUN_POS).normalize();
+          }
+        }
+      }
+
       // Y-billboard so the jets rise off the limb from any orbit azimuth.
       if (plumeRef.current && plumeMaterial) {
         const plumesVisible =
@@ -382,6 +472,13 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
           </mesh>
         </group>
       </group>
+      {hazeMaterial && (
+        <mesh ref={hazeRef} visible={false} renderOrder={10}>
+          {/* Hugs the limb, per the HAZE_FRAG falloff. */}
+          <sphereGeometry args={[realR * 1.022, 96, 48]} />
+          <primitive object={hazeMaterial} attach="material" />
+        </mesh>
+      )}
       {plumeMaterial && (
         /* Quad geometry is authored in radius units; mesh scale maps those
            to this body. The [0, y, 0] offset survives the Y-billboard. */
