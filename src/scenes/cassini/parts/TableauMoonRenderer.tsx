@@ -1,9 +1,24 @@
 // src/scenes/cassini/parts/TableauMoonRenderer.tsx
+//
+// All moon meshes pre-mount and stay mounted; per-frame damping picks
+// which one is active instead of mount/unmount on every tableau swap.
+
 import { useMissionStore } from "@/store/missionStore";
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import * as THREE from "three";
-import { getActiveTableau } from "../data/tableaus";
+import { FULL_MISSION_SECONDS } from "../data/missionConstants";
+import { getActiveTableau, type Tableau } from "../data/tableaus";
+import { missionToDisplay } from "../lib/tRemap";
+import { CRESCENT_SUN_POS } from "./SceneLighting";
 import {
   ALL_MOONS,
   Binding,
@@ -11,6 +26,19 @@ import {
   getBinding,
   subscribe,
 } from "../lib/textureService";
+
+// Live world position per visible moon, read by the labels Projector.
+export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
+
+interface MoonTarget {
+  scale: number;
+  px: number;
+  py: number;
+  pz: number;
+  tiltRad: number;
+  spinRadPerSec: number;
+  orbitRadPerSec: number;
+}
 
 const BODY_RADIUS: Record<string, number> = {
   titan: 7.69,
@@ -20,7 +48,212 @@ const BODY_RADIUS: Record<string, number> = {
   rhea: 4.59,
   dione: 3.36,
   tethys: 3.31,
+  // Arbitrary, since placements scale by effectiveRadius/BODY_RADIUS.
+  janus: 0.9,
+  pandora: 0.41,
 };
+
+// Fetched lazily; PANDORA.glb alone is ~1.9 MB.
+const SMALL_MOON_GLB: Record<string, string> = {
+  janus: "/assets/JANUS.glb",
+  pandora: "/assets/PANDORA.glb",
+};
+
+// Same no-map MeshStandardMaterial program as the pre-texture fallback.
+const smallMoonMaterial = new THREE.MeshStandardMaterial({
+  color: "#66645f",
+  roughness: 0.95,
+  metalness: 0.0,
+});
+
+/**
+ * Recentered on its bounding sphere and scaled so that sphere's radius
+ * equals `radius`, so placement scaling lands the true rendered size.
+ */
+function SmallMoonGLB({ url, radius }: { url: string; radius: number }) {
+  const { scene } = useGLTF(url);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    const sphere = new THREE.Box3()
+      .setFromObject(clone)
+      .getBoundingSphere(new THREE.Sphere());
+    const s = radius / (sphere.radius || 1);
+    clone.scale.setScalar(s);
+    clone.position.set(
+      -sphere.center.x * s,
+      -sphere.center.y * s,
+      -sphere.center.z * s,
+    );
+    clone.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        (o as THREE.Mesh).material = smallMoonMaterial;
+      }
+    });
+    return clone;
+  }, [scene, radius]);
+  return <primitive object={model} />;
+}
+
+// True tidally-locked periods read as static, so speed them up.
+const MOON_SPIN_FACTOR = 3000;
+
+// Drift is keyed to mission display time so scrubbing stays deterministic.
+const _orbAxis = new THREE.Vector3();
+const _orbEuler = new THREE.Euler();
+const _orbOffset = new THREE.Vector3();
+
+// PIA18322: refraction wraps Titan's crescent past the terminator.
+const HAZE_VERT = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_vertex>
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+    #include <logdepthbuf_vertex>
+  }
+`;
+
+const HAZE_FRAG = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_fragment>
+  uniform vec3 uSunDir;
+  uniform vec3 uColor;
+  uniform float uIntensity;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    #include <logdepthbuf_fragment>
+    vec3 N = normalize(vWorldNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    float ndv = abs(dot(N, V));
+    // Dies before the shell's silhouette, so no detached ring with a gap.
+    float limb = smoothstep(0.0, 0.16, ndv) * pow(1.0 - ndv, 5.0);
+    // Starts below the terminator so the crescent wraps a little further.
+    float wrap = smoothstep(-0.18, 0.45, dot(N, uSunDir));
+    float a = limb * wrap * uIntensity;
+    if (a < 0.003) discard;
+    gl_FragColor = vec4(uColor, a);
+  }
+`;
+
+const _hazeMoonPos = new THREE.Vector3();
+const _hazeSunDir = new THREE.Vector3();
+
+// PIA23175. Quad sits through the moon centre so the near side occludes it.
+const PLUME_VERT = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_vertex>
+  varying vec2 vP;
+  void main() {
+    vP = position.xy;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    #include <logdepthbuf_vertex>
+  }
+`;
+
+const PLUME_FRAG = /* glsl */ `
+  #include <common>
+  #include <logdepthbuf_pars_fragment>
+  uniform float uIntensity;
+  uniform float uTime;
+  varying vec2 vP;
+
+  float hash1(float x) {
+    return fract(sin(x * 12.9898) * 43758.5453);
+  }
+
+  void main() {
+    #include <logdepthbuf_fragment>
+    // Moon-centred, in radius units. Keep in sync with PLUME_CENTER_Y.
+    vec2 p = vP + vec2(0.0, -1.2);
+    float d = length(p);
+
+    // Kills the sliver that peeks past the silhouette at glancing angles.
+    float outsideDisc = smoothstep(0.982, 1.005, d);
+    if (outsideDisc <= 0.0) discard;
+
+    float jets = 0.0;
+    for (int i = 0; i < 10; i++) {
+      float fi = float(i);
+      // Source angle from straight-down, jittered across the stripes.
+      float a = -0.5 + 1.0 * (fi / 9.0) + (hash1(fi * 7.3) - 0.5) * 0.08;
+      vec2 s = vec2(sin(a), -cos(a));
+      float ca = a + (hash1(fi * 13.7) - 0.5) * 0.24;
+      vec2 dir = vec2(sin(ca), -cos(ca));
+      vec2 v = p - s;
+      float t = dot(v, dir);
+      if (t < 0.0) continue;
+      float q = dot(v, vec2(-dir.y, dir.x));
+      float w = (0.55 + 0.45 * hash1(fi * 3.1)) *
+                (0.85 + 0.15 * sin(uTime * 0.7 + fi * 2.1));
+      float sigma = 0.020 + t * (0.055 + 0.04 * hash1(fi * 5.9));
+      jets += exp(-q * q / (2.0 * sigma * sigma)) * exp(-t * 2.7) * w;
+    }
+
+    // Merged haze the jets feed, in a cone just wider than the jet arc.
+    float ang = acos(clamp(dot(p / max(d, 1e-4), vec2(0.0, -1.0)), -1.0, 1.0));
+    float fog = exp(-max(d - 1.0, 0.0) * 2.1) *
+                (1.0 - smoothstep(0.42, 0.8, ang));
+
+    // Guard bands so the quad's own edges never print.
+    float guard = (1.0 - smoothstep(1.45, 1.78, abs(p.x))) *
+                  smoothstep(-2.8, -2.45, p.y);
+
+    float I = (jets * 0.75 + fog * 0.22) * outsideDisc * guard * uIntensity;
+    // Dither breaks additive banding in the soft fog.
+    I -= (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.012;
+    if (I < 0.004) discard;
+
+    vec3 col = mix(vec3(0.55, 0.72, 1.0), vec3(0.95, 0.98, 1.0),
+                   clamp(I, 0.0, 1.0));
+    gl_FragColor = vec4(col, clamp(I, 0.0, 1.0));
+  }
+`;
+
+// Radius units; PLUME_FRAG's coordinate shift must match.
+const PLUME_CENTER_Y = -1.2;
+
+const _plumeCam = new THREE.Vector3();
+
+// Single-body tableaus centre the moon; multi-moon ones read placements.
+function resolveMoonTarget(
+  tab: Tableau,
+  body: string,
+  realR: number,
+): MoonTarget | null {
+  if (tab.kind !== "moon") return null;
+  if (tab.body === body && tab.moonEffectiveRadius) {
+    return {
+      scale: tab.moonEffectiveRadius / realR,
+      px: 0,
+      py: 0,
+      pz: 0,
+      tiltRad: 0,
+      spinRadPerSec: 0,
+      orbitRadPerSec: 0,
+    };
+  }
+  const placement = tab.moons?.find((m) => m.body === body);
+  if (placement) {
+    const baseRate = placement.spinPeriodHours
+      ? (2 * Math.PI) / (placement.spinPeriodHours * 3600)
+      : 0;
+    return {
+      scale: placement.effectiveRadius / realR,
+      px: placement.pos[0],
+      py: placement.pos[1],
+      pz: placement.pos[2],
+      tiltRad: ((placement.axialTiltDeg ?? 0) * Math.PI) / 180,
+      spinRadPerSec: baseRate * MOON_SPIN_FACTOR,
+      orbitRadPerSec: placement.orbitRadPerSec ?? 0,
+    };
+  }
+  return null;
+}
 
 function useMoonBinding(body: MoonId): Binding {
   return useSyncExternalStore(
@@ -34,6 +267,18 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
 
   const binding = useMoonBinding(body);
+
+  // Latches on first entry and stays latched; drei caches the parsed GLB.
+  const glbUrl = SMALL_MOON_GLB[body];
+  const glbWanted = useMissionStore(
+    (s) =>
+      glbUrl !== undefined &&
+      getActiveTableau(s.currentT).moons?.some((m) => m.body === body) === true,
+  );
+  const [glbLatched, setGlbLatched] = useState(false);
+  useEffect(() => {
+    if (glbWanted) setGlbLatched(true);
+  }, [glbWanted]);
   const spaceMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const blueprintMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
   if (!spaceMaterialRef.current) {
@@ -70,19 +315,71 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
 
   const realR = BODY_RADIUS[body] ?? 5;
   const groupRef = useRef<THREE.Group>(null);
+  // Nested so the body spins about its own tilted axis.
+  const tiltRef = useRef<THREE.Group>(null);
+  const spinRef = useRef<THREE.Group>(null);
+  const hazeRef = useRef<THREE.Mesh>(null);
+  const plumeRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
+  const livePosRef = useRef(new THREE.Vector3());
+
+  const hazeMaterial = useMemo(() => {
+    if (body !== "titan") return null;
+    return new THREE.ShaderMaterial({
+      vertexShader: HAZE_VERT,
+      fragmentShader: HAZE_FRAG,
+      uniforms: {
+        uSunDir: {
+          value: new THREE.Vector3(...CRESCENT_SUN_POS).normalize(),
+        },
+        // Near white so the additive pass doesn't re-yellow Titan.
+        uColor: { value: new THREE.Color(1.0, 0.93, 0.85) },
+        uIntensity: { value: 1.4 },
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.FrontSide,
+    });
+  }, [body]);
+  useEffect(() => {
+    return () => {
+      hazeMaterial?.dispose();
+    };
+  }, [hazeMaterial]);
+
+  const plumeMaterial = useMemo(() => {
+    if (body !== "enceladus") return null;
+    return new THREE.ShaderMaterial({
+      vertexShader: PLUME_VERT,
+      fragmentShader: PLUME_FRAG,
+      uniforms: {
+        uIntensity: { value: 0.8 },
+        uTime: { value: 0 },
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+  }, [body]);
+  useEffect(() => {
+    return () => {
+      plumeMaterial?.dispose();
+    };
+  }, [plumeMaterial]);
 
   useEffect(() => {
     if (!groupRef.current) return;
     const t = useMissionStore.getState().currentT;
     const tab = getActiveTableau(t);
-    const isActive =
-      tab.kind === "moon" && tab.body === body && !!tab.moonEffectiveRadius;
-    if (isActive) {
-      const target = (tab.moonEffectiveRadius ?? 0) / realR;
-      liveScaleRef.current = target;
-      groupRef.current.scale.setScalar(Math.max(0.00001, target));
-      groupRef.current.visible = target > 0.001;
+    const target = resolveMoonTarget(tab, body, realR);
+    if (target) {
+      liveScaleRef.current = target.scale;
+      livePosRef.current.set(target.px, target.py, target.pz);
+      groupRef.current.scale.setScalar(Math.max(0.00001, target.scale));
+      groupRef.current.position.copy(livePosRef.current);
+      groupRef.current.visible = target.scale > 0.001;
     } else {
       liveScaleRef.current = 0;
       groupRef.current.scale.setScalar(0.00001);
@@ -91,7 +388,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
     // eslint-disable-next-line react-hooks
   }, [cameraResetNonce]);
 
-  useFrame((_, deltaRaw) => {
+  useFrame((frameState, deltaRaw) => {
     if (!groupRef.current) return;
     const delta = Number.isFinite(deltaRaw)
       ? Math.min(0.1, Math.max(0, deltaRaw))
@@ -99,27 +396,132 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
     try {
       const t = useMissionStore.getState().currentT;
       const tab = getActiveTableau(t);
-      const isActive =
-        tab.kind === "moon" && tab.body === body && !!tab.moonEffectiveRadius;
-      const target = isActive ? (tab.moonEffectiveRadius ?? 0) / realR : 0;
+      const target = resolveMoonTarget(tab, body, realR);
+      const targetScale = target ? target.scale : 0;
 
       liveScaleRef.current = THREE.MathUtils.damp(
         liveScaleRef.current,
-        target,
+        targetScale,
         4,
         delta,
       );
-      if (!Number.isFinite(liveScaleRef.current)) liveScaleRef.current = target;
+      if (!Number.isFinite(liveScaleRef.current)) {
+        liveScaleRef.current = targetScale;
+      }
+
+      if (target) {
+        let tx = target.px;
+        let ty = target.py;
+        let tz = target.pz;
+        // Swing the placement about the backdrop's ring axis, prograde.
+        const sat = tab.saturnBackdrop;
+        if (sat && target.orbitRadPerSec !== 0) {
+          const elapsedSec =
+            Math.max(0, missionToDisplay(t) - missionToDisplay(tab.tStart)) *
+            FULL_MISSION_SECONDS;
+          const theta = target.orbitRadPerSec * elapsedSec;
+          _orbAxis.set(0, 1, 0);
+          if (sat.rotDeg) {
+            _orbEuler.set(
+              (sat.rotDeg[0] * Math.PI) / 180,
+              (sat.rotDeg[1] * Math.PI) / 180,
+              (sat.rotDeg[2] * Math.PI) / 180,
+            );
+            _orbAxis.applyEuler(_orbEuler);
+          }
+          _orbOffset.set(tx - sat.pos[0], ty - sat.pos[1], tz - sat.pos[2]);
+          _orbOffset.applyAxisAngle(_orbAxis, theta);
+          tx = sat.pos[0] + _orbOffset.x;
+          ty = sat.pos[1] + _orbOffset.y;
+          tz = sat.pos[2] + _orbOffset.z;
+        }
+
+        const lp = livePosRef.current;
+        if (liveScaleRef.current < 0.001) {
+          lp.set(tx, ty, tz);
+        } else {
+          lp.x = THREE.MathUtils.damp(lp.x, tx, 3.5, delta);
+          lp.y = THREE.MathUtils.damp(lp.y, ty, 3.5, delta);
+          lp.z = THREE.MathUtils.damp(lp.z, tz, 3.5, delta);
+          if (!Number.isFinite(lp.x + lp.y + lp.z)) {
+            lp.set(tx, ty, tz);
+          }
+        }
+        groupRef.current.position.copy(lp);
+      }
+
       groupRef.current.scale.setScalar(Math.max(0.00001, liveScaleRef.current));
       groupRef.current.visible = liveScaleRef.current > 0.001;
+
+      if (groupRef.current.visible && tab.moons) {
+        let anchor = moonWorldPositions.get(body);
+        if (!anchor) {
+          anchor = new THREE.Vector3();
+          moonWorldPositions.set(body, anchor);
+        }
+        anchor.copy(groupRef.current.position);
+      } else if (moonWorldPositions.has(body)) {
+        moonWorldPositions.delete(body);
+      }
+
+      // Spin freezes in tableaus without a rate; phase is never reset.
+      if (tiltRef.current) {
+        const tilt = target ? target.tiltRad : 0;
+        if (tiltRef.current.rotation.z !== tilt) {
+          tiltRef.current.rotation.z = tilt;
+        }
+      }
+      if (spinRef.current && target && target.spinRadPerSec > 0) {
+        spinRef.current.rotation.y += delta * target.spinRadPerSec;
+      }
+
+      if (hazeRef.current && hazeMaterial) {
+        const hazeVisible =
+          !!target &&
+          tab.effects?.crescentLighting === true &&
+          renderMode !== "blueprint";
+        hazeRef.current.visible = hazeVisible;
+        if (hazeVisible) {
+          // FULL front-lights the moon, so aim the glow from the camera.
+          const sun = hazeMaterial.uniforms.uSunDir!.value as THREE.Vector3;
+          if (useMissionStore.getState().lightingMode === "full") {
+            groupRef.current.getWorldPosition(_hazeMoonPos);
+            _hazeSunDir
+              .copy(frameState.camera.position)
+              .sub(_hazeMoonPos)
+              .normalize();
+            sun.copy(_hazeSunDir);
+          } else {
+            sun.set(...CRESCENT_SUN_POS).normalize();
+          }
+        }
+      }
+
+      // Y-billboard so the jets rise off the limb from any orbit azimuth.
+      if (plumeRef.current && plumeMaterial) {
+        const plumesVisible =
+          !!target &&
+          tab.body === body &&
+          tab.effects?.plumes === true &&
+          useMissionStore.getState().showPlumes &&
+          renderMode !== "blueprint";
+        plumeRef.current.visible = plumesVisible;
+        if (plumesVisible) {
+          _plumeCam.copy(frameState.camera.position);
+          groupRef.current.worldToLocal(_plumeCam);
+          plumeRef.current.rotation.y = Math.atan2(_plumeCam.x, _plumeCam.z);
+          plumeMaterial.uniforms.uTime!.value += delta;
+        }
+      }
     } catch (err) {
       console.error(`[MoonMesh:${body} useFrame] swallowed error`, err);
     }
   });
 
   const showSpace = renderMode !== "blueprint";
-  return (
-    <group ref={groupRef} visible={false}>
+  // Doubles as the GLB moons' loading fallback and blueprint form.
+  const sphereBody = (
+    <>
       <mesh visible={showSpace}>
         <sphereGeometry args={[realR, 96, 48]} />
         <primitive object={spaceMaterialRef.current} attach="material" />
@@ -128,6 +530,44 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
         <sphereGeometry args={[realR, 96, 48]} />
         <primitive object={blueprintMaterialRef.current} attach="material" />
       </mesh>
+    </>
+  );
+  return (
+    <group ref={groupRef} visible={false}>
+      <group ref={tiltRef}>
+        <group ref={spinRef}>
+          {glbUrl && glbLatched && showSpace ? (
+            /* Own boundary: a suspension reaching TableauResolver's would
+               blank every pre-mounted body. */
+            <Suspense fallback={sphereBody}>
+              <SmallMoonGLB url={glbUrl} radius={realR} />
+            </Suspense>
+          ) : (
+            sphereBody
+          )}
+        </group>
+      </group>
+      {hazeMaterial && (
+        <mesh ref={hazeRef} visible={false} renderOrder={10}>
+          {/* Hugs the limb, per the HAZE_FRAG falloff. */}
+          <sphereGeometry args={[realR * 1.022, 96, 48]} />
+          <primitive object={hazeMaterial} attach="material" />
+        </mesh>
+      )}
+      {plumeMaterial && (
+        /* Quad geometry is authored in radius units; mesh scale maps those
+           to this body. The [0, y, 0] offset survives the Y-billboard. */
+        <group ref={plumeRef} visible={false}>
+          <mesh
+            position={[0, PLUME_CENTER_Y * realR, 0]}
+            scale={realR}
+            renderOrder={11}
+          >
+            <planeGeometry args={[3.6, 3.2]} />
+            <primitive object={plumeMaterial} attach="material" />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
