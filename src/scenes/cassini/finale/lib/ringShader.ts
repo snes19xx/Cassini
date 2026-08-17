@@ -99,6 +99,54 @@ export function buildRingNoiseTexture(
   return tex;
 }
 
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+export function makeRingDensityProfile(): Uint8Array<ArrayBuffer> {
+  const buf = new Uint8Array(new ArrayBuffer(PROFILE_LEN * 4));
+  for (let i = 0; i < PROFILE_LEN; i++) {
+    const vR = i / (PROFILE_LEN - 1);
+    let d: number;
+
+    if (vR < 0.103) {
+      const p = vR / 0.103;
+      d = 0.22 + p * 0.10;
+    } else if (vR < 0.341) {
+      const p = (vR - 0.103) / (0.341 - 0.103);
+      d = 0.25 + p * 0.25;
+    } else if (vR < 0.689) {
+      const p = (vR - 0.341) / (0.689 - 0.341);
+      d = 0.45 + 0.50 * smoothstep(0.0, 0.18, p) * (1.0 - smoothstep(0.78, 1.0, p));
+    } else if (vR < 0.751) {
+      const p = (vR - 0.689) / (0.751 - 0.689);
+      d = 0.95 * smoothstep(0.0, 0.40, p) + 0.05 + 0.4 * smoothstep(0.60, 1.0, p);
+    } else if (vR < 0.951) {
+      const p = (vR - 0.751) / (0.951 - 0.751);
+      d = 0.55 + 0.20 * (1.0 - p);
+      const enckeDist = Math.abs(p - 0.78);
+      if (enckeDist < 0.012) {
+        d *= enckeDist / 0.012;
+      }
+      if (p > 0.92) d *= (1.0 - (p - 0.92) / 0.08) * 0.6;
+    } else if (vR < 0.985) {
+      d = 0.04;
+    } else {
+      const p = (vR - 0.985) / (1.0 - 0.985);
+      const g = Math.exp(-((p - 0.4) * (p - 0.4)) / 0.04);
+      d = 0.10 + 0.85 * g;
+    }
+
+    const byte = Math.max(0, Math.min(255, Math.round(d * 255)));
+    buf[i * 4 + 0] = byte;
+    buf[i * 4 + 1] = byte;
+    buf[i * 4 + 2] = byte;
+    buf[i * 4 + 3] = 255;
+  }
+  return buf;
+}
+
 let cachedNoiseTexture: THREE.DataTexture | null = null;
 export function getRingNoiseTexture(): THREE.DataTexture {
   if (!cachedNoiseTexture) cachedNoiseTexture = buildRingNoiseTexture();
