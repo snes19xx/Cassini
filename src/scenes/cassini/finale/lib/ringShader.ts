@@ -51,6 +51,15 @@ varying float vR;
 varying vec3  vWorld;
 varying float vTheta;
 
+float saturnShadow(vec3 worldPos) {
+  vec3 sd = normalize(uSunDir);
+  float along = dot(worldPos, sd);
+  if (along > 0.0) return 1.0;
+  vec3 perp = worldPos - along * sd;
+  float pd = length(perp);
+  return smoothstep(uSaturnRadius - 3.0, uSaturnRadius + 3.0, pd);
+}
+
 void main() {
   #include <logdepthbuf_fragment>
 
@@ -65,7 +74,10 @@ void main() {
   float backLight = max(0.0, -dot(viewDir, normalize(uSunDir)));
   vec3 backColor = mix(uRingColor, vec3(1.45, 1.10, 0.65), backLight * 0.6);
 
-  vec3 col = backColor * density;
+  float shadow = saturnShadow(vWorld);
+  float lit = mix(0.45, 1.0, shadow);
+
+  vec3 col = backColor * density * lit;
   col += vec3(0.10, 0.08, 0.05) * pow(density, 4.0);
 
   float alpha = density * uOpacity;
