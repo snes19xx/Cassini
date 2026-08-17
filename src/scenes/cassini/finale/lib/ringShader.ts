@@ -11,6 +11,28 @@ export const PROFILE_LEN = 1024;
 
 export const RING_AXIAL_TILT_DEG = 26.73;
 
+export const RINGS_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+
+uniform float uInnerRadius;
+uniform float uOuterRadius;
+
+varying float vR;
+varying vec3  vWorld;
+varying float vTheta;
+
+void main() {
+  float r = length(position.xy);
+  vR = clamp((r - uInnerRadius) / (uOuterRadius - uInnerRadius), 0.0, 1.0);
+  vTheta = atan(position.y, position.x);
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorld = wp.xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  #include <logdepthbuf_vertex>
+}
+`;
+
 export const NOISE_TEX_THETA = 1024;
 export const NOISE_TEX_R = 512;
 export const RING_SWIRL_BAKE_TIME = 12.0;
