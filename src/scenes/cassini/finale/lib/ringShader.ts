@@ -147,6 +147,23 @@ export function makeRingDensityProfile(): Uint8Array<ArrayBuffer> {
   return buf;
 }
 
+export function createRingDensityTexture(): THREE.DataTexture {
+  const data = makeRingDensityProfile();
+  const tex = new THREE.DataTexture(
+    data,
+    PROFILE_LEN,
+    1,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  tex.needsUpdate = true;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
 let cachedNoiseTexture: THREE.DataTexture | null = null;
 export function getRingNoiseTexture(): THREE.DataTexture {
   if (!cachedNoiseTexture) cachedNoiseTexture = buildRingNoiseTexture();
