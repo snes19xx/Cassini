@@ -33,6 +33,48 @@ void main() {
 }
 `;
 
+export const RINGS_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+
+uniform sampler2D uDensityProfile;
+uniform sampler2D uNoiseTex;
+uniform float     uTime;
+uniform vec3      uSunDir;
+uniform float     uSaturnRadius;
+uniform vec3      uRingColor;
+uniform float     uOpacity;
+uniform float     uSwirlBase;
+uniform float     uSwirlAmount;
+
+varying float vR;
+varying vec3  vWorld;
+varying float vTheta;
+
+void main() {
+  #include <logdepthbuf_fragment>
+
+  float density = texture2D(uDensityProfile, vec2(vR, 0.5)).r;
+
+  float thetaN = (vTheta + 3.14159265) / 6.28318531;
+  float n = texture2D(uNoiseTex, vec2(thetaN, vR)).r;
+  float noise = uSwirlBase + n * uSwirlAmount;
+  density *= noise;
+
+  vec3 viewDir = normalize(cameraPosition - vWorld);
+  float backLight = max(0.0, -dot(viewDir, normalize(uSunDir)));
+  vec3 backColor = mix(uRingColor, vec3(1.45, 1.10, 0.65), backLight * 0.6);
+
+  vec3 col = backColor * density;
+  col += vec3(0.10, 0.08, 0.05) * pow(density, 4.0);
+
+  float alpha = density * uOpacity;
+  if (alpha < 0.01) discard;
+
+  gl_FragColor = vec4(col, alpha);
+}
+`;
+
 export const NOISE_TEX_THETA = 1024;
 export const NOISE_TEX_R = 512;
 export const RING_SWIRL_BAKE_TIME = 12.0;
