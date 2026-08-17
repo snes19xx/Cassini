@@ -147,6 +147,15 @@ export function makeRingDensityProfile(): Uint8Array<ArrayBuffer> {
   return buf;
 }
 
+export function createRingGeometry(): THREE.RingGeometry {
+  return new THREE.RingGeometry(
+    RING_INNER,
+    RING_OUTER,
+    RADIAL_SEGMENTS,
+    PHI_SEGMENTS,
+  );
+}
+
 export function createRingDensityTexture(): THREE.DataTexture {
   const data = makeRingDensityProfile();
   const tex = new THREE.DataTexture(
