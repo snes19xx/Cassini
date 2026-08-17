@@ -1,13 +1,33 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLiveLabelAnchors } from "../../hooks/useLiveLabelAnchors";
 import type { AnchorPoint } from "../../hooks/useProjectedPoints";
 import { useMissionStore } from "../../store/missionStore";
 import { INSPECTION_VIEWS } from "./data/inspectionViews";
-import { HUYGENS_SEPARATION_T } from "./data/missionConstants";
-import { getActiveTableau } from "./data/tableaus";
+import {
+  HUYGENS_SEPARATION_T,
+  isTerminalTableau,
+} from "./data/missionConstants";
+import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "./data/tableaus";
+import { getApproachCassiniPos } from "./finale/lib/approachTrajectory";
+import { useCameraDebugStore } from "./finale/lib/cameraDebug";
+import { useCassiniDebugStore } from "./finale/lib/cassiniDebug";
+import { getPlungeSample } from "./finale/lib/plungeTrajectory";
+import {
+  getDescentProgress,
+  getFinaleShot,
+} from "./finale/lib/finaleDescent";
+import {
+  getRingDiveCassiniPos,
+  getRingDiveSample,
+} from "./finale/lib/ringDiveTrajectory";
+import {
+  getSwingAroundCassiniPos,
+  getSwingAroundSample,
+} from "./finale/lib/swingAroundTrajectory";
+import { cassiniWorldPos } from "./lib/cassiniAnchor";
 import { stateAt } from "./lib/stateAt";
 import { CassiniHuygensA, type CassiniAAnchors } from "./parts/CassiniHuygensA";
 import { CassiniHuygensAwithoutHuygens } from "./parts/CassiniHuygensAwithoutHuygens";
@@ -18,10 +38,22 @@ export const labelAnchorsRef: React.MutableRefObject<AnchorPoint[]> = {
   current: [],
 };
 
+export const ringDiveStateRef = {
+  position: new THREE.Vector3(),
+  velocity: new THREE.Vector3(1, 0, 0),
+};
+
 const EDITORIAL_MODEL_SCALE = 2.9;
 const BLUEPRINT_MODEL_SCALE = 3.5;
-const SPACE_MODEL_SCALE = 1;
+const SPACE_MODEL_SCALE = 2.5;
 const HOMEPAGE_T_EPSILON = 0.001;
+
+const HEAT_RED = new THREE.Color("#ff2a00");
+const HEAT_ORANGE = new THREE.Color("#ff6600");
+const HEAT_YELLOW = new THREE.Color("#ffc83c");
+const HEAT_WHITE = new THREE.Color("#fff4e8");
+const HEAT_BLUE = new THREE.Color("#8fd2ff");
+const _heatScratch = new THREE.Color();
 
 function applyHeatingGlow(
   mesh: THREE.Mesh,
@@ -30,23 +62,23 @@ function applyHeatingGlow(
 ) {
   if (!(mesh.material instanceof THREE.MeshStandardMaterial)) return;
 
-  const glowColors: Record<string, THREE.Color> = {
-    space: new THREE.Color("#ff6600"),
-    blueprint: new THREE.Color("#8fd2ff"),
-    editorial: new THREE.Color("#c07040"),
-  };
-  const glowIntensities: Record<string, number> = {
-    space: 6.0,
-    blueprint: 2.5,
-    editorial: 3.5,
-  };
-
-  const eased = Math.min(1, amount / 0.4);
-  const color = glowColors[renderMode] || new THREE.Color("#ff6600");
-  const intensity = glowIntensities[renderMode] || 6.0;
-  mesh.material.emissive.copy(color);
-  mesh.material.emissiveIntensity = eased * intensity;
-  mesh.material.needsUpdate = true;
+  const h = Math.min(1, Math.max(0, amount));
+  let intensity: number;
+  if (renderMode === "blueprint") {
+    _heatScratch.copy(HEAT_BLUE);
+    intensity = h * 1.0;
+  } else {
+    if (h < 0.33) {
+      _heatScratch.copy(HEAT_RED).lerp(HEAT_ORANGE, h / 0.33);
+    } else if (h < 0.66) {
+      _heatScratch.copy(HEAT_ORANGE).lerp(HEAT_YELLOW, (h - 0.33) / 0.33);
+    } else {
+      _heatScratch.copy(HEAT_YELLOW).lerp(HEAT_WHITE, (h - 0.66) / 0.34);
+    }
+    intensity = h < 0.75 ? h * 1.3 : 0.975 + ((h - 0.75) / 0.25) * 4.0;
+  }
+  mesh.material.emissive.copy(_heatScratch);
+  mesh.material.emissiveIntensity = intensity;
 }
 
 function applyOpacityErosion(mesh: THREE.Mesh, amount: number) {
@@ -84,22 +116,16 @@ function useThematicMaterials() {
 
 function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
   const { camera, controls } = useThree() as any;
-  const tableauId = useMissionStore((s) => getActiveTableau(s.currentT).id);
   const inspectionView = useMissionStore((s) => s.inspectionView);
   const inspectionViewNonce = useMissionStore((s) => s.inspectionViewNonce);
-  const prevResetNonceRef = useRef(cameraResetNonce);
-  const prevLabelsRef = useRef(showLabels);
-  const prevInspectionViewRef = useRef(inspectionView);
-  const prevInspectionNonceRef = useRef(inspectionViewNonce);
 
   useEffect(() => {
     const performSnap = () => {
       try {
         let px: number, py: number, pz: number;
         let lx: number, ly: number, lz: number;
+        let fov = DEFAULT_TABLEAU_FOV;
 
-        // Inspection-view snap only applies on the homepage AND while
-        // LABELS is on.
         const state = useMissionStore.getState();
         const currentT = state.currentT;
         const isHomepage = currentT < 0.001;
@@ -111,6 +137,7 @@ function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
           const tableau = getActiveTableau(currentT);
           [px, py, pz] = tableau.camera.pos;
           [lx, ly, lz] = tableau.camera.lookAt;
+          fov = tableau.camera.fov ?? DEFAULT_TABLEAU_FOV;
         }
 
         if (
@@ -120,6 +147,9 @@ function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
           return;
         }
         camera.position.set(px, py, pz);
+        if (camera instanceof THREE.PerspectiveCamera && camera.fov !== fov) {
+          camera.fov = fov;
+        }
         if (controls?.target) {
           controls.target.set(lx, ly, lz);
           controls.update?.();
@@ -132,27 +162,9 @@ function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
       }
     };
 
-    const isManual =
-      cameraResetNonce !== prevResetNonceRef.current ||
-      showLabels !== prevLabelsRef.current ||
-      inspectionView !== prevInspectionViewRef.current ||
-      inspectionViewNonce !== prevInspectionNonceRef.current;
-    prevResetNonceRef.current = cameraResetNonce;
-    prevLabelsRef.current = showLabels;
-    prevInspectionViewRef.current = inspectionView;
-    prevInspectionNonceRef.current = inspectionViewNonce;
-
-    // Manual reset / labels toggle / inspection-view selection: snap
-    // immediately so the user's click feels instant.
-    if (isManual) {
-      performSnap();
-      return;
-    }
-    const handle = window.setTimeout(performSnap, 120);
-    return () => window.clearTimeout(handle);
+    performSnap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    tableauId,
     cameraResetNonce,
     showLabels,
     inspectionView,
@@ -176,21 +188,19 @@ function DisplayModel({
   const { scene } = useGLTF(`/assets/${activeModel}`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         if (!child.userData.originalMaterial) {
           child.userData.originalMaterial = child.material;
           const original = child.userData.originalMaterial as THREE.Material;
           if (original instanceof THREE.MeshStandardMaterial) {
+            // Without an env map, high metalness clips to white under boosted sun.
             if (original.metalness > 0.25) original.metalness = 0.25;
             original.envMapIntensity = 0.6;
           }
         }
         let target = child.userData.originalMaterial as THREE.Material;
-        // Wireframe themes override every mesh with their respective
-        // override material. Blueprint = pale-blue wireframe over deep
-        // navy; editorial = dark wireframe over cream paper.
         if (renderMode === "blueprint") {
           target = materials.blueprint;
         }
@@ -265,15 +275,12 @@ export function Spacecraft() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
   const showLabels = useMissionStore((s) => s.showLabels);
-  const currentT = useMissionStore((s) => s.currentT);
   const autoRotate = useMissionStore((s) => s.autoRotate);
 
-  const huygensHasSeparated = currentT >= HUYGENS_SEPARATION_T;
+  const huygensHasSeparated = useMissionStore(
+    (s) => s.currentT >= HUYGENS_SEPARATION_T,
+  );
 
-  // Post-separation: swap the full-stack model for the Cassini-only
-  // model so the disconnected Huygens probe doesn't remain attached.
-  // Only applies when LABELS are off — labels mode uses a dedicated
-  // <LabelModel> with its own with/without variant logic.
   let actualModel = activeModel;
   if (!showLabels && activeModel === "CassiniHuygensA.glb") {
     if (huygensHasSeparated) {
@@ -281,16 +288,16 @@ export function Spacecraft() {
     }
   }
 
+  const needsMaterialResetRef = useRef(false);
+  useEffect(() => {
+    needsMaterialResetRef.current = true;
+  }, [actualModel, showLabels, renderMode]);
+
   const materials = useThematicMaterials();
 
-  // Homepage scale gate. Per-theme constants live at the top of this
-  // file (EDITORIAL_MODEL_SCALE, BLUEPRINT_MODEL_SCALE, SPACE_MODEL_SCALE).
-  // The scale only applies while:
-  //   * currentT < HOMEPAGE_T_EPSILON (user hasn't pressed PLAY yet), AND
-  //   * labels are off (inspection-view framing assumes scale 1).
-  // Outside that window we it;s always rendered at scale 1 so cruise / Saturn /
-  // Titan / inspection cameras stay tuned for the native model size.
-  const isHomepage = currentT < HOMEPAGE_T_EPSILON;
+  const isHomepage = useMissionStore(
+    (s) => s.currentT < HOMEPAGE_T_EPSILON,
+  );
   const themeScale =
     renderMode === "editorial"
       ? EDITORIAL_MODEL_SCALE
@@ -303,16 +310,20 @@ export function Spacecraft() {
 
   const targetPosRef = useRef(new THREE.Vector3(0, 0, 0));
   const livePosRef = useRef(new THREE.Vector3(0, 0, 0));
-  // A continuous wall-clock accumulator drives a tiny bob/yaw so Cassini
-  // never reads as frozen
   const driftClockRef = useRef(0);
+  const liveDriftAmpRef = useRef(6.5);
+  const liveDriftSpeedRef = useRef(0.18);
 
-  // JUMP-TO / RESET: snap Cassini's live position to the active tableau's
-  // target so it's already in place when the curtain lifts
   useEffect(() => {
     const t = useMissionStore.getState().currentT;
     const tableau = getActiveTableau(t);
-    if (tableau.cassiniOffset) {
+    if (tableau.id === "finale_approach") {
+      getApproachCassiniPos(t, livePosRef.current);
+    } else if (tableau.id === "finale_swing_around") {
+      getSwingAroundCassiniPos(t, livePosRef.current);
+    } else if (tableau.id === "finale_ring_dive") {
+      getRingDiveCassiniPos(t, livePosRef.current);
+    } else if (tableau.cassiniOffset) {
       livePosRef.current.set(
         tableau.cassiniOffset[0],
         tableau.cassiniOffset[1],
@@ -321,12 +332,23 @@ export function Spacecraft() {
     } else {
       livePosRef.current.set(0, 0, 0);
     }
+    if (tableau.kind === "cruise") {
+      liveDriftAmpRef.current = 6.5;
+      liveDriftSpeedRef.current = 0.18;
+    } else if (
+      tableau.kind === "saturn_focus" ||
+      tableau.kind === "finale"
+    ) {
+      liveDriftAmpRef.current = 3.5;
+      liveDriftSpeedRef.current = 0.22;
+    } else {
+      liveDriftAmpRef.current = 0.55;
+      liveDriftSpeedRef.current = 0.55;
+    }
   }, [cameraResetNonce]);
 
   useFrame((_, deltaRaw) => {
     if (!groupRef.current) return;
-    // Clamp delta: when the tab backgrounds, requestAnimationFrame skips
-    // and the next frame can deliver a multi-second delta.
     const delta = Number.isFinite(deltaRaw)
       ? Math.min(0.1, Math.max(0, deltaRaw))
       : 0;
@@ -338,10 +360,24 @@ export function Spacecraft() {
 
       const disintegrationAmount = state.effects.disintegration || 0;
 
-      // Resolve target from the active tableau. saturn_arrival defines
-      // a cassiniOffset for its chase-cam framing, so honour it on any
-      // tableau kind — falling back to origin only when no offset exists.
-      if (tableau.cassiniOffset) {
+      if (tableau.id === "finale_approach") {
+        getApproachCassiniPos(t, targetPosRef.current);
+      } else if (tableau.id === "finale_swing_around") {
+        const sample = getSwingAroundSample(t);
+        targetPosRef.current.copy(sample.position);
+        ringDiveStateRef.position.copy(sample.position);
+        ringDiveStateRef.velocity.copy(sample.velocity);
+      } else if (tableau.id === "finale_ring_dive") {
+        const sample = getRingDiveSample(t);
+        targetPosRef.current.copy(sample.position);
+        ringDiveStateRef.position.copy(sample.position);
+        ringDiveStateRef.velocity.copy(sample.velocity);
+      } else if (isTerminalTableau(tableau.id)) {
+        const sample = getPlungeSample(t);
+        targetPosRef.current.copy(sample.position);
+        ringDiveStateRef.position.copy(sample.position);
+        ringDiveStateRef.velocity.copy(sample.velocity);
+      } else if (tableau.cassiniOffset) {
         targetPosRef.current.set(
           tableau.cassiniOffset[0],
           tableau.cassiniOffset[1],
@@ -351,63 +387,70 @@ export function Spacecraft() {
         targetPosRef.current.set(0, 0, 0);
       }
 
-      if (disintegrationAmount > 0.85) {
-        // Grand-finale tumble: ignore tableau target and shake.
-        const finalP = (disintegrationAmount - 0.85) / 0.15;
-        groupRef.current.rotation.x += delta * finalP * 5.0;
-        groupRef.current.rotation.z += delta * finalP * 3.5;
-        groupRef.current.position.set(
-          (Math.random() - 0.5) * finalP * 0.4,
-          (Math.random() - 0.5) * finalP * 0.4,
-          0,
-        );
-        livePosRef.current.copy(groupRef.current.position);
+      if (
+        tableau.id === "finale_swing_around" ||
+        tableau.id === "finale_ring_dive" ||
+        isTerminalTableau(tableau.id)
+      ) {
+        // Orbital tableaus: trajectory IS the position, no drift or damping.
+        groupRef.current.position.copy(targetPosRef.current);
+        livePosRef.current.copy(targetPosRef.current);
+        groupRef.current.updateMatrix();
       } else {
-        // Damp the live position toward the tableau target.
         const live = livePosRef.current;
         const target = targetPosRef.current;
-        live.x = THREE.MathUtils.damp(live.x, target.x, 2.4, delta);
-        live.y = THREE.MathUtils.damp(live.y, target.y, 2.4, delta);
-        live.z = THREE.MathUtils.damp(live.z, target.z, 2.4, delta);
+        live.x = THREE.MathUtils.damp(live.x, target.x, 3.5, delta);
+        live.y = THREE.MathUtils.damp(live.y, target.y, 3.5, delta);
+        live.z = THREE.MathUtils.damp(live.z, target.z, 3.5, delta);
         if (!Number.isFinite(live.x)) live.x = target.x;
         if (!Number.isFinite(live.y)) live.y = target.y;
         if (!Number.isFinite(live.z)) live.z = target.z;
 
-        // Homepage gate: when the user is on the start screen
-        const homepageStill = currentT < HOMEPAGE_T_EPSILON && !autoRotate;
+        const homepageStill = t < HOMEPAGE_T_EPSILON && !autoRotate;
 
         if (showLabels || homepageStill) {
-          // Stillness branch: Cassini sits at the damped target with no
-          // procedural drift. Drift and bob both suppressed.
           groupRef.current.position.copy(live);
         } else {
-          // Perpetual drift
-          // A wall-clock accumulator drives an always-on parallax orbit so
-          // Cassini is never frozen - even during cruise (when the tableau
-          // target is just origin and the spacecraft would otherwise sit
-          // perfectly still).
           driftClockRef.current += delta;
           const c = driftClockRef.current;
-          let driftAmp = 0;
-          let driftSpeed = 1;
+          let driftAmpTarget = 0;
+          let driftSpeedTarget = 1;
           if (tableau.kind === "cruise") {
-            driftAmp = 6.5;
-            driftSpeed = 0.18;
+            driftAmpTarget = 6.5;
+            driftSpeedTarget = 0.18;
           } else if (
             tableau.kind === "saturn_focus" ||
             tableau.kind === "finale"
           ) {
-            driftAmp = 3.5;
-            driftSpeed = 0.22;
+            driftAmpTarget = 3.5;
+            driftSpeedTarget = 0.22;
           } else {
-            driftAmp = 0.55;
-            driftSpeed = 0.55;
+            driftAmpTarget = 0.55;
+            driftSpeedTarget = 0.55;
           }
+          liveDriftAmpRef.current = THREE.MathUtils.damp(
+            liveDriftAmpRef.current,
+            driftAmpTarget,
+            3.5,
+            delta,
+          );
+          liveDriftSpeedRef.current = THREE.MathUtils.damp(
+            liveDriftSpeedRef.current,
+            driftSpeedTarget,
+            3.5,
+            delta,
+          );
+          if (!Number.isFinite(liveDriftAmpRef.current)) {
+            liveDriftAmpRef.current = driftAmpTarget;
+          }
+          if (!Number.isFinite(liveDriftSpeedRef.current)) {
+            liveDriftSpeedRef.current = driftSpeedTarget;
+          }
+          const driftAmp = liveDriftAmpRef.current;
+          const driftSpeed = liveDriftSpeedRef.current;
           const driftX = Math.sin(c * driftSpeed) * driftAmp;
           const driftY = Math.sin(c * driftSpeed * 0.7 + 1.7) * driftAmp * 0.45;
           const driftZ = Math.cos(c * driftSpeed * 0.85 + 0.9) * driftAmp * 0.7;
-          // Tiny bob preserved on top so even paused/zoomed-out moon scenes
-          // have small micro-motion.
           const bobX = Math.sin(c * 0.6) * 0.08;
           const bobY = Math.sin(c * 0.45 + 1.7) * 0.06;
           const bobZ = Math.cos(c * 0.5 + 0.9) * 0.05;
@@ -419,20 +462,55 @@ export function Spacecraft() {
         }
       }
 
-      if (disintegrationAmount >= 1.0) {
-        groupRef.current.visible = false;
-      } else {
-        groupRef.current.visible = true;
+      cassiniWorldPos.copy(groupRef.current.position);
+
+      let terminalHeat = 0;
+      let terminalFadeOpacity = 1;
+      if (isTerminalTableau(tableau.id)) {
+        const baseScale = useCameraDebugStore.getState().cassiniScale;
+        const cd = useCassiniDebugStore.getState();
+        const p = getDescentProgress(t);
+        const { shot, localP } = getFinaleShot(p);
+
+        if (shot === "chase") terminalHeat = localP;
+        else if (shot === "meteor") terminalHeat = 1;
+
+        const tp = Math.max(
+          0,
+          Math.min(1, (p - cd.meteorShrinkStart) / Math.max(0.001, cd.meteorShrinkSpan)),
+        );
+        const sh = tp * tp * (3 - 2 * tp);
+        const scaleMul = 1 - sh * (1 - cd.meteorMinScale);
+        terminalFadeOpacity = 1 - sh * (1 - cd.meteorMinOpacity);
+        groupRef.current.scale.setScalar(baseScale * scaleMul);
       }
 
-      if (disintegrationAmount > 0) {
+      groupRef.current.visible =
+        tableau.effects?.hideCassini !== true &&
+        disintegrationAmount < 1.0 &&
+        terminalFadeOpacity > 0.001;
+
+      const glow = Math.max(disintegrationAmount, terminalHeat);
+      if (glow > 0 || terminalFadeOpacity < 1) {
+        needsMaterialResetRef.current = true;
         groupRef.current.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            applyHeatingGlow(child, disintegrationAmount, renderMode);
+            applyHeatingGlow(child, glow, renderMode);
             applyOpacityErosion(child, disintegrationAmount);
+            if (
+              terminalFadeOpacity < 1 &&
+              child.material instanceof THREE.MeshStandardMaterial
+            ) {
+              child.material.transparent = true;
+              child.material.opacity = Math.min(
+                child.material.opacity,
+                terminalFadeOpacity,
+              );
+            }
           }
         });
-      } else {
+      } else if (needsMaterialResetRef.current) {
+        needsMaterialResetRef.current = false;
         groupRef.current.traverse((child) => {
           if (
             child instanceof THREE.Mesh &&
@@ -445,11 +523,9 @@ export function Spacecraft() {
         });
       }
     } catch (err) {
-      // Don't let a single bad frame tear the canvas down; surface to the
-      // console so it can be diagnosed but keep playing.
       console.error("[Spacecraft useFrame] swallowed error", err);
     }
-  });
+  }, -1);
 
   if (showLabels) {
     return (
@@ -485,7 +561,10 @@ export function Spacecraft() {
   );
 }
 
-// Module-level preload for every shipping GLB.
 useGLTF.preload("/assets/CassiniHuygensA.glb");
-useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");
-useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
+
+const DEFERRED_MODEL_PRELOAD_MS = 5000;
+setTimeout(() => {
+  useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
+  useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");
+}, DEFERRED_MODEL_PRELOAD_MS);
