@@ -16,7 +16,7 @@ const PARTICLE_RING_INNER = 222.5;
 const PARTICLE_RING_OUTER = 419.3;
 const SATURN_RADIUS = 180;
 
-const RING_THICKNESS_HALF = 30;
+const RING_THICKNESS_HALF = 3;
 
 const RING_ORBIT_SPEED = 0.05;
 
@@ -207,7 +207,7 @@ export function RingParticleField() {
     );
 
     if (useMissionStore.getState().autoRotate && !isTerminal) {
-      fieldAngleRef.current -= RING_ORBIT_SPEED * delta;
+      fieldAngleRef.current += RING_ORBIT_SPEED * delta;
     }
     meshRef.current.rotation.y = fieldAngleRef.current;
 

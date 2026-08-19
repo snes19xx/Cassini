@@ -197,7 +197,7 @@ export function makeRingDensityProfile(): Uint8Array<ArrayBuffer> {
       d = 0.45 + 0.50 * smoothstep(0.0, 0.18, p) * (1.0 - smoothstep(0.78, 1.0, p));
     } else if (vR < 0.751) {
       const p = (vR - 0.689) / (0.751 - 0.689);
-      d = 0.95 * smoothstep(0.0, 0.40, p) + 0.05 + 0.4 * smoothstep(0.60, 1.0, p);
+      d = 0.95 * (1.0 - smoothstep(0.0, 0.40, p)) + 0.05 + 0.4 * smoothstep(0.60, 1.0, p);
     } else if (vR < 0.951) {
       const p = (vR - 0.751) / (0.951 - 0.751);
       d = 0.55 + 0.20 * (1.0 - p);
