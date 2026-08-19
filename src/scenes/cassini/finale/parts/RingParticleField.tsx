@@ -1,8 +1,12 @@
-// Discrete icy chunks scattered across the ring annulus, visible at close range.
+// Discrete icy chunks scattered across the rings, visible at close range.
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useMissionStore } from "../../../../store/missionStore";
+import { isTerminalTableau } from "../../data/missionConstants";
+import { getActiveTableau } from "../../data/tableaus";
+import { ringDiveStateRef } from "../../Spacecraft";
 import {
   PARTICLE_MAX_CAPACITY,
   useFinaleRingsStore,
@@ -172,15 +176,16 @@ export function RingParticleField() {
 
   const CAM_NEAR = 300;
   const CAM_FAR = 1500;
+  const TERMINAL_OPACITY_CAP = 0.05;
+  const CROSSING_Y_FULL = 20;
+  const CROSSING_Y_NONE = 80;
+  const CROSSING_BOOST = 2.5;
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, deltaRaw) => {
     if (!meshRef.current) return;
-
-    const dbg = useFinaleRingsStore.getState();
-    meshRef.current.count = Math.max(
-      0,
-      Math.min(PARTICLE_MAX_CAPACITY, Math.round(dbg.partCount)),
-    );
+    const delta = Number.isFinite(deltaRaw)
+      ? Math.min(0.1, Math.max(0, deltaRaw))
+      : 0;
 
     const camDist = camera.position.length();
     const proximity = Math.max(
@@ -188,7 +193,42 @@ export function RingParticleField() {
       Math.min(1, (CAM_FAR - camDist) / (CAM_FAR - CAM_NEAR)),
     );
 
-    material.opacity = proximity * dbg.partOpacity;
+    const tableauId = getActiveTableau(
+      useMissionStore.getState().currentT,
+    ).id;
+    const isOrbital =
+      tableauId === "finale_swing_around" || tableauId === "finale_ring_dive";
+    const isTerminal = isTerminalTableau(tableauId);
+
+    const dbg = useFinaleRingsStore.getState();
+    meshRef.current.count = Math.max(
+      0,
+      Math.min(PARTICLE_MAX_CAPACITY, Math.round(dbg.partCount)),
+    );
+
+    if (useMissionStore.getState().autoRotate && !isTerminal) {
+      fieldAngleRef.current -= RING_ORBIT_SPEED * delta;
+    }
+    meshRef.current.rotation.y = fieldAngleRef.current;
+
+    let boostFactor = 1;
+    if (isOrbital) {
+      const cassiniAbsY = Math.abs(ringDiveStateRef.position.y);
+      const closeness = Math.max(
+        0,
+        Math.min(
+          1,
+          (CROSSING_Y_NONE - cassiniAbsY) /
+            (CROSSING_Y_NONE - CROSSING_Y_FULL),
+        ),
+      );
+      const smooth = closeness * closeness * (3 - 2 * closeness);
+      boostFactor = 1 + (CROSSING_BOOST - 1) * smooth;
+    }
+
+    let opacity = Math.max(0, Math.min(1, proximity * boostFactor));
+    if (isTerminal) opacity = Math.min(opacity, TERMINAL_OPACITY_CAP);
+    material.opacity = opacity * dbg.partOpacity;
     meshRef.current.visible = material.opacity > 0.01;
   });
 

@@ -1,4 +1,4 @@
-// Live 3D ring annulus for non-terminal finale tableaus.
+// Live 3D ring disk for non-terminal finale tableaus.
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
