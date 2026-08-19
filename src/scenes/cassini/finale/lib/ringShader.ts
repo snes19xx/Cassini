@@ -1,4 +1,4 @@
-// Shared ring-shader assets for VolumetricRings (live 3D annulus) and RingBackdrop (baked billboard).
+// Shared ring-shader assets for VolumetricRings and RingBackdrop.
 
 import * as THREE from "three";
 
@@ -253,4 +253,29 @@ let cachedNoiseTexture: THREE.DataTexture | null = null;
 export function getRingNoiseTexture(): THREE.DataTexture {
   if (!cachedNoiseTexture) cachedNoiseTexture = buildRingNoiseTexture();
   return cachedNoiseTexture;
+}
+
+export function createRingMaterial(
+  densityTexture: THREE.DataTexture,
+): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: RINGS_VERT,
+    fragmentShader: RINGS_FRAG,
+    uniforms: {
+      uDensityProfile: { value: densityTexture },
+      uNoiseTex: { value: getRingNoiseTexture() },
+      uTime: { value: 0 },
+      uSunDir: { value: new THREE.Vector3(-400, 80, 200).normalize() },
+      uSaturnRadius: { value: SATURN_RADIUS },
+      uRingColor: { value: new THREE.Color(0.92, 0.8, 0.6) },
+      uInnerRadius: { value: RING_INNER },
+      uOuterRadius: { value: RING_OUTER },
+      uOpacity: { value: 0 },
+      uSwirlBase: { value: 0.7 },
+      uSwirlAmount: { value: 0.5 },
+    },
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
 }
