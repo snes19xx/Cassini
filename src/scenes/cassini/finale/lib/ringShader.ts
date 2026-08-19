@@ -1,0 +1,281 @@
+// Shared ring-shader assets for VolumetricRings and RingBackdrop.
+
+import * as THREE from "three";
+
+export const RING_INNER = 200.0;
+export const RING_OUTER = 419.3;
+export const RADIAL_SEGMENTS = 256;
+export const PHI_SEGMENTS = 8;
+export const SATURN_RADIUS = 180;
+export const PROFILE_LEN = 1024;
+
+export const RING_AXIAL_TILT_DEG = 26.73;
+
+export const RINGS_VERT = `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+
+uniform float uInnerRadius;
+uniform float uOuterRadius;
+
+varying float vR;
+varying vec3  vWorld;
+varying float vTheta;
+
+void main() {
+  float r = length(position.xy);
+  vR = clamp((r - uInnerRadius) / (uOuterRadius - uInnerRadius), 0.0, 1.0);
+  vTheta = atan(position.y, position.x);
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorld = wp.xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  #include <logdepthbuf_vertex>
+}
+`;
+
+export const RINGS_FRAG = `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+
+uniform sampler2D uDensityProfile;
+uniform sampler2D uNoiseTex;
+uniform float     uTime;
+uniform vec3      uSunDir;
+uniform float     uSaturnRadius;
+uniform vec3      uRingColor;
+uniform float     uOpacity;
+uniform float     uSwirlBase;
+uniform float     uSwirlAmount;
+
+varying float vR;
+varying vec3  vWorld;
+varying float vTheta;
+
+float saturnShadow(vec3 worldPos) {
+  vec3 sd = normalize(uSunDir);
+  float along = dot(worldPos, sd);
+  if (along > 0.0) return 1.0;
+  vec3 perp = worldPos - along * sd;
+  float pd = length(perp);
+  return smoothstep(uSaturnRadius - 3.0, uSaturnRadius + 3.0, pd);
+}
+
+void main() {
+  #include <logdepthbuf_fragment>
+
+  float density = texture2D(uDensityProfile, vec2(vR, 0.5)).r;
+
+  float thetaN = (vTheta + 3.14159265) / 6.28318531;
+  float n = texture2D(uNoiseTex, vec2(thetaN, vR)).r;
+  float noise = uSwirlBase + n * uSwirlAmount;
+  density *= noise;
+
+  vec3 viewDir = normalize(cameraPosition - vWorld);
+  float backLight = max(0.0, -dot(viewDir, normalize(uSunDir)));
+  vec3 backColor = mix(uRingColor, vec3(1.45, 1.10, 0.65), backLight * 0.6);
+
+  float shadow = saturnShadow(vWorld);
+  float lit = mix(0.45, 1.0, shadow);
+
+  vec3 col = backColor * density * lit;
+  col += vec3(0.10, 0.08, 0.05) * pow(density, 4.0);
+
+  float alpha = density * uOpacity;
+  if (alpha < 0.01) discard;
+
+  gl_FragColor = vec4(col, alpha);
+}
+`;
+
+export const NOISE_TEX_THETA = 1024;
+export const NOISE_TEX_R = 512;
+export const RING_SWIRL_BAKE_TIME = 12.0;
+
+function jsFract(x: number): number {
+  return x - Math.floor(x);
+}
+function jsMod(x: number, y: number): number {
+  return x - y * Math.floor(x / y);
+}
+function jsHash21(px: number, py: number): number {
+  let ax = jsFract(px * 123.34);
+  let ay = jsFract(py * 456.21);
+  const d = ax * (ax + 45.32) + ay * (ay + 45.32);
+  ax += d;
+  ay += d;
+  return jsFract(ax * ay);
+}
+function jsPolarValueNoise(
+  r: number,
+  theta: number,
+  radialFreq: number,
+  angularFreq: number,
+): number {
+  const rs = r * radialFreq;
+  const ts = ((theta + Math.PI) / (2 * Math.PI)) * angularFreq;
+  const r0 = Math.floor(rs);
+  const r1 = r0 + 1;
+  const t0 = Math.floor(ts);
+  const t1 = t0 + 1;
+  const t0w = jsMod(t0, angularFreq);
+  const t1w = jsMod(t1, angularFreq);
+  const h00 = jsHash21(r0, t0w);
+  const h10 = jsHash21(r1, t0w);
+  const h01 = jsHash21(r0, t1w);
+  const h11 = jsHash21(r1, t1w);
+  let fx = jsFract(rs);
+  let fy = jsFract(ts);
+  fx = fx * fx * (3 - 2 * fx);
+  fy = fy * fy * (3 - 2 * fy);
+  const a = h00 + (h10 - h00) * fx;
+  const b = h01 + (h11 - h01) * fx;
+  return a + (b - a) * fy;
+}
+
+// Pre-bake the polar swirl noise into a texture instead of computing per-fragment.
+export function buildRingNoiseTexture(
+  bakeTime: number = RING_SWIRL_BAKE_TIME,
+): THREE.DataTexture {
+  const W = NOISE_TEX_THETA;
+  const H = NOISE_TEX_R;
+  const data = new Uint8Array(W * H * 4);
+  const TWO_PI = Math.PI * 2;
+  for (let yi = 0; yi < H; yi++) {
+    const vR = yi / (H - 1);
+    const wDenom = Math.pow(vR + 0.6, 1.5);
+    const omega1 = (0.09 / wDenom) * bakeTime;
+    const omega2 = (0.18 / wDenom) * bakeTime;
+    const omega3 = (0.35 / wDenom) * bakeTime;
+    for (let xi = 0; xi < W; xi++) {
+      const theta = (xi / W) * TWO_PI - Math.PI;
+      const n1 = jsPolarValueNoise(vR, theta + omega1, 22.0, 48.0);
+      const n2 = jsPolarValueNoise(vR, theta + omega2, 56.0, 140.0);
+      const n3 = jsPolarValueNoise(vR, theta + omega3, 140.0, 300.0);
+      const n = n1 * 0.55 + n2 * 0.3 + n3 * 0.15;
+      const byte = Math.max(0, Math.min(255, Math.round(n * 255)));
+      const idx = (yi * W + xi) * 4;
+      data[idx] = byte;
+      data[idx + 1] = byte;
+      data[idx + 2] = byte;
+      data[idx + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(
+    data,
+    W,
+    H,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+export function makeRingDensityProfile(): Uint8Array<ArrayBuffer> {
+  const buf = new Uint8Array(new ArrayBuffer(PROFILE_LEN * 4));
+  for (let i = 0; i < PROFILE_LEN; i++) {
+    const vR = i / (PROFILE_LEN - 1);
+    let d: number;
+
+    if (vR < 0.103) {
+      const p = vR / 0.103;
+      d = 0.22 + p * 0.10;
+    } else if (vR < 0.341) {
+      const p = (vR - 0.103) / (0.341 - 0.103);
+      d = 0.25 + p * 0.25;
+    } else if (vR < 0.689) {
+      const p = (vR - 0.341) / (0.689 - 0.341);
+      d = 0.45 + 0.50 * smoothstep(0.0, 0.18, p) * (1.0 - smoothstep(0.78, 1.0, p));
+    } else if (vR < 0.751) {
+      const p = (vR - 0.689) / (0.751 - 0.689);
+      d = 0.95 * (1.0 - smoothstep(0.0, 0.40, p)) + 0.05 + 0.4 * smoothstep(0.60, 1.0, p);
+    } else if (vR < 0.951) {
+      const p = (vR - 0.751) / (0.951 - 0.751);
+      d = 0.55 + 0.20 * (1.0 - p);
+      const enckeDist = Math.abs(p - 0.78);
+      if (enckeDist < 0.012) {
+        d *= enckeDist / 0.012;
+      }
+      if (p > 0.92) d *= (1.0 - (p - 0.92) / 0.08) * 0.6;
+    } else if (vR < 0.985) {
+      d = 0.04;
+    } else {
+      const p = (vR - 0.985) / (1.0 - 0.985);
+      const g = Math.exp(-((p - 0.4) * (p - 0.4)) / 0.04);
+      d = 0.10 + 0.85 * g;
+    }
+
+    const byte = Math.max(0, Math.min(255, Math.round(d * 255)));
+    buf[i * 4 + 0] = byte;
+    buf[i * 4 + 1] = byte;
+    buf[i * 4 + 2] = byte;
+    buf[i * 4 + 3] = 255;
+  }
+  return buf;
+}
+
+export function createRingGeometry(): THREE.RingGeometry {
+  return new THREE.RingGeometry(
+    RING_INNER,
+    RING_OUTER,
+    RADIAL_SEGMENTS,
+    PHI_SEGMENTS,
+  );
+}
+
+export function createRingDensityTexture(): THREE.DataTexture {
+  const data = makeRingDensityProfile();
+  const tex = new THREE.DataTexture(
+    data,
+    PROFILE_LEN,
+    1,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  tex.needsUpdate = true;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+let cachedNoiseTexture: THREE.DataTexture | null = null;
+export function getRingNoiseTexture(): THREE.DataTexture {
+  if (!cachedNoiseTexture) cachedNoiseTexture = buildRingNoiseTexture();
+  return cachedNoiseTexture;
+}
+
+export function createRingMaterial(
+  densityTexture: THREE.DataTexture,
+): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: RINGS_VERT,
+    fragmentShader: RINGS_FRAG,
+    uniforms: {
+      uDensityProfile: { value: densityTexture },
+      uNoiseTex: { value: getRingNoiseTexture() },
+      uTime: { value: 0 },
+      uSunDir: { value: new THREE.Vector3(-400, 80, 200).normalize() },
+      uSaturnRadius: { value: SATURN_RADIUS },
+      uRingColor: { value: new THREE.Color(0.92, 0.8, 0.6) },
+      uInnerRadius: { value: RING_INNER },
+      uOuterRadius: { value: RING_OUTER },
+      uOpacity: { value: 0 },
+      uSwirlBase: { value: 0.7 },
+      uSwirlAmount: { value: 0.5 },
+    },
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+}
