@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
+import { Timeline } from "./components/Timeline/Timeline";
 import styles from "./styles/App.module.css";
 
 const CassiniScene = lazy(() =>
@@ -14,6 +15,7 @@ export default function App() {
           <CassiniScene />
         </Suspense>
       </SceneErrorBoundary>
+      <Timeline />
     </div>
   );
 }
