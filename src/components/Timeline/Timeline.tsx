@@ -1,5 +1,9 @@
 import { DIVES } from "@/scenes/cassini/finale/data/diveTable";
-import { TABLEAUS, getActiveTableau } from "@/scenes/cassini/data/tableaus";
+import {
+  JUMP_TO_TABLEAU,
+  TABLEAUS,
+  getActiveTableau,
+} from "@/scenes/cassini/data/tableaus";
 import { clampSeekT } from "@/scenes/cassini/data/missionConstants";
 import { displayToMission, missionToDisplay } from "@/scenes/cassini/lib/tRemap";
 import {
@@ -7,7 +11,7 @@ import {
   PlaybackSpeed,
   useMissionStore,
 } from "@/store/missionStore";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import styles from "./Timeline.module.css";
 
 //  Inline SVG icons
@@ -54,6 +58,21 @@ const MODEL_OPTIONS: { id: ActiveModel; label: string }[] = [
   { id: "CassiniHuygensAwithoutHyugens.glb", label: "CASSINI ONLY" },
 ];
 
+// Chronological encounter order.
+const JUMP_LABELS: { label: string; tableauId: string }[] = [
+  { label: "SATURN", tableauId: JUMP_TO_TABLEAU.SATURN! },
+  { label: "TITAN", tableauId: JUMP_TO_TABLEAU.TITAN! },
+  { label: "ENCELADUS", tableauId: JUMP_TO_TABLEAU.ENCELADUS! },
+  { label: "IAPETUS", tableauId: JUMP_TO_TABLEAU.IAPETUS! },
+  { label: "MIMAS", tableauId: JUMP_TO_TABLEAU.MIMAS! },
+  { label: "TETHYS", tableauId: JUMP_TO_TABLEAU.TETHYS! },
+  { label: "DIONE", tableauId: JUMP_TO_TABLEAU.DIONE! },
+  { label: "RHEA", tableauId: JUMP_TO_TABLEAU.RHEA! },
+  { label: "FAMILY", tableauId: JUMP_TO_TABLEAU.FAMILY! },
+  { label: "CRESCENTS", tableauId: JUMP_TO_TABLEAU.CRESCENTS! },
+  { label: "FINAL DIVES", tableauId: JUMP_TO_TABLEAU.FINALE! },
+];
+
 //  Component
 
 export function Timeline() {
@@ -69,10 +88,22 @@ export function Timeline() {
 
   const fillRef = useRef<HTMLDivElement>(null);
 
+  // Local until release, then the store's currentT takes back over.
+  const [dragDisplayT, setDragDisplayT] = useState<number | null>(null);
+
+  const tableauById = useMemo(() => {
+    const map: Record<string, { tStart: number; jumpT?: number }> = {};
+    for (const tab of TABLEAUS) {
+      map[tab.id] = { tStart: tab.tStart, jumpT: tab.jumpT };
+    }
+    return map;
+  }, []);
+
   const handleScrub = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const missionT = clampSeekT(displayToMission(parseFloat(e.target.value)));
       const displayT = missionToDisplay(missionT);
+      setDragDisplayT(displayT);
       setTime(missionT);
       if (fillRef.current) {
         fillRef.current.style.width = `${displayT * 100}%`;
@@ -81,8 +112,20 @@ export function Timeline() {
     [setTime],
   );
 
+  const endScrub = useCallback(() => setDragDisplayT(null), []);
+
+  const handleJump = useCallback(
+    (tableauId: string) => {
+      const tab = tableauById[tableauId];
+      if (!tab) return;
+      setTime(tab.jumpT ?? tab.tStart + 1e-5);
+      useMissionStore.getState().resetCamera();
+    },
+    [tableauById, setTime],
+  );
+
   const activeTableau = getActiveTableau(currentT);
-  const displayT = missionToDisplay(currentT);
+  const displayT = dragDisplayT ?? missionToDisplay(currentT);
   const pct = displayT * 100;
 
   return (
@@ -195,6 +238,10 @@ export function Timeline() {
             step="0.0001"
             value={displayT}
             onChange={handleScrub}
+            onPointerUp={endScrub}
+            onPointerCancel={endScrub}
+            onKeyUp={endScrub}
+            onBlur={endScrub}
             className={styles.slider}
             aria-label="Mission time scrubber"
             aria-valuemin={0}
@@ -202,6 +249,45 @@ export function Timeline() {
             aria-valuenow={parseFloat(pct.toFixed(1))}
             aria-valuetext={tToMissionDate(currentT)}
           />
+
+          {activeTableau.kind === "finale" && (
+            <div className={styles.diveHitRow} aria-hidden={false}>
+              {DIVES.map((d) => {
+                const pt = missionToDisplay(d.t);
+                return (
+                  <button
+                    key={`dive-hit-${d.index}`}
+                    type="button"
+                    className={`${styles.diveHit}${d.isFinalFive ? ` ${styles.diveHitFinal5}` : ""}`}
+                    style={{ left: `${pt * 100}%` }}
+                    onClick={() => {
+                      setTime(d.t);
+                      useMissionStore.getState().resetCamera();
+                    }}
+                    title={`Dive ${d.index} / ${DIVES.length} -- ${d.date}${d.notes ? ` -- ${d.notes}` : ""}`}
+                    aria-label={`Jump to dive ${d.index}, ${d.date}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.divider} aria-hidden />
+
+      <div className={styles.jumpContainer}>
+        <span className={styles.modelSelectLabel}>JUMP TO</span>
+        <div className={styles.jumpGroup}>
+          {JUMP_LABELS.map(({ label, tableauId }) => (
+            <button
+              key={label}
+              className={styles.jumpBtn}
+              onClick={() => handleJump(tableauId)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
