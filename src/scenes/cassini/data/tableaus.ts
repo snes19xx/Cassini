@@ -629,4 +629,5 @@ export const JUMP_TO_TABLEAU: Record<string, string> = {
   FAMILY: "family_portrait",
   CRESCENTS: "three_crescents",
   FINALE: "finale_approach",
+  ATMOSPHERE: "finale_atmospheric",
 };

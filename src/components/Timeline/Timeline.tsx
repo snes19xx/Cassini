@@ -71,6 +71,7 @@ const JUMP_LABELS: { label: string; tableauId: string }[] = [
   { label: "FAMILY", tableauId: JUMP_TO_TABLEAU.FAMILY! },
   { label: "CRESCENTS", tableauId: JUMP_TO_TABLEAU.CRESCENTS! },
   { label: "FINAL DIVES", tableauId: JUMP_TO_TABLEAU.FINALE! },
+  { label: "GRAND FINALE", tableauId: JUMP_TO_TABLEAU.ATMOSPHERE! },
 ];
 
 //  Component
