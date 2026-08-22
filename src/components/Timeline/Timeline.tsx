@@ -1,4 +1,3 @@
-import { PHASES } from "@/scenes/cassini/data/phases";
 import {
   ActiveModel,
   PlaybackSpeed,
@@ -43,19 +42,12 @@ function tToPercent(t: number): string {
   return `${(t * 100).toFixed(1)}%`;
 }
 
-function activePhaseLabel(t: number): string {
-  const active = [...PHASES].reverse().find((p) => t >= p.t);
-  return active ? active.name : "LAUNCH";
-}
-
 const SPEEDS: PlaybackSpeed[] = [1, 2, 5, 10];
 
 const MODEL_OPTIONS: { id: ActiveModel; label: string }[] = [
-  { id: "Cassini_Assembly.glb", label: "ASSEMBLY" },
   { id: "CassiniHuygensA.glb", label: "TRUECOLOR" },
   { id: "CassiniHuygensAwithout_Cassini.glb", label: "HUYGENS ONLY" },
   { id: "CassiniHuygensAwithoutHyugens.glb", label: "CASSINI ONLY" },
-  { id: "CassiniHuygensB.glb", label: "COMBINED" },
 ];
 
 //  Component
@@ -84,7 +76,6 @@ export function Timeline() {
     [setTime],
   );
 
-  const phaseLabel = activePhaseLabel(currentT);
   const pct = currentT * 100;
 
   return (
@@ -120,10 +111,6 @@ export function Timeline() {
 
       {/* Scrubber track */}
       <div className={styles.track}>
-        <div className={styles.phaseLabel} aria-live="polite">
-          {phaseLabel}
-        </div>
-
         <div className={styles.scrubberRow}>
           <div
             ref={fillRef}
@@ -148,23 +135,6 @@ export function Timeline() {
                 fill="var(--color-fg-dim)"
                 opacity={0.5}
               />
-            ))}
-            {PHASES.map((phase) => (
-              <g key={phase.id}>
-                <rect
-                  x={phase.t * 1000}
-                  y={0}
-                  width={1}
-                  height={20}
-                  fill="var(--color-accent)"
-                  opacity={0.55}
-                />
-                <polygon
-                  points={`${phase.t * 1000},0 ${phase.t * 1000 - 3},6 ${phase.t * 1000},12 ${phase.t * 1000 + 3},6`}
-                  fill="var(--color-accent)"
-                  opacity={0.7}
-                />
-              </g>
             ))}
             <rect
               x={currentT * 1000}
