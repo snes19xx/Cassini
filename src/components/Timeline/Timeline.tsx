@@ -101,7 +101,7 @@ export function Timeline() {
 
   const handleScrub = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const missionT = displayToMission(clampSeekT(parseFloat(e.target.value)));
+      const missionT = clampSeekT(displayToMission(parseFloat(e.target.value)));
       const displayT = missionToDisplay(missionT);
       setDragDisplayT(displayT);
       setTime(missionT);

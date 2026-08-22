@@ -28,6 +28,16 @@ export function isTerminalTableau(id: string): boolean {
   return TERMINAL_TABLEAU_IDS.has(id);
 }
 
+// The two Kepler-orbit finale tableaus, driven per-frame by RingDiveCameraDriver.
+export const ORBITAL_TABLEAU_IDS: ReadonlySet<string> = new Set([
+  "finale_swing_around",
+  "finale_ring_dive",
+]);
+
+export function isOrbitalTableau(id: string): boolean {
+  return ORBITAL_TABLEAU_IDS.has(id);
+}
+
 // Wall-clock seconds for the full mission at 1x playback (displayT 0 to 1).
 // MissionTimeAdvancer divides by this.
 export const FULL_MISSION_SECONDS = 281.4;
