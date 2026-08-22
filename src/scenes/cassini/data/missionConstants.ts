@@ -8,6 +8,15 @@ export const TERMINAL_T_START = 0.994677;
 // Start of visible break-up, and the last ring-plane crossing of the Final Five.
 export const DISINTEGRATION_T_START = 0.999115;
 
+// Furthest t any seek control may land on. Break-up and the end card
+// past this point are reachable only by playing through.
+export const SEEK_MAX_T = DISINTEGRATION_T_START;
+
+// Clamp a user-driven seek to the scrubbable range.
+export function clampSeekT(t: number): number {
+  return Math.min(t, SEEK_MAX_T);
+}
+
 // The two terminal tableaus: sphere-Saturn hidden, SkyDome/RingBackdrop/
 // CassiniTrail on the terminal stage, camera on the locked descent script.
 export const TERMINAL_TABLEAU_IDS: ReadonlySet<string> = new Set([
