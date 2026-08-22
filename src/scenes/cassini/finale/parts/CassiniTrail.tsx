@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
 import { TERMINAL_T_START } from "../../data/missionConstants";
+import { useCassiniDebugStore } from "../lib/cassiniDebug";
 import { getPlungeCassiniPos } from "../lib/plungeTrajectory";
 
 const T_START = TERMINAL_T_START;
@@ -102,17 +103,27 @@ export function CassiniTrail() {
   const _tan = useMemo(() => new THREE.Vector3(), []);
   const _view = useMemo(() => new THREE.Vector3(), []);
   const _side = useMemo(() => new THREE.Vector3(), []);
+  const _a = useMemo(() => new THREE.Vector3(), []);
+  const _b = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(() => {
     if (!hazeRef.current || !coreRef.current) return;
 
     const t = useMissionStore.getState().currentT;
+    const s = useCassiniDebugStore.getState();
+
+    getPlungeCassiniPos(T_START, _a);
+    getPlungeCassiniPos(T_END, _b);
+    const pathLen = Math.max(1, _a.distanceTo(_b));
     const windowT = T_END - T_START;
     const traveled = Math.max(0, t - T_START);
-    const span = Math.min(traveled, windowT);
+    const capSpanT = (s.trailLength / pathLen) * windowT;
+    const span = Math.min(traveled, capSpanT);
 
     const hPos = hazeBuf.positions;
+    const hAl = hazeBuf.alphas;
     const cPos = coreBuf.positions;
+    const cAl = coreBuf.alphas;
 
     for (let k = 0; k < K; k++) {
       const kn = k / (K - 1); // head to tail
@@ -130,26 +141,55 @@ export function CassiniTrail() {
       if (_side.lengthSq() < 1e-8) _side.set(0, 1, 0);
       _side.normalize();
 
-      const halfW = 0.7;
+      // Single low-frequency wander breaks the CG-perfect straight line.
+      const ph = windowT > 0 ? (tk - T_START) / windowT : 0;
+      const wander =
+        Math.sin(ph * 3.1 + 0.8) * 0.18 + Math.sin(ph * 6.5 + 2.4) * 0.07;
+      _p.addScaledVector(_side, wander * s.trailWander);
+
+      // Twin-strand offset mimics the two parallel engine exhausts.
+      const strandSep = s.trailWidth * 0.22;
       const i = k * 2;
-      hPos[i * 3] = _p.x + _side.x * halfW;
-      hPos[i * 3 + 1] = _p.y + _side.y * halfW;
-      hPos[i * 3 + 2] = _p.z + _side.z * halfW;
-      hPos[(i + 1) * 3] = _p.x - _side.x * halfW;
-      hPos[(i + 1) * 3 + 1] = _p.y - _side.y * halfW;
-      hPos[(i + 1) * 3 + 2] = _p.z - _side.z * halfW;
-      cPos[i * 3] = hPos[i * 3]!;
-      cPos[i * 3 + 1] = hPos[i * 3 + 1]!;
-      cPos[i * 3 + 2] = hPos[i * 3 + 2]!;
-      cPos[(i + 1) * 3] = hPos[(i + 1) * 3]!;
-      cPos[(i + 1) * 3 + 1] = hPos[(i + 1) * 3 + 1]!;
-      cPos[(i + 1) * 3 + 2] = hPos[(i + 1) * 3 + 2]!;
+
+      const hazeHalfW = s.trailWidth * (1.0 + 0.6 * kn) * 0.5;
+      const hazeAlpha =
+        s.trailOpacity * 0.45 * Math.pow(Math.max(0, 1 - kn), 2.5);
+      const hx = _p.x + _side.x * strandSep;
+      const hy = _p.y + _side.y * strandSep;
+      const hz = _p.z + _side.z * strandSep;
+      hPos[i * 3] = hx + _side.x * hazeHalfW;
+      hPos[i * 3 + 1] = hy + _side.y * hazeHalfW;
+      hPos[i * 3 + 2] = hz + _side.z * hazeHalfW;
+      hPos[(i + 1) * 3] = hx - _side.x * hazeHalfW;
+      hPos[(i + 1) * 3 + 1] = hy - _side.y * hazeHalfW;
+      hPos[(i + 1) * 3 + 2] = hz - _side.z * hazeHalfW;
+      hAl[i] = hazeAlpha;
+      hAl[i + 1] = hazeAlpha;
+
+      const coreHalfW = s.trailWidth * (0.06 + 0.06 * kn) * 0.5;
+      const coreAlpha =
+        s.trailOpacity * 0.95 * Math.pow(Math.max(0, 1 - kn), 3.5);
+      const cx = _p.x - _side.x * strandSep;
+      const cy = _p.y - _side.y * strandSep;
+      const cz = _p.z - _side.z * strandSep;
+      cPos[i * 3] = cx + _side.x * coreHalfW;
+      cPos[i * 3 + 1] = cy + _side.y * coreHalfW;
+      cPos[i * 3 + 2] = cz + _side.z * coreHalfW;
+      cPos[(i + 1) * 3] = cx - _side.x * coreHalfW;
+      cPos[(i + 1) * 3 + 1] = cy - _side.y * coreHalfW;
+      cPos[(i + 1) * 3 + 2] = cz - _side.z * coreHalfW;
+      cAl[i] = coreAlpha;
+      cAl[i + 1] = coreAlpha;
     }
 
     (hazeGeo.getAttribute("position") as THREE.BufferAttribute).needsUpdate =
       true;
+    (hazeGeo.getAttribute("aAlpha") as THREE.BufferAttribute).needsUpdate =
+      true;
     hazeGeo.computeBoundingSphere();
     (coreGeo.getAttribute("position") as THREE.BufferAttribute).needsUpdate =
+      true;
+    (coreGeo.getAttribute("aAlpha") as THREE.BufferAttribute).needsUpdate =
       true;
     coreGeo.computeBoundingSphere();
   });
