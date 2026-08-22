@@ -1,3 +1,7 @@
+import { DIVES } from "@/scenes/cassini/finale/data/diveTable";
+import { TABLEAUS, getActiveTableau } from "@/scenes/cassini/data/tableaus";
+import { clampSeekT } from "@/scenes/cassini/data/missionConstants";
+import { displayToMission, missionToDisplay } from "@/scenes/cassini/lib/tRemap";
 import {
   ActiveModel,
   PlaybackSpeed,
@@ -67,16 +71,19 @@ export function Timeline() {
 
   const handleScrub = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const t = parseFloat(e.target.value);
-      setTime(t);
+      const missionT = clampSeekT(displayToMission(parseFloat(e.target.value)));
+      const displayT = missionToDisplay(missionT);
+      setTime(missionT);
       if (fillRef.current) {
-        fillRef.current.style.width = `${t * 100}%`;
+        fillRef.current.style.width = `${displayT * 100}%`;
       }
     },
     [setTime],
   );
 
-  const pct = currentT * 100;
+  const activeTableau = getActiveTableau(currentT);
+  const displayT = missionToDisplay(currentT);
+  const pct = displayT * 100;
 
   return (
     <div className={styles.wrapper} role="region" aria-label="Mission timeline">
@@ -136,8 +143,43 @@ export function Timeline() {
                 opacity={0.5}
               />
             ))}
+            {TABLEAUS.map((tab) => {
+              const pt = missionToDisplay(tab.tStart);
+              return (
+                <g key={tab.id}>
+                  <rect
+                    x={pt * 1000}
+                    y={0}
+                    width={1}
+                    height={20}
+                    fill="var(--color-accent)"
+                    opacity={0.55}
+                  />
+                  <polygon
+                    points={`${pt * 1000},0 ${pt * 1000 - 3},6 ${pt * 1000},12 ${pt * 1000 + 3},6`}
+                    fill="var(--color-accent)"
+                    opacity={0.7}
+                  />
+                </g>
+              );
+            })}
+            {activeTableau.kind === "finale" &&
+              DIVES.map((d) => {
+                const pt = missionToDisplay(d.t);
+                return (
+                  <rect
+                    key={`dive-${d.index}`}
+                    x={pt * 1000}
+                    y={11}
+                    width={0.6}
+                    height={9}
+                    fill={d.isFinalFive ? "var(--color-warn, #ff6b35)" : "var(--color-accent)"}
+                    opacity={0.55}
+                  />
+                );
+              })}
             <rect
-              x={currentT * 1000}
+              x={displayT * 1000}
               y={0}
               width={1.5}
               height={20}
@@ -151,7 +193,7 @@ export function Timeline() {
             min="0"
             max="1"
             step="0.0001"
-            value={currentT}
+            value={displayT}
             onChange={handleScrub}
             className={styles.slider}
             aria-label="Mission time scrubber"
