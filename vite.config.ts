@@ -9,10 +9,10 @@ export default defineConfig({
 
     // Needed for shader strings in the scene lib
     glsl({
+      // defaultExtension off: it swallows vite's extensionless virtual modules.
       include: ["**/*.glsl", "**/*.vert", "**/*.frag"],
       warnDuplicatedImports: true,
-      defaultExtension: "glsl",
-      compress: false, // keep whitespace so GLSL error line numbers stay accurate
+      compress: false, // keeps GLSL line numbers accurate
     }),
   ],
 
