@@ -8,10 +8,11 @@ export default defineConfig({
     react(),
 
     // Needed for shader strings in the scene lib
+    // include needs @rollup/pluginutils on vite 5, or it filters nothing
     glsl({
-      // defaultExtension off: it swallows vite's extensionless virtual modules.
       include: ["**/*.glsl", "**/*.vert", "**/*.frag"],
       warnDuplicatedImports: true,
+      defaultExtension: "glsl",
       compress: false, // keeps GLSL line numbers accurate
     }),
   ],
