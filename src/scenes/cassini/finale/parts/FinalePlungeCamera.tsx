@@ -13,6 +13,7 @@ import { isTerminalTableau } from "../lib/finaleDescent";
 
 // Distance to the derived look target. Only direction matters for framing.
 const LOOK_DIST = 800;
+const DEFAULT_FOV = 45;
 
 const _camPos = new THREE.Vector3();
 const _look = new THREE.Vector3();
@@ -24,8 +25,13 @@ export function FinalePlungeCamera() {
     controls: { target?: THREE.Vector3 } | null;
   };
   const wasActiveRef = useRef(false);
+  // Glides into the locked camera over ~0.4s, re-seeded from the live camera
+  // on each (re)activation.
+  const dampPosRef = useRef(new THREE.Vector3());
+  const dampLookRef = useRef(new THREE.Vector3());
+  const dampFovRef = useRef(DEFAULT_FOV);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const t = useMissionStore.getState().currentT;
     const tableau = getActiveTableau(t);
     const active = isTerminalTableau(tableau.id);
@@ -39,6 +45,7 @@ export function FinalePlungeCamera() {
       return;
     }
 
+    const justActivated = !wasActiveRef.current;
     wasActiveRef.current = true;
 
     const cs = useCameraDebugStore.getState();
@@ -48,13 +55,28 @@ export function FinalePlungeCamera() {
     const cp = Math.cos(pitch);
     _dir.set(cp * Math.cos(yaw), Math.sin(pitch), cp * Math.sin(yaw));
     _look.copy(_camPos).addScaledVector(_dir, LOOK_DIST);
+    const targetFov = cs.fov;
 
-    camera.position.copy(_camPos);
+    const dt = Math.min(0.05, Math.max(0, delta));
+    if (justActivated) {
+      dampPosRef.current.copy(camera.position);
+      dampLookRef.current.copy(
+        (controls?.target as THREE.Vector3 | undefined) ?? _look,
+      );
+      dampFovRef.current =
+        camera instanceof THREE.PerspectiveCamera ? camera.fov : targetFov;
+    }
+    const a = 1 - Math.exp(-4 * dt);
+    dampPosRef.current.lerp(_camPos, a);
+    dampLookRef.current.lerp(_look, a);
+    dampFovRef.current += (targetFov - dampFovRef.current) * a;
+
+    camera.position.copy(dampPosRef.current);
     camera.up.set(0, 1, 0);
-    if (controls?.target) controls.target.copy(_look);
-    camera.lookAt(_look);
+    if (controls?.target) controls.target.copy(dampLookRef.current);
+    camera.lookAt(dampLookRef.current);
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = cs.fov;
+      camera.fov = dampFovRef.current;
       camera.updateProjectionMatrix();
     }
   });
