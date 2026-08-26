@@ -1,6 +1,7 @@
 // Fog overlay for the terminal descent. Density and color ramp with descent
 // progress so the atmosphere thickens visibly as Cassini falls.
 
+import { Trail } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -136,6 +137,7 @@ function MeteorShower() {
 function MeteorStreak({ cfg, slot }: { cfg: SparkCfg; slot: number }) {
   const meshRef = useRef<THREE.Mesh>(null!);
   const fStartRef = useRef(-1);
+  const d = useMeteorDebugStore();
 
   const initialPos = useMemo(() => {
     const v = new THREE.Vector3();
@@ -192,10 +194,37 @@ function MeteorStreak({ cfg, slot }: { cfg: SparkCfg; slot: number }) {
       .addScaledVector(_mUp, cfg.vert * fanW * md.fan * md.vBias - fall);
   });
 
+  const w = Math.min(1, cfg.warm * 0.6 + d.warmth * 0.7);
+  const b = d.brightness;
+  const headColor = new THREE.Color(
+    b,
+    b * (0.82 - w * 0.32),
+    b * (0.66 - w * 0.5),
+  );
+  const trailColor = new THREE.Color(
+    b * 0.85,
+    b * (0.45 - w * 0.25),
+    b * (0.2 - w * 0.15),
+  );
+
+  const headR = d.headSize * (0.5 + cfg.width * 0.5);
+  const width = cfg.width * d.streakWidth;
+  // Core fragments keep the long trail, shower sparks get a shorter one.
+  const length = cfg.core ? d.streakLength : d.streakLength * 0.5;
+
   return (
-    <mesh ref={meshRef} position={initialPos}>
-      <sphereGeometry args={[0.5, 10, 10]} />
-      <meshBasicMaterial color={cfg.core ? "#ffd9a0" : "#ff8850"} />
-    </mesh>
+    <Trail
+      width={width}
+      color={trailColor}
+      length={length}
+      decay={d.decay}
+      local={false}
+      attenuation={(x) => x * x}
+    >
+      <mesh ref={meshRef} position={initialPos}>
+        <sphereGeometry args={[headR, 10, 10]} />
+        <meshBasicMaterial color={headColor} transparent depthWrite={false} />
+      </mesh>
+    </Trail>
   );
 }
