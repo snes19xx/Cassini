@@ -6,17 +6,29 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
 import { getActiveTableau } from "../../data/tableaus";
+import { ringDiveStateRef } from "../../Spacecraft";
 import {
   getDescentProgress,
   getFinaleShot,
   isTerminalTableau,
 } from "../lib/finaleDescent";
 import { useMeteorDebugStore } from "../lib/meteorDebug";
-import { getPlungeCassiniPos } from "../lib/plungeTrajectory";
+import {
+  getPlungeCassiniPos,
+  getPlungeEndpoints,
+} from "../lib/plungeTrajectory";
 
 // Avoids allocating a THREE.Color pair every frame.
 const _hazeHigh = new THREE.Color(0x6f7e92);
 const _hazeLow = new THREE.Color(0xcfc6b2);
+
+const _mUp = new THREE.Vector3();
+const _mTravel = new THREE.Vector3();
+const _mSide = new THREE.Vector3();
+const _pEntry = new THREE.Vector3();
+const _pExit = new THREE.Vector3();
+const _pSeg = new THREE.Vector3();
+const _proj = new THREE.Vector3();
 
 export function AtmosphericHaze() {
   const { scene } = useThree();
@@ -96,29 +108,92 @@ export function CassiniMeteor() {
 
 function MeteorShower() {
   const count = useMeteorDebugStore((s) => s.count);
-  const configs = useMemo(
-    () => Array.from({ length: count }, (_, i) => sparkConfig(i, count)),
+  const sparks = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => {
+        const cfg = sparkConfig(i, count);
+        const slot = Math.min(
+          1,
+          Math.max(
+            0,
+            (i + 0.5) / count + ((cfg.emitJitter - 0.5) * 0.8) / count,
+          ),
+        );
+        return { cfg, slot };
+      }),
     [count],
   );
 
   return (
     <group>
-      {configs.map((cfg, i) => (
-        <MeteorStreak key={i} cfg={cfg} />
+      {sparks.map(({ cfg, slot }, i) => (
+        <MeteorStreak key={i} cfg={cfg} slot={slot} />
       ))}
     </group>
   );
 }
 
-function MeteorStreak({ cfg }: { cfg: SparkCfg }) {
+function MeteorStreak({ cfg, slot }: { cfg: SparkCfg; slot: number }) {
+  const meshRef = useRef<THREE.Mesh>(null!);
+  const fStartRef = useRef(-1);
+
   const initialPos = useMemo(() => {
     const v = new THREE.Vector3();
     getPlungeCassiniPos(useMissionStore.getState().currentT, v);
     return v;
   }, []);
 
+  useFrame(() => {
+    if (!meshRef.current) return;
+    const md = useMeteorDebugStore.getState();
+    const P = ringDiveStateRef.position;
+    const V = ringDiveStateRef.velocity;
+
+    _mUp.copy(P).normalize();
+    const vDotUp = V.dot(_mUp);
+    _mTravel.copy(V).addScaledVector(_mUp, -vDotUp);
+    if (_mTravel.lengthSq() > 1e-5) _mTravel.normalize();
+    else _mTravel.set(0, 0, 1);
+    _mSide.crossVectors(_mTravel, _mUp).normalize();
+
+    // Route fraction of the live head, projected onto entry->exit.
+    getPlungeEndpoints(_pEntry, _pExit);
+    _pSeg.subVectors(_pExit, _pEntry);
+    const segSq = _pSeg.lengthSq();
+    let fNow =
+      segSq > 1e-9 ? _proj.subVectors(P, _pEntry).dot(_pSeg) / segSq : 1;
+    fNow = Math.min(1, Math.max(0, fNow));
+    if (fStartRef.current < 0) fStartRef.current = fNow;
+    const fStart = fStartRef.current;
+    const segLen = Math.max(0.001, 1 - fStart);
+    const emitLo = fStart + md.splitStart * segLen;
+    const emitHi = fStart + 0.99 * segLen;
+    const eF = emitLo + (emitHi - emitLo) * slot;
+
+    if (fNow <= eF) {
+      meshRef.current.position.copy(P);
+      return;
+    }
+
+    // Each fragment anchors to the moving head and peels back + outward
+    // with age
+    const an = Math.min(1, (fNow - eF) / segLen);
+    const open = Math.pow(an, md.burstEase);
+    const back = an * cfg.lag * md.elongation * md.spread;
+    const fanW = open * md.spread;
+    const fall = md.gravity * an * an * md.spread;
+    const waver =
+      Math.sin(an * md.waverFreq * 6 + cfg.phase) * cfg.curl * md.waver * fanW;
+
+    meshRef.current.position
+      .copy(P)
+      .addScaledVector(_mTravel, -back)
+      .addScaledVector(_mSide, cfg.perp * fanW * md.fan + waver)
+      .addScaledVector(_mUp, cfg.vert * fanW * md.fan * md.vBias - fall);
+  });
+
   return (
-    <mesh position={initialPos}>
+    <mesh ref={meshRef} position={initialPos}>
       <sphereGeometry args={[0.5, 10, 10]} />
       <meshBasicMaterial color={cfg.core ? "#ffd9a0" : "#ff8850"} />
     </mesh>
