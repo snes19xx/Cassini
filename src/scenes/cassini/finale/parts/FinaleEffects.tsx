@@ -3,6 +3,7 @@
 
 import { Trail } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
@@ -226,5 +227,26 @@ function MeteorStreak({ cfg, slot }: { cfg: SparkCfg; slot: number }) {
         <meshBasicMaterial color={headColor} transparent depthWrite={false} />
       </mesh>
     </Trail>
+  );
+}
+
+export function FinaleBloom() {
+  const isTerminal = useMissionStore((s) =>
+    isTerminalTableau(getActiveTableau(s.currentT).id),
+  );
+  const bloomIntensity = useMeteorDebugStore((s) => s.bloomIntensity);
+  const bloomThreshold = useMeteorDebugStore((s) => s.bloomThreshold);
+
+  if (!isTerminal) return null;
+
+  return (
+    <EffectComposer>
+      <Bloom
+        luminanceThreshold={bloomThreshold}
+        intensity={bloomIntensity}
+        levels={6}
+        mipmapBlur
+      />
+    </EffectComposer>
   );
 }
