@@ -1,7 +1,7 @@
 // src/scenes/cassini/parts/TableauMoonRenderer.tsx
 //
 // All moon meshes pre-mount and stay mounted; per-frame damping picks
-// which one is active instead of mount/unmount on every tableau swap.
+// which one is active, so no mesh mounts/unmounts on a tableau swap.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useGLTF } from "@react-three/drei";
@@ -102,7 +102,7 @@ const _orbAxis = new THREE.Vector3();
 const _orbEuler = new THREE.Euler();
 const _orbOffset = new THREE.Vector3();
 
-// PIA18322: refraction wraps Titan's crescent past the terminator.
+// PIA18322: refraction bends Titan's crescent past the terminator.
 const HAZE_VERT = /* glsl */ `
   #include <common>
   #include <logdepthbuf_pars_vertex>
@@ -132,7 +132,7 @@ const HAZE_FRAG = /* glsl */ `
     float ndv = abs(dot(N, V));
     // Dies before the shell's silhouette, so no detached ring with a gap.
     float limb = smoothstep(0.0, 0.16, ndv) * pow(1.0 - ndv, 5.0);
-    // Starts below the terminator so the crescent wraps a little further.
+    // Starts below the terminator so the crescent extends a little further.
     float wrap = smoothstep(-0.18, 0.45, dot(N, uSunDir));
     float a = limb * wrap * uIntensity;
     if (a < 0.003) discard;

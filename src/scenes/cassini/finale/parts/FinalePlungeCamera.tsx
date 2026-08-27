@@ -37,9 +37,12 @@ export function FinalePlungeCamera() {
     const active = isTerminalTableau(tableau.id);
 
     if (!active) {
-      if (wasActiveRef.current && camera instanceof THREE.PerspectiveCamera) {
-        camera.fov = tableau.camera.fov ?? DEFAULT_TABLEAU_FOV;
-        camera.updateProjectionMatrix();
+      if (wasActiveRef.current) {
+        camera.up.set(0, 1, 0);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = tableau.camera.fov ?? DEFAULT_TABLEAU_FOV;
+          camera.updateProjectionMatrix();
+        }
       }
       wasActiveRef.current = false;
       return;

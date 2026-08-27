@@ -1,11 +1,8 @@
 // src/scenes/cassini/data/phases.ts
 //
 // Per-body event content for the InfoPanel + ring-crossing visual cues.
-//
-// Pre-streamlining this file was a flat 38-entry PHASES array driving the
-// scrubber tick marks. The scrubber now uses TABLEAUS as its source of
-// truth (10 markers, one per scene); events here are pure InfoPanel
-// content keyed by body. See timeline.md for the rationale.
+// The scrubber's own tick marks come from TABLEAUS; this file is pure
+// InfoPanel content keyed by body.
 
 const MISSION_START_MS = new Date("1997-10-15").getTime();
 const MISSION_END_MS = new Date("2017-09-15").getTime();
@@ -14,7 +11,7 @@ const MISSION_SPAN_MS = MISSION_END_MS - MISSION_START_MS;
 export interface BodyEvent {
   /** Pretty-printed for display, e.g. "Mar 8, 2006". */
   date: string;
-  /** Local-midnight ms; used for ±90 day "active event" comparisons. */
+  /** Local-midnight ms; used for +/-90 day "active event" comparisons. */
   dateMs: number;
   /** Short title shown in the panel list. */
   title: string;
@@ -48,13 +45,8 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     id: "saturn",
     displayName: "SATURN",
     hook: "Cassini arrived at Saturn in 2004 and orbited for 13 years, mapping the rings, atmosphere, and seasons in unprecedented detail.",
-    // Audited vs docs/Timeline_NASA.pdf 2026-07-12 (timeline_analysis.md).
-    // The 2004 approach events all fall INSIDE this tableau's date window,
-    // so they highlight live during the arrival. The old "Three-moon
-    // portrait Sep 2011" entry was a garbled PIA18322 reference (that's
-    // Titan/Mimas/Rhea, Mar 2015 — owned by THREE CRESCENTS) and was
-    // removed; the hexagon entry moved to FAMILY PORTRAIT, whose window
-    // contains its date.
+    // The 2004 approach events all fall inside this tableau's date window,
+    // so they highlight live during the arrival.
     events: [
       ev(2002, 10, 31, "First long-distance image of Saturn"),
       ev(2004, 4, 7, "Two storms merge — only the second ever observed"),
@@ -88,7 +80,12 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     displayName: "ENCELADUS",
     hook: "A tiny ice moon hiding a global subsurface ocean. Cassini's most astrobiologically significant target.",
     events: [
-      ev(2005, 7, 13, "South-pole surprise — youthful terrain, water-vapor cloud"),
+      ev(
+        2005,
+        7,
+        13,
+        "South-pole surprise — youthful terrain, water-vapor cloud",
+      ),
       ev(2006, 3, 8, "Geyser plumes confirm subsurface liquid water"),
       ev(2007, 10, 9, "Tiger-stripe fractures imaged glowing with activity"),
       ev(2008, 3, 12, "Complex organic molecules detected in plumes"),
@@ -157,12 +154,16 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
   family_portrait: {
     id: "family_portrait",
     displayName: "FAMILY PORTRAIT",
-    // Timeline dates here read ≈2014 (tToDateMs is linear); the real
-    // quintet photo is July 29, 2011 — the true date lives in the copy,
-    // per the "cinematic, not a sim" rule.
+    // Timeline dates here read as ~2014 (tToDateMs is linear); the real
+    // quintet photo is July 29, 2011.
     hook: "July 29, 2011 — Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
     events: [
-      ev(2011, 7, 29, "Quintet in one frame — Janus, Pandora, Enceladus, Rhea, Mimas"),
+      ev(
+        2011,
+        7,
+        29,
+        "Quintet in one frame — Janus, Pandora, Enceladus, Rhea, Mimas",
+      ),
       ev(2011, 9, 15, "Five-moon portrait released — PIA14573"),
       ev(2013, 12, 3, "North-pole hexagonal jet stream captured top-down"),
     ],
@@ -174,9 +175,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     hook: "Titan (3,200 mi), Rhea (949 mi) and Mimas (246 mi) as crescents in one frame — March 25, 2015. Titan looks fuzzy because only its cloud layers are seen, and its atmosphere refracts sunlight around the limb so its crescent wraps a little further than an airless body's. Rhea's icy surface is rough with craters; tiny Mimas carries the scars of its own violent history.",
     events: [
       ev(2015, 3, 25, "Three-crescent portrait: Titan, Rhea, Mimas"),
-      // Release date per the "Triple Crescents" NASA image article
-      // (Triple Crescents - NASA.pdf, JUN 22 2015) — was May 21.
-      ev(2015, 6, 22, "Image article published — PIA18322"),
+      ev(2015, 6, 22, "Image article published - PIA18322"),
     ],
   },
 
@@ -184,8 +183,6 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     id: "grand_finale",
     displayName: "GRAND FINALE",
     hook: "Cassini's final five months: 22 dives between Saturn and its rings, ending with disintegration in the planet's atmosphere on Sep 15, 2017.",
-    // The April 2017 additions (2026-07-12, from Timeline_NASA.pdf) all
-    // fall inside RING DIVE's date window, so they highlight live.
     events: [
       ev(2016, 11, 29, "F-ring orbits begin"),
       ev(2017, 4, 12, "Hydrogen in Enceladus plume — chemical energy for life"),
@@ -202,15 +199,12 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
 
 const NINETY_DAYS_MS = 90 * 24 * 3600 * 1000;
 
-/** Convert mission t ∈ [0, 1] to wall-clock ms (1997-10-15 → 2017-09-15). */
+/** Convert mission t in [0, 1] to wall-clock ms (1997-10-15 to 2017-09-15). */
 export function tToDateMs(t: number): number {
   return MISSION_START_MS + Math.max(0, Math.min(1, t)) * MISSION_SPAN_MS;
 }
 
-/**
- * Find the event whose date is within ±90 days of `dateMs`. If multiple
- * qualify, returns the closest. Null if none are within the window.
- */
+/** Closest event within 90 days of `dateMs`, or null if none qualify. */
 export function findActiveEvent(
   events: BodyEvent[],
   dateMs: number,
@@ -227,12 +221,14 @@ export function findActiveEvent(
   return best;
 }
 
-// Ring-crossing flash trigger times. Was 22 historical entries (17 ring
-// dives + 5 Final Five). Reduced 2026-05-24 per crossings.md: ring_dive
-// is now a single-crossing half-revolution Kepler orbit, so only ONE
-// flash fires in its window. The Final Five atmospheric crossings remain.
-// Sync with stateAt.ts — both files consume the same conceptual list.
+// Ring-crossing flash trigger times: one for ring_dive's single crossing,
+// one each for the five Final Five atmospheric passes. stateAt.ts consumes
+// the same list.
 export const RING_CROSSING_T_VALUES: number[] = [
-  0.9902,    // ring_dive: -X ring-plane crossing inside the visible ring band
-  0.995565, 0.996453, 0.99734, 0.998228, 0.999115, // Final Five
+  0.9902, // ring_dive crossing
+  0.995565,
+  0.996453,
+  0.99734,
+  0.998228,
+  0.999115, // Final Five
 ];

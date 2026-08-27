@@ -3,10 +3,10 @@
 // Per-frame camera writer for the two orbital finale tableaus. thirdPerson
 // holds a chase framing outward from Saturn beyond Cassini, looking back.
 
+import type { FinaleCameraMode } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import type { FinaleCameraMode } from "@/store/missionStore";
 import { useMissionStore } from "../../../../store/missionStore";
 import { isOrbitalTableau } from "../../data/missionConstants";
 import { getActiveTableau } from "../../data/tableaus";
@@ -38,10 +38,48 @@ export function RingDiveCameraDriver() {
   };
   const finaleCameraMode = useMissionStore((s) => s.finaleCameraMode);
   const wasActiveRef = useRef(false);
+  const savedUpRef = useRef(new THREE.Vector3(0, 1, 0));
   const prevModeRef = useRef<FinaleCameraMode>(finaleCameraMode);
+  const userInteractedRef = useRef(false);
   const povYawRef = useRef(0);
   const povPitchRef = useRef(0);
   const povDragRef = useRef<{ x: number; y: number } | null>(null);
+  const tableauId = useMissionStore((s) => getActiveTableau(s.currentT).id);
+
+  // A mode or tableau change drops the grab-to-take-over state, unless it's
+  // just the boundary between the two orbital tableaus.
+  useEffect(() => {
+    if (
+      isOrbitalTableau(tableauId) &&
+      prevModeRef.current === finaleCameraMode
+    ) {
+      return;
+    }
+    userInteractedRef.current = false;
+    povYawRef.current = 0;
+    povPitchRef.current = 0;
+  }, [finaleCameraMode, tableauId]);
+
+  // thirdPerson lets the user grab OrbitControls and fly off; the driver
+  // stays hands-off until the mode or tableau changes again.
+  useEffect(() => {
+    if (!controls) return;
+    const c = controls as {
+      addEventListener?: (e: string, h: () => void) => void;
+      removeEventListener?: (e: string, h: () => void) => void;
+    };
+    const onStart = () => {
+      userInteractedRef.current = true;
+    };
+    c.addEventListener?.("start", onStart);
+    return () => c.removeEventListener?.("start", onStart);
+  }, [controls]);
+
+  useEffect(() => {
+    return () => {
+      camera.up.copy(savedUpRef.current);
+    };
+  }, [camera]);
 
   // Drag accumulates yaw/pitch only while pov is the live mode, so the
   // listeners stay inert everywhere else without a mount/unmount churn.
@@ -122,19 +160,22 @@ export function RingDiveCameraDriver() {
       }
     }
 
+    // pov always drives (this driver has the drag look-around, not
+    // OrbitControls); thirdPerson lets a grab hand off to the user.
     const isPov = finaleCameraMode === "pov";
     const shouldDrive =
       isOrbital &&
       !isWide &&
       !flyingPhase &&
-      (finaleCameraMode === "thirdPerson" || isPov);
+      (isPov || !userInteractedRef.current);
 
     if (!shouldDrive) {
-      if (wasActiveRef.current) camera.up.copy(DEFAULT_UP);
+      if (wasActiveRef.current) camera.up.copy(savedUpRef.current);
       wasActiveRef.current = false;
       return;
     }
 
+    if (!wasActiveRef.current) savedUpRef.current.copy(camera.up);
     wasActiveRef.current = true;
     camera.up.copy(DEFAULT_UP);
 

@@ -1,32 +1,7 @@
 // src/scenes/cassini/lib/textureService.ts
 //
-// Moon texture lifecycle service. Tracks which texture, placeholder or
-// optimized, each moon is currently bound to.
-//
-// Responsibilities per new_plan.md §9:
-//   1. Tier 1 placeholders (~50 KB each) load at app start; never disposed.
-//   2. Tier 2 optimized (~33 MB VRAM each) promotes when scrub is within
-//      PROMOTE_LEAD_T of a moon's window, and at most ONE is resident.
-//   3. Eviction handshake (rendering.md §4): rebind placeholder, dispose
-//      optimized, delete cache entry. In that order, atomically.
-//   4. AbortController on optimized fetches so a JUMP-TO mid-load cancels
-//      the wasted bytes.
-//   5. JUMP-TO never blocks: placeholder renders immediately, optimized
-//      swaps in when ready.
-//   6. BLUEPRINT toggle purges all optimized textures (debounced 250 ms to
-//      absorb rapid mode flipping).
-//   7. Saturn's texture is NOT managed here, it's always-resident in
-//      SaturnBody.tsx. Saturn never needs eviction.
-//
-// Consumer API:
-//   - subscribe(body, fn): listen for binding changes
-//   - getBinding(body): current { texture, tier }
-//
-// Driver responsibility (TextureServiceDriver.tsx):
-//   - call initialize() on canvas mount
-//   - call tick(currentT, mode, ...) every frame
-//   - call setBlueprintMode(...) when renderMode toggles
-//   - call setTitanMode(...) when titanSpectralMode changes
+// Moon texture lifecycle service: every moon holds an always-resident
+// placeholder, and at most one at a time also holds the optimized texture.
 
 import * as THREE from "three";
 import { TABLEAUS, getActiveTableau } from "../data/tableaus";
@@ -57,19 +32,8 @@ export const ALL_MOONS: MoonId[] = [
   "pandora",
 ];
 
-// Tunables
-//
-// PROMOTE_LEAD_T: how far ahead of a moon's window to start fetching its
-// optimized texture during cruise/saturn-focus. 0.04 is about 7s at 1x
-// playback (180s journey), about 0.7s at 10x.
-//
-// NOTE: There is intentionally NO grace window after `tEnd`. Originally
-// we had one, but it caused a bug: at t=0.490 (JUMP-TO IAPETUS) the
-// grace on Enceladus's window made `activeHiresOwner` return enceladus
-// because it iterated tableaus in order and matched Enceladus first. The
-// active tableau is now the authoritative owner; eviction happens
-// immediately when the user crosses into the next moon's window.
-
+// How far ahead of a moon's window to start fetching its optimized
+// texture during cruise/saturn-focus. 0.04 is about 7s at 1x playback.
 const PROMOTE_LEAD_T = 0.04;
 const BLUEPRINT_PURGE_DELAY_MS = 250;
 
@@ -106,13 +70,10 @@ const OPTIMIZED_PATH: Record<MoonId, string> = {
   pandora: "/textures/optimized/mimas_opt.webp",
 };
 
-// Titan spectral mode to (placeholder, optimized) paths.
-// Modes match TitanSpectralMode in missionStore.ts and the imaging
-// definitions in cassini_imaging.md.
-//
-// NOTE on naming quirks (preserved from the on-disk asset bake):
-//   - titan_visible's optimized file has a DOUBLE underscore.
-//   - titan_ir's placeholder lacks the _ph suffix (it's titan_ir.webp).
+// Titan spectral mode to (placeholder, optimized) paths, matching
+// TitanSpectralMode in missionStore.ts. Two on-disk naming quirks:
+// titan_visible's optimized file has a double underscore, and titan_ir's
+// placeholder lacks the _ph suffix.
 const TITAN_PLACEHOLDER_BY_MODE: Record<string, string> = {
   visible: "/textures/placeholders/titan_visible_ph.webp",
   vims_ir: "/textures/placeholders/titan_ir.webp",
@@ -190,11 +151,9 @@ const fetches = new Map<MoonId, AbortController>();
 const bindings = new Map<MoonId, Binding>();
 const listeners = new Map<MoonId, Set<() => void>>();
 
-// Deferred disposal queue. We can't dispose a texture in the same tick we
-// rebind it to a placeholder: React's effect hasn't committed the new
-// material.map yet, so the next frame would render with a disposed GL
-// texture handle (GL error, possible context loss, SCENE FAULT). Every
-// tick flushes the previous tick's pending disposals.
+// Disposing a texture the same tick it's rebound races React's effect
+// commit, so the next frame can render with a disposed GL handle. Every
+// tick flushes the previous tick's queue instead.
 const pendingDisposals: THREE.Texture[] = [];
 
 let initialized = false;
@@ -243,9 +202,9 @@ function setBinding(body: MoonId, next: Binding) {
 // Loader
 
 function configureTexture(tex: THREE.Texture, maxAniso: number) {
-  // Configure BEFORE the first GPU upload (rendering.md §4.3.1) so mipmaps
-  // generate on the first frame the texture is used, not later, after a
-  // racy `needsUpdate = true` cycle that produces RGB-stripe artifacts.
+  // Configure before the first GPU upload so mipmaps generate on the first
+  // frame the texture is used, not after a racy `needsUpdate = true` cycle
+  // that produces RGB-stripe artifacts.
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(8, maxAniso);
   tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -271,15 +230,7 @@ async function loadTexture(
     const blob = await res.blob();
     if (signal.aborted) return null;
     const tBlob = performance.now();
-    // `imageOrientation: "flipY"` is REQUIRED. three.js r156+ ignores the
-    // texture.flipY flag for ImageBitmap-sourced textures (WebGL doesn't
-    // honor UNPACK_FLIP_Y_WEBGL on ImageBitmap uploads), so the bitmap
-    // ends up in the texture with row 0 at the bottom-left of UV space.
-    // For an equirectangular moon map (row 0 = north pole), that means
-    // the texture renders upside-down on a SphereGeometry whose UVs put
-    // s,t=0,0 at the south pole. createImageBitmap with imageOrientation
-    // "flipY" pre-flips the bitmap so row 0 = bottom of image, restoring
-    // right-side-up rendering.
+    // Without this, moon maps render upside down.
     const bitmap = await createImageBitmap(blob, { imageOrientation: "flipY" });
     if (signal.aborted) {
       bitmap.close();
@@ -289,10 +240,9 @@ async function loadTexture(
     const tex = new THREE.Texture(bitmap);
     configureTexture(tex, gl.capabilities.getMaxAnisotropy());
     const tConfigure = performance.now();
-    // Pre-upload to GPU NOW, outside the render loop, so the first frame
-    // that uses this texture doesn't stall on the upload (rendering.md
-    // §3, uncompressed 2K texture is ~8 MB, 8K is ~134 MB). When this
-    // logs >200 ms the texture is almost certainly oversized.
+    // Pre-upload to GPU now, outside the render loop, so the first frame
+    // that uses this texture doesn't stall on the upload. Logging over
+    // 200 ms here means the texture is almost certainly oversized.
     try {
       gl.initTexture(tex);
     } catch (err) {
@@ -322,13 +272,9 @@ async function loadTexture(
 // Lifecycle
 
 /**
- * Load every moon placeholder PLUS every spectral-mode placeholder. All
- * are kept always-resident (one placeholder per asset is ~10 KB WebP,
- * ~60 KB total across the entire 7-moon + 4-titan-mode + 2-enceladus-mode
- * set, well below the always-resident budget). Preloading every spectral
- * variant up front is what makes the user's spectral-button click feel
- * instant: switchSpectralMode() reads from `placeholdersByUrl` synchronously
- * instead of awaiting a fresh fetch.
+ * Loads every moon placeholder plus every spectral-mode placeholder
+ * (~60 KB total, all kept always-resident) so a spectral-button click can
+ * rebind synchronously from `placeholdersByUrl` with no fetch.
  */
 export async function initialize(gl: THREE.WebGLRenderer) {
   if (initialized) return;
@@ -375,24 +321,17 @@ export async function initialize(gl: THREE.WebGLRenderer) {
   }
 }
 
-/**
- * Find which moon (if any) should own the single optimized-tier slot at
- * mission time `t`.
- *
- * 1. If the active tableau IS a moon, that body wins. This is the
- *    authoritative case: what the user is looking at right now.
- * 2. Otherwise (cruise / saturn_focus / finale) we may pre-fetch the
- *    NEXT moon if t is within `PROMOTE_LEAD_T` of its tStart.
- *
- * No grace window past tEnd. That caused a bug where the previous
- * moon's grace overlapped the next moon's window, and the in-order
- * iteration matched the wrong body.
- */
 // Multi-moon tableaus (group portraits) list their dominant moon first;
 // that one gets the optimized slot, the others stay on placeholders.
 const hiresBodyOf = (tab: (typeof TABLEAUS)[number]): string | null =>
   tab.body ?? tab.moons?.[0]?.body ?? null;
 
+/**
+ * The moon that should own the single optimized-tier slot at mission time
+ * `t`: the active tableau's body if it's a moon, otherwise the next moon
+ * if `t` is within `PROMOTE_LEAD_T` of its start. No grace window past
+ * `tEnd`, or adjacent windows would match the wrong body first.
+ */
 function activeHiresOwner(t: number): MoonId | null {
   const active = getActiveTableau(t);
   if (active.kind === "moon") {
@@ -460,11 +399,7 @@ async function promoteOptimized(body: MoonId, gl: THREE.WebGLRenderer) {
   setBinding(body, { texture: tex, tier: "optimized" });
 }
 
-/**
- * Frame tick. Run from a useFrame in TextureServiceDriver.
- * Reconciles state: at most one optimized resident; that one is for the
- * moon the user is currently looking at (or imminent next on cruise).
- */
+/** Reconciles state each frame so at most one optimized texture is resident. */
 export function tick(t: number, gl: THREE.WebGLRenderer) {
   if (!initialized) return;
   // Always flush prior-tick disposals first: React has committed by now.
@@ -517,20 +452,9 @@ export function setBlueprintMode(blueprint: boolean) {
 // Spectral mode switches (Titan + Enceladus)
 
 /**
- * Spectral-mode switch. Every mode's placeholder is preloaded during
- * initialize(), so the new placeholder is in memory and the rebind is
- * synchronous: the user sees the new mode's low-res texture within a
- * frame of clicking the button. The optimized variant promotes on the
- * next tick if this body is the active hi-res owner.
- *
- * Sequence:
- *   1. Cancel any in-flight optimized fetch for the old mode.
- *   2. Evict the old optimized (its asset file is now stale).
- *   3. Rebind synchronously to the new mode's placeholder from
- *      `placeholdersByUrl`. Old placeholder texture is NOT disposed,
- *      it's still useful if the user toggles back. (~10 KB each, total
- *      cap is bounded by the static URL set.)
- *   4. Next tick promotes the new mode's optimized.
+ * Rebinds `body` to the new spectral mode's cached placeholder, synchronous
+ * since initialize() already preloaded it. Cancels/evicts the old mode's
+ * optimized texture; the new mode's optimized promotes on the next tick.
  */
 function switchSpectralMode(body: MoonId, gl: THREE.WebGLRenderer): void {
   cancelFetch(body);
@@ -544,8 +468,7 @@ function switchSpectralMode(body: MoonId, gl: THREE.WebGLRenderer): void {
     return;
   }
 
-  // Fallback path: a mode that wasn't preloaded for some reason. Load
-  // it lazily. Only happens if initialize() failed for that URL.
+  // Only reached if initialize() failed to preload this mode's URL.
   void (async () => {
     const ac = new AbortController();
     const tex = await loadTexture(path, ac.signal, gl);

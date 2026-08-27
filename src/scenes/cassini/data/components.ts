@@ -15,16 +15,16 @@ export interface ComponentMetadata {
   mass: number;
   parent: string;
   stats: StatRow[];
-  // For busRelative: false == absolute scene-space position (driven by live mesh ref).
-  // For busRelative: true  == local offset FROM bus centre, rotated by spacecraft quaternion.
-  // A-series GLB applies scale=={0.5} per mesh, so scene units ≈ 0.5 × model metres.
+  // busRelative false: absolute scene-space position, driven by a live mesh
+  // ref. busRelative true: local offset from bus centre, rotated by the
+  // spacecraft quaternion (scene units run ~0.5x model metres).
   anchor: THREE.Vector3;
   modelRadius: number;
   busRelative: boolean;
 }
 
 export const COMPONENTS: ComponentMetadata[] = [
-  //  Primary — live mesh refs
+  // Primary: live mesh refs
 
   {
     id: "bus",
@@ -120,7 +120,6 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Boom length", value: "13.0 m" },
     ],
     // MAG is now bus-relative; this anchor field is documentation only.
-    // Authoritative dot position lives in labelOffsets.ts → SECONDARY_OFFSETS.mag
     anchor: new THREE.Vector3(1.5, -1.5, -2.5),
     modelRadius: 1.5,
     busRelative: true,
@@ -175,11 +174,9 @@ export const COMPONENTS: ComponentMetadata[] = [
     busRelative: false,
   },
 
-  //  Secondary — bus-relative offsets
-  // Offsets are in spacecraft-local space (+Y up toward HGA, +Z forward/instrument face).
-  // useLiveLabelAnchors rotates these by the spacecraft world quaternion each frame
-  // so they track rotation correctly without needing individual mesh refs.
-  // Bus body radius ≈ 0.6 scene units. Labels should sit just proud of that surface.
+  // Secondary: bus-relative offsets in spacecraft-local space (+Y toward
+  // HGA, +Z forward/instrument face), rotated each frame by
+  // useLiveLabelAnchors so they track rotation without individual mesh refs.
 
   {
     id: "vims",
@@ -384,7 +381,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Beamwidth", value: "~32° (up), ~24° (down)" },
       { label: "Type", value: "Corrugated cylindrical waveguide" },
     ],
-    // Authoritative dot position lives in labelOffsets.ts → SECONDARY_OFFSETS.lga1
+    // Dot position is authoritative in labelOffsets.ts SECONDARY_OFFSETS.lga1.
     anchor: new THREE.Vector3(0, 1.0, 0),
     modelRadius: 1.0,
     busRelative: true,
@@ -412,7 +409,6 @@ export const COMPONENTS: ComponentMetadata[] = [
   },
 ];
 
-// Lookup helper
 export function getComponent(id: string): ComponentMetadata | undefined {
   return COMPONENTS.find((c) => c.id === id);
 }

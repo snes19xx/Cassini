@@ -42,10 +42,8 @@ const Q_KEYS = ORIENTATION_KEYS.map((k) => {
 const _qScratch = new THREE.Quaternion();
 
 function orientationAt(t: number): THREE.Euler {
-  // Q_KEYS is non-empty (asserted at module init by ORIENTATION_KEYS),
-  // so first/last are always defined. Non-null assertions are safe under
-  // `noUncheckedIndexedAccess` — alternative would be early-return on
-  // an empty array which can't happen.
+  // Q_KEYS is non-empty (asserted at module init by ORIENTATION_KEYS), so
+  // first/last are always defined under noUncheckedIndexedAccess.
   let lo = Q_KEYS[0]!;
   let hi = Q_KEYS[Q_KEYS.length - 1]!;
   for (let i = 0; i < Q_KEYS.length - 1; i++) {
@@ -92,7 +90,7 @@ export function stateAt(t: number): MissionState {
   // Orbital maneuvers: slow drain through mission
   // Grand Finale (t~0.98): nearly depleted
   if (t <= 0.33) {
-    effects.propellant = 1.0 - t * 0.0455; // slow cruise drain (0.985 at t=0.33)
+    effects.propellant = 1.0 - t * 0.0455; // slow cruise drain
   } else if (t <= 0.34) {
     const soiP = norm(t, 0.33, 0.34);
     effects.propellant = 0.985 - soiP * 0.30; // SOI burn: big drop

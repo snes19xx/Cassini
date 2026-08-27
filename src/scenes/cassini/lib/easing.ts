@@ -13,7 +13,7 @@ export function easeOutBackSoft(t: number): number {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
 }
 
-/** Smooth step: 0 → 1 with zero first-derivative at endpoints. */
+/** Smooth step from 0 to 1 with zero first-derivative at endpoints. */
 export function smoothStep(t: number): number {
   return t * t * (3 - 2 * t)
 }

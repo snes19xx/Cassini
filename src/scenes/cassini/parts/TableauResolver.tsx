@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
+import { FinaleStage } from "../finale/FinaleStage";
 import { SaturnGroup } from "./SaturnGroup";
 import { TableauMoonRenderer } from "./TableauMoonRenderer";
 
@@ -161,11 +162,11 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
 export function TableauResolver() {
   const renderMode = useMissionStore((s) => s.renderMode);
 
-  // Both layers always mount.
   return (
     <>
       <GlobalSaturn renderMode={renderMode} />
       <TableauMoonRenderer renderMode={renderMode} />
+      <FinaleStage />
     </>
   );
 }
