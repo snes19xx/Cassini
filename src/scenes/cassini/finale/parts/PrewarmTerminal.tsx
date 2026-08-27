@@ -5,6 +5,12 @@
 
 import { Trail } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
+import {
+  BloomEffect,
+  EffectComposer as PostEffectComposer,
+  EffectPass,
+  RenderPass,
+} from "postprocessing";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
@@ -23,6 +29,8 @@ type Phase = "pending" | "warming" | "done";
 // first-paint shader compiles.
 const WARM_HOLDOFF_MS = 8000;
 const COMPILE_BUDGET_MS = 1500;
+// Backstop against a wedged compileAsync; the warm window always closes.
+const WARM_MAX_MS = 4000;
 
 /** Resolves when `p` settles or the budget expires; never rejects, never hangs. */
 function withBudget(p: Promise<unknown>, budgetMs: number): Promise<void> {
@@ -36,6 +44,46 @@ function withBudget(p: Promise<unknown>, budgetMs: number): Promise<void> {
   });
 }
 
+// Matches FinaleBloom's variant knobs; only intensity differs, and that's
+// a uniform, not a shader permutation.
+const WARM_BLOOM = { luminanceThreshold: 3.0, levels: 6 };
+
+/** Compiles FinaleBloom's shader chain against a throwaway offscreen target. */
+function warmBloomOffscreen(gl: THREE.WebGLRenderer, camera: THREE.Camera) {
+  let composer: PostEffectComposer | undefined;
+  const warmScene = new THREE.Scene();
+  const prevSize = gl.getSize(new THREE.Vector2());
+  const prevPixelRatio = gl.getPixelRatio();
+  try {
+    composer = new PostEffectComposer(gl, {
+      frameBufferType: THREE.HalfFloatType,
+    });
+    composer.autoRenderToScreen = false;
+    composer.addPass(new RenderPass(warmScene, camera));
+    composer.addPass(
+      new EffectPass(
+        camera,
+        new BloomEffect({
+          luminanceThreshold: WARM_BLOOM.luminanceThreshold,
+          intensity: 0,
+          levels: WARM_BLOOM.levels,
+          mipmapBlur: true,
+        }),
+      ),
+    );
+    composer.render();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn("[PrewarmTerminal] offscreen bloom warm skipped", err);
+    }
+  } finally {
+    composer?.dispose();
+    gl.setRenderTarget(null);
+    gl.setPixelRatio(prevPixelRatio);
+    gl.setSize(prevSize.x, prevSize.y, false);
+  }
+}
+
 export function PrewarmTerminal() {
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
@@ -45,6 +93,7 @@ export function PrewarmTerminal() {
   const groupRef = useRef<THREE.Group>(null);
   const compiledRef = useRef(false);
   const warmFramesRef = useRef(0);
+  const warmStartMsRef = useRef(0);
 
   const deckMaterial = useMemo(() => createTerminalDeckMaterial(), []);
   useEffect(() => () => deckMaterial.dispose(), [deckMaterial]);
@@ -80,14 +129,12 @@ export function PrewarmTerminal() {
     };
   }, []);
 
-  // Compile the warm subtree, then the live scene with a zero-intensity
-  // directional light added: TerminalSunFill's mount at terminal entry
-  // bumps the light count, forcing every lit material to recompile right
-  // at the cut, so this pass caches that +1-light permutation ahead of time.
+  // Second pass caches the +1-light permutation TerminalSunFill adds.
   useEffect(() => {
     if (phase !== "warming") return;
     let cancelled = false;
     const group = groupRef.current;
+    warmStartMsRef.current = performance.now();
     (async () => {
       try {
         if (group) {
@@ -106,6 +153,7 @@ export function PrewarmTerminal() {
           scene.remove(fill);
           fill.dispose();
         }
+        if (!cancelled) warmBloomOffscreen(gl, camera);
       } catch (err) {
         if (import.meta.env.DEV) {
           console.warn("[PrewarmTerminal] compile pass failed", err);
@@ -122,7 +170,8 @@ export function PrewarmTerminal() {
   useFrame(() => {
     if (phase !== "warming") return;
     warmFramesRef.current += 1;
-    if (compiledRef.current && warmFramesRef.current >= 4) {
+    const expired = performance.now() - warmStartMsRef.current > WARM_MAX_MS;
+    if ((compiledRef.current && warmFramesRef.current >= 4) || expired) {
       warmed = true;
       setPhase("done");
     }

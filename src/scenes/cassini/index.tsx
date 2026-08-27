@@ -14,6 +14,7 @@ import {
   FinaleBloom,
 } from "./finale/parts/FinaleEffects";
 import { FinalePlungeCamera } from "./finale/parts/FinalePlungeCamera";
+import { PrewarmTerminal } from "./finale/parts/PrewarmTerminal";
 import { RingDiveCameraDriver } from "./finale/parts/RingDiveCameraDriver";
 import { useTransitionStore } from "./lib/useTransitionStore";
 import { MissionTimeAdvancer } from "./parts/MissionTimeAdvancer";
@@ -131,6 +132,7 @@ export function CassiniScene() {
       <AtmosphericHaze />
       <CassiniMeteor />
       <FinaleBloom />
+      <PrewarmTerminal />
     </Canvas>
   );
 }
