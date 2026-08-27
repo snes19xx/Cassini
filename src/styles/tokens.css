@@ -54,4 +54,6 @@
   --panel-blur: 12px;
 
   --scene-bg: var(--color-bg);
+
+  --transition-veil: rgba(0, 0, 0, 0.92);
 }
