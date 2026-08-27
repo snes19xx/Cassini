@@ -1,10 +1,8 @@
-/*
-  src/scenes/cassini/parts/CassiniHuygensAwithoutHyugens.tsx
-  Cassini orbiter only = used for label mode after Huygens separation (t >= 0.361177).
-  HAS the same anchor ref shape as CassiniHuygensA so Spacecraft.tsx
-  can use one unified ref type for both label models.
-  GLB path /assets/CassiniHuygensAwithoutHyugens.glb
-*/
+// src/scenes/cassini/parts/CassiniHuygensAwithoutHyugens.tsx
+//
+// Cassini orbiter only, used after Huygens separation (t >= 0.361177).
+// Shares CassiniHuygensA's anchor ref shape so Spacecraft.tsx can use one
+// unified ref type for both label models.
 
 import { useGLTF } from "@react-three/drei";
 import React, { useEffect } from "react";
@@ -48,7 +46,7 @@ export function CassiniHuygensAwithoutHuygens({
 }: ModelProps) {
   const { nodes, materials } = useGLTF(
     "/assets/CassiniHuygensAwithoutHyugens.glb",
-  ) as GLTFResult;
+  ) as unknown as GLTFResult;
 
   useEffect(() => {
     Object.values(materials).forEach((m) => {
