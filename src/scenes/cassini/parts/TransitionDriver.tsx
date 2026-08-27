@@ -8,7 +8,7 @@ import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { isTerminalTableau } from "../data/missionConstants";
+import { isOrbitalTableau, isTerminalTableau } from "../data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "../data/tableaus";
 import { cassiniWorldPos } from "../lib/cassiniAnchor";
 import {
@@ -102,6 +102,10 @@ export function TransitionDriver() {
       return;
     }
     if (!controls) return;
+
+    // RingDiveCameraDriver already drives the camera continuously across
+    // the two orbital tableaus; a fly here would fight it mid-arc.
+    if (isOrbitalTableau(tableauId) && isOrbitalTableau(prevId)) return;
 
     if (isTerminalTableau(tableauId)) return;
 
