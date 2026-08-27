@@ -1,9 +1,7 @@
 // src/scenes/cassini/parts/SaturnBody.tsx
 //
-// Saturn's sphere and texture. Loads with a manual TextureLoader instead of
-// useLoader so mounting doesn't suspend: Saturn sits inside TableauResolver
-// next to the seven pre-mounted moons, and a suspended fetch there blanked
-// the whole tree until the texture landed.
+// Saturn's sphere and texture. Loads with a manual TextureLoader so
+// mounting never suspends the tree while the texture fetches.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -20,9 +18,7 @@ const SATURN_TEXTURE_PATH = "/textures/optimized/saturn_opt.webp";
 // texture everywhere else, right up to the atmosphere entry.
 const STORM_TEXTURE_PATH = "/textures/finale/saturn_storm_8k.webp";
 
-// Scene runs logarithmicDepthBuffer: true, so a raw ShaderMaterial has to
-// inject the logdepthbuf_* chunks itself or its depth writes land in the
-// wrong space and z-fight against the rings.
+// logarithmicDepthBuffer needs the logdepthbuf_* chunks injected by hand.
 const DECK_VERT = /* glsl */ `
 #include <common>
 #include <logdepthbuf_pars_vertex>
@@ -54,13 +50,11 @@ void main() {
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
 
-  // The raw storm map (hexagon included) is a saturated olive. Drive the
-  // swirl detail off its luma instead of its hue, and re-tint cream so it
-  // reads as brightness variation against the atmosphere, not a green ball.
+  // Drives swirl detail off luma and re-tints cream, so the olive storm map
+  // reads as brightness variation against the atmosphere.
   vec3 tex = mix(vec3(0.85, 0.78, 0.64), texture2D(uMap, vUv).rgb, uHasMap);
   float luma = dot(tex, vec3(0.299, 0.587, 0.114));
-  // Contrast for the swirls, but capped short of white so the deck stays
-  // close to the haze color instead of reading as a bright ball in the sky.
+  // Contrast for the swirls, capped short of white to stay near haze color.
   luma = clamp((luma - 0.5) * 1.5 + 0.5, 0.0, 1.0);
   vec3 cloud = vec3(0.80, 0.74, 0.60);
   vec3 deck = cloud * (0.52 + 0.42 * luma);
@@ -78,11 +72,8 @@ void main() {
 }
 `;
 
-// Grazing-camera material for the terminal plunge deck (see DECK_FRAG).
-// DECK_VERT/DECK_FRAG already carry their own logdepthbuf chunks, so the
-// factory passes them through untouched; this just keeps every scene
-// material going through the same construction path.
-function createTerminalDeckMaterial(): THREE.ShaderMaterial {
+// Exported so PrewarmTerminal.tsx can compile the same program early.
+export function createTerminalDeckMaterial(): THREE.ShaderMaterial {
   return makeLogDepthShaderMaterial({
     vertexShader: DECK_VERT,
     fragmentShader: DECK_FRAG,
@@ -203,6 +194,7 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
       // convention the other textures use.
       if (tex === stormTexture) tex.flipY = false;
       tex.needsUpdate = true;
+      gl.initTexture(tex); // avoids a first-bind hitch
     }
   }, [texture, stormTexture, gl]);
 
@@ -268,11 +260,7 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
         ? deckMaterialRef.current
         : spaceMaterialRef.current;
 
-  // Spin well past realism (true 10.7h rotation reads as static, since the
-  // bands are near-axisymmetric). Slower when Saturn is a backdrop behind
-  // a moon than when it's the focal subject, so it doesn't upstage the
-  // foreground. Near-still during the terminal plunge, where the camera
-  // grazes the cloud tops and the normal spin would whip the deck by.
+  // Spin well past realism so the near-axisymmetric bands read as motion.
   useFrame((_, deltaRaw) => {
     try {
       if (!meshRef.current) return;
@@ -285,12 +273,8 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
       meshRef.current.rotation.y +=
         delta * ((2 * Math.PI) / (10.7 * 3600)) * factor;
 
-      // React's `visible` prop below only updates on the commit after
-      // currentT crosses into the terminal window, and that commit is the
-      // one that stalls on the terminal stage's synchronous shader compiles
-      // - so the stale sphere stays painted for the whole stall. This
-      // priority-0 callback sees the fresh t and hides it in the same frame
-      // the boundary is crossed instead.
+      // Set imperatively here, not via the `visible` prop: that only
+      // commits after the stalling terminal-entry shader compile.
       const vis = renderMode === "blueprint" ? true : !terminal;
       if (meshRef.current.visible !== vis) meshRef.current.visible = vis;
     } catch (err) {

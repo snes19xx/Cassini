@@ -1,14 +1,14 @@
 // src/scenes/cassini/parts/SaturnRings.tsx
 //
 // Saturn's ring plane. Same never-suspends texture pattern as SaturnBody:
-// manual TextureLoader, starts transparent, fades in once the map lands
-// instead of flashing an untextured stripe.
+// manual TextureLoader, starts transparent, fades in once the map lands.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { TextureLoader } from "three";
+import { getActiveTableau } from "../data/tableaus";
 import { stateAt } from "../lib/stateAt";
 
 const RING_INNER = 222.5;
@@ -131,12 +131,17 @@ export function SaturnRings({ renderMode }: { renderMode: string }) {
       const s = stateAt(t);
       const flash = (s as any).ringCrossingIntensity || 0;
 
+      // FinaleStage renders its own volumetric rings for every finale
+      // tableau; mute this flat texture there so the two don't overlap.
+      const photoreal = renderMode === "space" || renderMode === "editorial";
+      const inFinalePhotoreal =
+        getActiveTableau(t).kind === "finale" && photoreal;
+      const finaleMute = inFinalePhotoreal ? 0 : 1;
+
       if (renderMode === "space" || renderMode === "editorial") {
         if (!ringTexture) return;
-        (materialRef.current as THREE.MeshBasicMaterial).opacity = Math.min(
-          1.0,
-          0.85 + flash * 0.4,
-        );
+        (materialRef.current as THREE.MeshBasicMaterial).opacity =
+          Math.min(1.0, 0.85 + flash * 0.4) * finaleMute;
       } else if (renderMode === "blueprint") {
         (materialRef.current as THREE.MeshBasicMaterial).opacity = Math.min(
           1.0,

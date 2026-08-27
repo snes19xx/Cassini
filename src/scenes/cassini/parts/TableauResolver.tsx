@@ -89,7 +89,12 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       const tabChanged = lastTabIdRef.current !== tab.id;
       if (tabChanged) {
         lastTabIdRef.current = tab.id;
-        tabEnterAtMsRef.current = performance.now();
+        // Only arm the hide-gate if the position actually moved.
+        const posSnapped =
+          groupRef.current.position.distanceToSquared(target.pos) > 1e-6;
+        if (posSnapped) {
+          tabEnterAtMsRef.current = performance.now();
+        }
         groupRef.current.position.copy(target.pos);
         // Orientation snaps with position, never damped.
         groupRef.current.rotation.set(

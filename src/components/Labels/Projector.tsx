@@ -61,7 +61,7 @@ export function Projector() {
   const dotsRef = useRef<Record<string, HTMLDivElement | null>>({});
   const textsRef = useRef<Record<string, HTMLDivElement | null>>({});
   const linesRef = useRef<Record<string, SVGLineElement | null>>({});
-  const wrapperRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  const buttonRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const moonLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const surfaceLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -95,7 +95,7 @@ export function Projector() {
       // Hide every spacecraft label up front; the visible pass below will
       // re-show only the ones belonging to the active inspection view.
       labelAnchorsRef.current.forEach((anchor) => {
-        const w = wrapperRef.current[anchor.id];
+        const w = buttonRef.current[anchor.id];
         if (w) w.style.display = "none";
         const l = linesRef.current[anchor.id];
         if (l) l.style.display = "none";
@@ -192,12 +192,12 @@ export function Projector() {
         // Write to the DOM.
         for (const id of visibleAnchorIds) {
           const t = labelTargets[id]!;
-          const wrapper = wrapperRef.current[id];
+          const button = buttonRef.current[id];
           const dot = dotsRef.current[id];
           const text = textsRef.current[id];
           const line = linesRef.current[id];
 
-          if (wrapper) wrapper.style.display = "block";
+          if (button) button.style.display = "block";
           if (line) line.style.display = "block";
 
           if (dot) dot.style.transform = `translate(${t.sx}px, ${t.sy}px)`;
@@ -232,21 +232,21 @@ export function Projector() {
       //  Body label
       const activeBodyId = inMoonTableau ? tableau.body : null;
       for (const body of BODY_LABELS) {
-        const wrapper = moonLabelRef.current[body.bodyId];
-        if (!wrapper) continue;
+        const button = moonLabelRef.current[body.bodyId];
+        if (!button) continue;
         if (body.bodyId !== activeBodyId) {
-          wrapper.style.display = "none";
+          button.style.display = "none";
           continue;
         }
         _v3.set(0, 0, 0).project(camera);
         if (_v3.z > 1) {
-          wrapper.style.display = "none";
+          button.style.display = "none";
           continue;
         }
         const mx = (_v3.x * 0.5 + 0.5) * size.width;
         const my = (_v3.y * -0.5 + 0.5) * size.height;
-        wrapper.style.display = "block";
-        wrapper.style.transform = `translate(${mx}px, ${my}px)`;
+        button.style.display = "block";
+        button.style.transform = `translate(${mx}px, ${my}px)`;
       }
 
       // Surface features on the active moon
@@ -255,9 +255,9 @@ export function Projector() {
         const moonRadius = tableau.moonEffectiveRadius ?? 0;
         if (bodyLabel && moonRadius > 0) {
           for (const feat of bodyLabel.surfaceFeatures) {
-            const wrapper =
+            const button =
               surfaceLabelRef.current[`${activeBodyId}.${feat.id}`];
-            if (!wrapper) continue;
+            if (!button) continue;
             const [ux, uy, uz] = latLonToUnitVec(feat.lat, feat.lon);
             _v3.set(ux * moonRadius, uy * moonRadius, uz * moonRadius);
             const dot =
@@ -265,26 +265,26 @@ export function Projector() {
               uy * (_v3.y - camera.position.y) +
               uz * (_v3.z - camera.position.z);
             if (dot > 0) {
-              wrapper.style.display = "none";
+              button.style.display = "none";
               continue;
             }
             _v3.project(camera);
             if (_v3.z > 1) {
-              wrapper.style.display = "none";
+              button.style.display = "none";
               continue;
             }
             const fx = (_v3.x * 0.5 + 0.5) * size.width;
             const fy = (_v3.y * -0.5 + 0.5) * size.height;
-            wrapper.style.display = "block";
-            wrapper.style.transform = `translate(${fx}px, ${fy}px)`;
+            button.style.display = "block";
+            button.style.transform = `translate(${fx}px, ${fy}px)`;
           }
         }
       }
       for (const body of BODY_LABELS) {
         if (body.bodyId === activeBodyId) continue;
         for (const feat of body.surfaceFeatures) {
-          const wrapper = surfaceLabelRef.current[`${body.bodyId}.${feat.id}`];
-          if (wrapper) wrapper.style.display = "none";
+          const button = surfaceLabelRef.current[`${body.bodyId}.${feat.id}`];
+          if (button) button.style.display = "none";
         }
       }
     } catch (err) {
@@ -315,7 +315,9 @@ export function Projector() {
         {COMPONENTS.map((c) => (
           <line
             key={`line-${c.id}`}
-            ref={(el) => (linesRef.current[c.id] = el)}
+            ref={(el) => {
+              linesRef.current[c.id] = el;
+            }}
             stroke={
               activeComponent === c.id ? "var(--color-accent)" : "#ffffff"
             }
@@ -330,7 +332,9 @@ export function Projector() {
         {BODY_LABELS.map((body) => (
           <button
             key={`body-${body.bodyId}`}
-            ref={(el) => (moonLabelRef.current[body.bodyId] = el)}
+            ref={(el) => {
+              moonLabelRef.current[body.bodyId] = el;
+            }}
             className={styles.moonLabel}
             style={{
               display: "none",
@@ -355,9 +359,9 @@ export function Projector() {
           body.surfaceFeatures.map((feat) => (
             <button
               key={`surf-${body.bodyId}.${feat.id}`}
-              ref={(el) =>
-                (surfaceLabelRef.current[`${body.bodyId}.${feat.id}`] = el)
-              }
+              ref={(el) => {
+                surfaceLabelRef.current[`${body.bodyId}.${feat.id}`] = el;
+              }}
               className={styles.surfaceLabel ?? styles.moonLabel}
               style={{
                 display: "none",
@@ -383,7 +387,9 @@ export function Projector() {
           return (
             <button
               key={`btn-${c.id}`}
-              ref={(el) => (wrapperRef.current[c.id] = el)}
+              ref={(el) => {
+                buttonRef.current[c.id] = el;
+              }}
               className={styles.label}
               data-active={isActive}
               data-primary={isPrimary}
@@ -394,11 +400,15 @@ export function Projector() {
               style={{ display: "none" }}
             >
               <div
-                ref={(el) => (dotsRef.current[c.id] = el)}
+                ref={(el) => {
+                  dotsRef.current[c.id] = el;
+                }}
                 className={styles.dot}
               />
               <div
-                ref={(el) => (textsRef.current[c.id] = el)}
+                ref={(el) => {
+                  textsRef.current[c.id] = el;
+                }}
                 className={styles.textBlock}
               >
                 <span className={styles.labelName}>

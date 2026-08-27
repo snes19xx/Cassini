@@ -28,8 +28,8 @@ const _lookTarget = new THREE.Vector3();
 const _povDir = new THREE.Vector3();
 const _povRight = new THREE.Vector3();
 
-// Owns the camera outright while an orbital tableau is active and mode is
-// thirdPerson; hands off cleanly otherwise.
+// Drives the camera outright while an orbital tableau is active and mode
+// is thirdPerson; hands off cleanly otherwise.
 export function RingDiveCameraDriver() {
   const { camera, controls, gl } = useThree() as unknown as {
     camera: THREE.Camera;

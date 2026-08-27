@@ -1,9 +1,7 @@
-/*
-  src/scenes/cassini/parts/CassiniHuygensA.tsx
-  Full Cassini + Huygens model (pre-separation phases).
-  HAS mesh refs for live label anchor projection.
-  GLB path: /assets/CassiniHuygensA.glb
-*/
+// src/scenes/cassini/parts/CassiniHuygensA.tsx
+//
+// Full Cassini + Huygens model for the pre-separation phases, with mesh
+// refs for live label anchor projection.
 
 import { useGLTF } from "@react-three/drei";
 import React, { useEffect } from "react";
@@ -56,7 +54,7 @@ export function CassiniHuygensA({
 }: ModelProps) {
   const { nodes, materials } = useGLTF(
     "/assets/CassiniHuygensA.glb",
-  ) as GLTFResult;
+  ) as unknown as GLTFResult;
 
   // Clamp metalness: with no env map, metallic surfaces have nothing to
   // reflect but direct light, which clips to white under boosted sun.
