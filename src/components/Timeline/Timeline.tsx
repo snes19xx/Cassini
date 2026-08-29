@@ -5,12 +5,11 @@ import {
   getActiveTableau,
 } from "@/scenes/cassini/data/tableaus";
 import { clampSeekT } from "@/scenes/cassini/data/missionConstants";
-import { displayToMission, missionToDisplay } from "@/scenes/cassini/lib/tRemap";
 import {
-  ActiveModel,
-  PlaybackSpeed,
-  useMissionStore,
-} from "@/store/missionStore";
+  displayToMission,
+  missionToDisplay,
+} from "@/scenes/cassini/lib/tRemap";
+import { PlaybackSpeed, useMissionStore } from "@/store/missionStore";
 import { useCallback, useMemo, useRef, useState } from "react";
 import styles from "./Timeline.module.css";
 
@@ -52,12 +51,6 @@ function tToPercent(t: number): string {
 
 const SPEEDS: PlaybackSpeed[] = [1, 2, 5, 10];
 
-const MODEL_OPTIONS: { id: ActiveModel; label: string }[] = [
-  { id: "CassiniHuygensA.glb", label: "TRUECOLOR" },
-  { id: "CassiniHuygensAwithout_Cassini.glb", label: "HUYGENS ONLY" },
-  { id: "CassiniHuygensAwithoutHyugens.glb", label: "CASSINI ONLY" },
-];
-
 // Chronological encounter order.
 const JUMP_LABELS: { label: string; tableauId: string }[] = [
   { label: "SATURN", tableauId: JUMP_TO_TABLEAU.SATURN! },
@@ -80,12 +73,10 @@ export function Timeline() {
   const currentT = useMissionStore((s) => s.currentT);
   const isPlaying = useMissionStore((s) => s.isPlaying);
   const playbackSpeed = useMissionStore((s) => s.playbackSpeed);
-  const activeModel = useMissionStore((s) => s.activeModel);
 
   const setTime = useMissionStore((s) => s.setTime);
   const togglePlay = useMissionStore((s) => s.togglePlay);
   const setPlaybackSpeed = useMissionStore((s) => s.setPlaybackSpeed);
-  const setActiveModel = useMissionStore((s) => s.setActiveModel);
 
   const fillRef = useRef<HTMLDivElement>(null);
 
@@ -131,205 +122,176 @@ export function Timeline() {
 
   return (
     <div className={styles.wrapper} role="region" aria-label="Mission timeline">
-      {/*Transport & Speed*/}
-      <div className={styles.controls}>
-        <button
-          className={`${styles.transportBtn} ${styles.playPause}`}
-          onClick={togglePlay}
-          aria-label={
-            isPlaying ? "Pause mission playback" : "Play mission playback"
-          }
-        >
-          {isPlaying ? <IconPause /> : <IconPlay />}
-        </button>
-
-        <div className={styles.speedGroup} aria-label="Playback speed">
-          {SPEEDS.map((s) => (
-            <button
-              key={s}
-              className={`${styles.speedBtn} ${playbackSpeed === s ? styles.active : ""}`}
-              onClick={() => setPlaybackSpeed(s)}
-              aria-pressed={playbackSpeed === s}
-              aria-label={`${s}x speed`}
-            >
-              {s}×
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.divider} aria-hidden />
-
-      {/* Scrubber track */}
-      <div className={styles.track}>
-        <div className={styles.scrubberRow}>
-          <div
-            ref={fillRef}
-            className={styles.sliderFill}
-            style={{ width: `${pct}%` }}
-            aria-hidden
-          />
-
-          <svg
-            className={styles.markersCanvas}
-            viewBox="0 0 1000 20"
-            preserveAspectRatio="none"
-            aria-hidden
+      <div className={styles.topRow}>
+        <div className={styles.controls}>
+          <button
+            className={`${styles.transportBtn} ${styles.playPause}`}
+            onClick={togglePlay}
+            aria-label={
+              isPlaying ? "Pause mission playback" : "Play mission playback"
+            }
           >
-            {Array.from({ length: 11 }, (_, i) => i / 10).map((t) => (
-              <rect
-                key={`decade-${t}`}
-                x={t * 1000}
-                y={0}
-                width={1}
-                height={8}
-                fill="var(--color-fg-dim)"
-                opacity={0.5}
-              />
+            {isPlaying ? <IconPause /> : <IconPlay />}
+          </button>
+
+          <div className={styles.speedGroup} aria-label="Playback speed">
+            {SPEEDS.map((s) => (
+              <button
+                key={s}
+                className={`${styles.speedBtn} ${playbackSpeed === s ? styles.active : ""}`}
+                onClick={() => setPlaybackSpeed(s)}
+                aria-pressed={playbackSpeed === s}
+                aria-label={`${s}x speed`}
+              >
+                {s}×
+              </button>
             ))}
-            {TABLEAUS.map((tab) => {
-              const pt = missionToDisplay(tab.tStart);
-              return (
-                <g key={tab.id}>
-                  <rect
-                    x={pt * 1000}
-                    y={0}
-                    width={1}
-                    height={20}
-                    fill="var(--color-accent)"
-                    opacity={0.55}
-                  />
-                  <polygon
-                    points={`${pt * 1000},0 ${pt * 1000 - 3},6 ${pt * 1000},12 ${pt * 1000 + 3},6`}
-                    fill="var(--color-accent)"
-                    opacity={0.7}
-                  />
-                </g>
-              );
-            })}
-            {activeTableau.kind === "finale" &&
-              DIVES.map((d) => {
-                const pt = missionToDisplay(d.t);
-                return (
-                  <rect
-                    key={`dive-${d.index}`}
-                    x={pt * 1000}
-                    y={11}
-                    width={0.6}
-                    height={9}
-                    fill={d.isFinalFive ? "var(--color-warn, #ff6b35)" : "var(--color-accent)"}
-                    opacity={0.55}
-                  />
-                );
-              })}
-            <rect
-              x={displayT * 1000}
-              y={0}
-              width={1.5}
-              height={20}
-              fill="var(--color-fg)"
-              opacity={0.9}
+          </div>
+        </div>
+
+        <div className={styles.divider} aria-hidden />
+
+        <div className={styles.track}>
+          <div className={styles.scrubberRow}>
+            <div
+              ref={fillRef}
+              className={styles.sliderFill}
+              style={{ width: `${pct}%` }}
+              aria-hidden
             />
-          </svg>
 
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.0001"
-            value={displayT}
-            onChange={handleScrub}
-            onPointerUp={endScrub}
-            onPointerCancel={endScrub}
-            onKeyUp={endScrub}
-            onBlur={endScrub}
-            className={styles.slider}
-            aria-label="Mission time scrubber"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={parseFloat(pct.toFixed(1))}
-            aria-valuetext={tToMissionDate(currentT)}
-          />
-
-          {activeTableau.kind === "finale" && (
-            <div className={styles.diveHitRow} aria-hidden={false}>
-              {DIVES.map((d) => {
-                const pt = missionToDisplay(d.t);
+            <svg
+              className={styles.markersCanvas}
+              viewBox="0 0 1000 20"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              {Array.from({ length: 11 }, (_, i) => i / 10).map((t) => (
+                <rect
+                  key={`decade-${t}`}
+                  x={t * 1000}
+                  y={0}
+                  width={1}
+                  height={8}
+                  fill="var(--color-fg-dim)"
+                  opacity={0.5}
+                />
+              ))}
+              {TABLEAUS.map((tab) => {
+                const pt = missionToDisplay(tab.tStart);
                 return (
-                  <button
-                    key={`dive-hit-${d.index}`}
-                    type="button"
-                    className={`${styles.diveHit}${d.isFinalFive ? ` ${styles.diveHitFinal5}` : ""}`}
-                    style={{ left: `${pt * 100}%` }}
-                    onClick={() => {
-                      setTime(d.t);
-                      useMissionStore.getState().resetCamera();
-                    }}
-                    title={`Dive ${d.index} / ${DIVES.length} -- ${d.date}${d.notes ? ` -- ${d.notes}` : ""}`}
-                    aria-label={`Jump to dive ${d.index}, ${d.date}`}
-                  />
+                  <g key={tab.id}>
+                    <rect
+                      x={pt * 1000}
+                      y={0}
+                      width={1}
+                      height={20}
+                      fill="var(--color-accent)"
+                      opacity={0.55}
+                    />
+                    <polygon
+                      points={`${pt * 1000},0 ${pt * 1000 - 3},6 ${pt * 1000},12 ${pt * 1000 + 3},6`}
+                      fill="var(--color-accent)"
+                      opacity={0.7}
+                    />
+                  </g>
                 );
               })}
-            </div>
-          )}
+              {activeTableau.kind === "finale" &&
+                DIVES.map((d) => {
+                  const pt = missionToDisplay(d.t);
+                  return (
+                    <rect
+                      key={`dive-${d.index}`}
+                      x={pt * 1000}
+                      y={11}
+                      width={0.6}
+                      height={9}
+                      fill={
+                        d.isFinalFive
+                          ? "var(--color-warn, #ff6b35)"
+                          : "var(--color-accent)"
+                      }
+                      opacity={0.55}
+                    />
+                  );
+                })}
+              <rect
+                x={displayT * 1000}
+                y={0}
+                width={1.5}
+                height={20}
+                fill="var(--color-fg)"
+                opacity={0.9}
+              />
+            </svg>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.0001"
+              value={displayT}
+              onChange={handleScrub}
+              onPointerUp={endScrub}
+              onPointerCancel={endScrub}
+              onKeyUp={endScrub}
+              onBlur={endScrub}
+              className={styles.slider}
+              aria-label="Mission time scrubber"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={parseFloat(pct.toFixed(1))}
+              aria-valuetext={tToMissionDate(currentT)}
+            />
+
+            {activeTableau.kind === "finale" && (
+              <div className={styles.diveHitRow} aria-hidden={false}>
+                {DIVES.map((d) => {
+                  const pt = missionToDisplay(d.t);
+                  return (
+                    <button
+                      key={`dive-hit-${d.index}`}
+                      type="button"
+                      className={`${styles.diveHit}${d.isFinalFive ? ` ${styles.diveHitFinal5}` : ""}`}
+                      style={{ left: `${pt * 100}%` }}
+                      onClick={() => {
+                        setTime(d.t);
+                        useMissionStore.getState().resetCamera();
+                      }}
+                      title={`Dive ${d.index} / ${DIVES.length} -- ${d.date}${d.notes ? ` -- ${d.notes}` : ""}`}
+                      aria-label={`Jump to dive ${d.index}, ${d.date}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.divider} aria-hidden />
+
+        <div className={styles.readout} aria-live="polite">
+          <span className={styles.readoutMain}>{tToMissionDate(currentT)}</span>
+          <span className={styles.readoutSub}>{tToPercent(currentT)}</span>
         </div>
       </div>
 
-      <div className={styles.divider} aria-hidden />
-
-      <div className={styles.jumpContainer}>
-        <span className={styles.modelSelectLabel}>JUMP TO</span>
-        <div className={styles.jumpGroup}>
-          {JUMP_LABELS.map(({ label, tableauId }) => (
-            <button
-              key={label}
-              className={styles.jumpBtn}
-              onClick={() => handleJump(tableauId)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.divider} aria-hidden />
-
-      {/*  Model Selector  */}
-      <div className={styles.modelSelectContainer}>
-        <span className={styles.modelSelectLabel}>MODEL</span>
-        <div className={styles.modelSelectWrapper}>
-          <select
-            value={activeModel}
-            onChange={(e) => setActiveModel(e.target.value as ActiveModel)}
-            className={styles.modelSelect}
-            aria-label="Select 3D Model"
-          >
-            {MODEL_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
+      <div className={styles.bottomRow}>
+        <div className={styles.jumpContainer}>
+          <span className={styles.modelSelectLabel}>JUMP TO</span>
+          <div className={styles.jumpGroup}>
+            {JUMP_LABELS.map(({ label, tableauId }) => (
+              <button
+                key={label}
+                className={styles.jumpBtn}
+                onClick={() => handleJump(tableauId)}
+              >
+                {label}
+              </button>
             ))}
-          </select>
-          <svg
-            className={styles.modelSelectIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          </div>
         </div>
-      </div>
-
-      <div className={styles.divider} aria-hidden />
-
-      {/*Right readout*/}
-      <div className={styles.readout} aria-live="polite">
-        <span className={styles.readoutMain}>{tToMissionDate(currentT)}</span>
-        <span className={styles.readoutSub}>{tToPercent(currentT)}</span>
       </div>
     </div>
   );

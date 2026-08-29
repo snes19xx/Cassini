@@ -261,7 +261,7 @@ export function Projector() {
         }
 
         _v3.project(camera);
-        if (_v3.z > 1) {
+        if (_v3.z > 1 || _v3.x < -1 || _v3.x > 1 || _v3.y < -1 || _v3.y > 1) {
           button.style.display = "none";
           continue;
         }
