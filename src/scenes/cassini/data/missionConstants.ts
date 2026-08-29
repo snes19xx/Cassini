@@ -17,10 +17,12 @@ export function clampSeekT(t: number): number {
   return Math.min(t, SEEK_MAX_T);
 }
 
+export const ATMOSPHERE_TABLEAU_ID = "finale_atmospheric";
+
 // The two terminal tableaus: sphere-Saturn hidden, SkyDome/RingBackdrop/
 // CassiniTrail on the terminal stage, camera on the locked descent script.
 export const TERMINAL_TABLEAU_IDS: ReadonlySet<string> = new Set([
-  "finale_atmospheric",
+  ATMOSPHERE_TABLEAU_ID,
   "finale_disintegration",
 ]);
 

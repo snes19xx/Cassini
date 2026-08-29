@@ -100,7 +100,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
   iapetus: {
     id: "iapetus",
     displayName: "IAPETUS",
-    hook: 'Saturn\'s "yin-yang" moon — one hemisphere coated in dark organic material, the other bright ice. The equatorial ridge that makes it look like a walnut is unique in the Solar System.',
+    hook: "Iapetus has a pitch-dark leading hemisphere and bright ice covering the other. Its 20-km-high equatorial ridge gives it a distinct walnut shape, possibly formed from the debris of an ancient collapsed ring. Tilted nearly 15 deg from Saturn's equatorial plane, Iapetus also has one of the strangest orbits among Saturn's major moons. Its dark region, Cassini Regio, is named after Giovanni Cassini, who first noticed Iapetus's dramatic two-toned appearance in 1671.",
     events: [
       ev(2004, 12, 30, "Equatorial ridge + albedo dichotomy revealed"),
       ev(2007, 9, 9, "Close flyby — fine detail on two-toned surface"),
@@ -110,7 +110,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
   mimas: {
     id: "mimas",
     displayName: "MIMAS",
-    hook: 'The "Death Star" moon — its 130 km Herschel crater dwarfs the body itself. Cassini\'s later libration analysis hinted at a possible internal ocean.',
+    hook: 'Mimas, Saturn\'s "Death Star" moon, is dominated by the 130-km-wide Herschel crater, whose central peak rises nearly 6 km above the crater floor. The impact was so enormous that it nearly shattered the moon. Surprisingly, Cassini\'s measurements revealed a strange wobble in Mimas\'s rotation, suggesting it may conceal a subsurface ocean beneath its frozen crust.',
     events: [
       ev(2010, 2, 12, 'Hi-res "Pac-Man" thermal map + Herschel crater imaged'),
       ev(2014, 10, 16, "Libration analysis suggests internal ocean"),

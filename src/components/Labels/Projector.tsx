@@ -55,7 +55,6 @@ export function Projector() {
   const showLabels = useMissionStore((s) => s.showLabels);
   const activeComponent = useMissionStore((s) => s.activeComponent);
   const setActiveComponent = useMissionStore((s) => s.setActiveComponent);
-  const currentT = useMissionStore((s) => s.currentT);
   const inspectionView = useMissionStore((s) => s.inspectionView);
 
   const dotsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -65,11 +64,13 @@ export function Projector() {
   const moonLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const surfaceLabelRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const huygensHasSeparated = currentT >= HUYGENS_SEPARATION_T;
-
   useFrame(() => {
     try {
       if (!showLabels) return;
+
+      // Reads currentT straight from the store to avoid a 60x/s re-render.
+      const currentT = useMissionStore.getState().currentT;
+      const huygensHasSeparated = currentT >= HUYGENS_SEPARATION_T;
 
       const tableau = getActiveTableau(currentT);
       const inMoonTableau = tableau.kind === "moon";
