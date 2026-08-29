@@ -8,8 +8,12 @@ import {
 } from "@/scenes/cassini/data/bodyLabels";
 import { COMPONENTS } from "@/scenes/cassini/data/components";
 import { INSPECTION_VIEWS } from "@/scenes/cassini/data/inspectionViews";
-import { HUYGENS_SEPARATION_T } from "@/scenes/cassini/data/missionConstants";
+import {
+  ATMOSPHERE_TABLEAU_ID,
+  HUYGENS_SEPARATION_T,
+} from "@/scenes/cassini/data/missionConstants";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
+import { moonWorldPositions } from "@/scenes/cassini/parts/TableauMoonRenderer";
 import { labelAnchorsRef } from "@/scenes/cassini/Spacecraft";
 import { useMissionStore } from "@/store/missionStore";
 import { Html } from "@react-three/drei";
@@ -56,6 +60,9 @@ export function Projector() {
   const activeComponent = useMissionStore((s) => s.activeComponent);
   const setActiveComponent = useMissionStore((s) => s.setActiveComponent);
   const inspectionView = useMissionStore((s) => s.inspectionView);
+  const inAtmosphere = useMissionStore(
+    (s) => getActiveTableau(s.currentT).id === ATMOSPHERE_TABLEAU_ID,
+  );
 
   const dotsRef = useRef<Record<string, HTMLDivElement | null>>({});
   const textsRef = useRef<Record<string, HTMLDivElement | null>>({});
@@ -112,7 +119,7 @@ export function Projector() {
         for (const anchor of labelAnchorsRef.current) {
           if (!viewAnchorSet.has(anchor.id)) continue;
 
-          // still attached and should be labeled.
+          // Huygens has no label once it's separated from the orbiter.
           if (anchor.id === "huygens" && huygensHasSeparated) {
             continue;
           }
@@ -210,11 +217,9 @@ export function Projector() {
             text.style.transform = `translate(${lineEndX}px, ${t.ty}px) ${isLeft ? "translateX(-100%)" : ""}`;
             if (isLeft) {
               text.style.borderLeft = "1px solid var(--panel-border)";
-              //text.style.borderRight = "2px solid var(--color-wire-dim)";
               text.style.alignItems = "flex-end";
               text.style.borderRadius = "2px 0 0 2px";
             } else {
-              //text.style.borderLeft = "2px solid var(--color-wire-dim)";
               text.style.borderRight = "1px solid var(--panel-border)";
               text.style.alignItems = "flex-start";
               text.style.borderRadius = "0 2px 2px 0";
@@ -232,14 +237,30 @@ export function Projector() {
 
       //  Body label
       const activeBodyId = inMoonTableau ? tableau.body : null;
+      const placedMoons = tableau.moons;
       for (const body of BODY_LABELS) {
         const button = moonLabelRef.current[body.bodyId];
         if (!button) continue;
-        if (body.bodyId !== activeBodyId) {
+
+        let anchored = false;
+        if (body.bodyId === activeBodyId) {
+          _v3.set(0, 0, 0);
+          anchored = true;
+        } else if (placedMoons) {
+          const placement = placedMoons.find((m) => m.body === body.bodyId);
+          if (placement) {
+            const live = moonWorldPositions.get(body.bodyId);
+            if (live) _v3.copy(live);
+            else _v3.set(...placement.pos);
+            anchored = true;
+          }
+        }
+        if (!anchored) {
           button.style.display = "none";
           continue;
         }
-        _v3.set(0, 0, 0).project(camera);
+
+        _v3.project(camera);
         if (_v3.z > 1) {
           button.style.display = "none";
           continue;
@@ -297,7 +318,7 @@ export function Projector() {
     }
   });
 
-  if (!showLabels) return null;
+  if (!showLabels || inAtmosphere) return null;
 
   return (
     <Html fullscreen style={{ pointerEvents: "none" }}>
