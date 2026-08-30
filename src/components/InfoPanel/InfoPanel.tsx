@@ -39,7 +39,7 @@ function BarRow({ label, value, precision = 0, unit = "%", warn }: BarRowProps) 
           style={{
             width: `${value * 100}%`,
             background:
-              warn && value > 0.15 ? "var(--color-warn, #ff6b35)" : undefined,
+              warn && value < 0.15 ? "var(--color-warn, #ff6b35)" : undefined,
           }}
         />
       </div>
@@ -119,7 +119,7 @@ function sliceEvents(
   if (events.length <= MAX_VISIBLE_EVENTS) return [0, events.length];
   let idx = events.findIndex((e) => e.dateMs >= activeDateMs);
   if (idx < 0) idx = events.length; // all events are past
-  const startMax = events.length - MAX_VISIBLE_EVENTS - 1;
+  const startMax = events.length - MAX_VISIBLE_EVENTS;
   const start = Math.max(0, Math.min(idx, startMax));
   return [start, start + MAX_VISIBLE_EVENTS];
 }
@@ -180,9 +180,7 @@ export function InfoPanel() {
     if (!el) return;
     el.dataset.overflowing = String(el.scrollHeight > el.clientHeight + 1);
   };
-  useEffect(() => {
-    syncOverflow();
-  }, []);
+  useEffect(syncOverflow);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
