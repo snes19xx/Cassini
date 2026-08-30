@@ -6,9 +6,15 @@
 .wrapper {
   pointer-events: auto;
   position: absolute;
-  top: clamp(140px, 18vh, 200px);
+  --panel-top: clamp(123px, 12vh, 160px);
+  top: var(--panel-top);
   width: 280px;
   z-index: 100;
+
+  /* Caps the panel above the timeline chrome; .scrollBody handles overflow. */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--panel-top) - var(--timeline-bottom) - 120px);
 
   background: var(--panel-bg-info);
   backdrop-filter: blur(var(--panel-blur));
@@ -136,6 +142,57 @@
   }
 }
 
+/* Scrollbar stays reserved but transparent so hover can't reflow text. */
+.scrollBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color var(--motion-duration-panel)
+    var(--motion-ease-standard);
+}
+
+.wrapper:hover .scrollBody,
+.scrollBody:focus-within {
+  scrollbar-color: var(--color-fg-faint) transparent;
+}
+
+/* WebKit equivalent of the scrollbar rule above. */
+.scrollBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollBody::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background var(--motion-duration-panel)
+    var(--motion-ease-standard);
+}
+
+.wrapper:hover .scrollBody::-webkit-scrollbar-thumb,
+.scrollBody:focus-within::-webkit-scrollbar-thumb {
+  background: var(--color-fg-faint);
+}
+
+.wrapper:hover .scrollBody::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fg-dim);
+}
+
+/* Fades content near the bottom only while it actually overflows. */
+.scrollBody[data-overflowing="true"] {
+  padding-bottom: 26px;
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 28px),
+    transparent 100%
+  );
+}
+
 .closeBtn {
   display: flex;
   align-items: center;
@@ -166,7 +223,7 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-/* ── Stat grid ─────────────────────────────────────────────────────────── */
+/* Stat grid */
 .statGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -200,7 +257,7 @@
   line-height: 1;
 }
 
-/* ── Bar indicators ────────────────────────────────────────────────────── */
+/* Bar indicators */
 .barRow {
   display: flex;
   align-items: center;
@@ -244,7 +301,7 @@
   text-align: right;
 }
 
-/* ── Component detail view ─────────────────────────────────────────────── */
+/* Component detail view */
 .detailHeader {
   padding: 16px;
   border-bottom: 1px solid var(--panel-border);
@@ -275,7 +332,7 @@
   border-bottom: 1px solid var(--panel-border);
 }
 
-/* ── Back button ───────────────────────────────────────────────── */
+/* Back button */
 .backBtn {
   display: flex;
   align-items: center;
@@ -299,7 +356,7 @@
   font-size: 12px;
 }
 
-/* ── Terminal Mode (Space Theme) ───────────────────────────────────────── */
+/* Terminal mode (space theme) */
 
 .wrapper[data-theme="space"] {
   background: none;
@@ -311,6 +368,37 @@
 
 .wrapper[data-theme="space"]::before {
   display: none;
+}
+
+/* No subtitle under the moon name. */
+.moonPanel .detailName {
+  margin-bottom: 0;
+}
+
+/* Space theme strips most chrome; restored here for the full-frame moon panel. */
+.wrapper[data-theme="space"].moonPanel {
+  background: var(--panel-bg-info);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.wrapper[data-theme="space"].moonPanel .header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.wrapper[data-theme="space"].moonPanel .detailHeader {
+  padding: 16px;
+  background: var(--color-accent-wash);
+}
+
+.wrapper[data-theme="space"].moonPanel .detailBody {
+  padding: 16px;
 }
 
 .wrapper[data-theme="space"] * {
@@ -365,4 +453,351 @@
 
 .wrapper[data-theme="space"] .barValue {
   text-align: right;
+}
+
+/* Phase block */
+.phaseBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.phaseName {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.phaseDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-fg-dim);
+}
+
+/* Page navigation between the body and spacecraft pages */
+.pageNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.pageArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid var(--color-fg-faint);
+  border-radius: 3px;
+  color: var(--color-fg-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color var(--motion-duration-micro) var(--motion-ease-standard),
+    border-color var(--motion-duration-micro) var(--motion-ease-standard),
+    background var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+.pageArrow:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.pageLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.pageIndicator {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: var(--color-fg-dim);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.wrapper[data-theme="space"] .pageNav {
+  border: none;
+  background: none;
+  padding: 4px 0 10px 0;
+}
+
+/* Body content, per active tableau */
+.bodyHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.bodyName {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.bodyHook {
+  margin: 0;
+  padding: 10px 16px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+/* Imaging caption for Titan / Enceladus spectral views */
+.imagingCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.imagingLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+  text-transform: uppercase;
+}
+
+.imagingInstrument {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-fg);
+  letter-spacing: 0.02em;
+}
+
+.imagingDescription {
+  font-size: 11px;
+  color: var(--color-fg-muted);
+  line-height: 1.4;
+}
+
+.wrapper[data-theme="space"] .imagingCaption {
+  border: none;
+  background: none;
+  padding: 4px 0 10px 0;
+}
+
+.eventList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.eventRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 16px 8px 14px;
+  border-bottom: 1px solid var(--panel-border);
+  border-left: 2px solid transparent;
+  transition:
+    border-left-color var(--motion-duration-micro) var(--motion-ease-standard),
+    background var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+.eventDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-fg-dim);
+  min-width: 78px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.eventTitle {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--color-fg-muted);
+}
+
+/* +/-90 day match: highlight bar, brightened text, subtle wash. */
+.eventActive {
+  border-left-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.eventActive .eventDate {
+  color: var(--color-accent);
+}
+
+.eventActive .eventTitle {
+  color: var(--color-fg);
+}
+
+.wrapper[data-theme="space"] .bodyHeader,
+.wrapper[data-theme="space"] .bodyHook,
+.wrapper[data-theme="space"] .eventRow {
+  border: none;
+  background: none;
+}
+
+.wrapper[data-theme="space"] .bodyHeader {
+  padding: 0 0 8px 0;
+}
+
+.wrapper[data-theme="space"] .bodyHook {
+  padding: 8px 0 12px 0;
+}
+
+.wrapper[data-theme="space"] .eventRow {
+  padding: 4px 0 4px 10px;
+}
+
+.wrapper[data-theme="space"] .eventActive {
+  background: none;
+  border-left-color: var(--color-accent);
+}
+
+/* Editorial theme: opaque cream card, hairline border, serif headlines. */
+.wrapper[data-theme="editorial"] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 3px rgba(45, 53, 59, 0.04);
+}
+
+.wrapper[data-theme="editorial"] .detailName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.005em;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.wrapper[data-theme="editorial"] .detailSub {
+  font-family: var(--font-eyebrow);
+  font-feature-settings: "smcp";
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-accent);
+}
+
+.wrapper[data-theme="editorial"] .detailBody {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+}
+
+/* Chrome labels stay mono; the display serif is too thin at this size. */
+.wrapper[data-theme="editorial"] .sectionLabel,
+.wrapper[data-theme="editorial"] .missionId,
+.wrapper[data-theme="editorial"] .telemetry,
+.wrapper[data-theme="editorial"] .backBtn {
+  font-family: var(--font-mono);
+  font-feature-settings: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+  color: var(--color-fg);
+  background: transparent;
+}
+
+.wrapper[data-theme="editorial"] .phaseName,
+.wrapper[data-theme="editorial"] .bodyHeader,
+.wrapper[data-theme="editorial"] .pageNav {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-fg);
+}
+
+.wrapper[data-theme="editorial"] .statLabel,
+.wrapper[data-theme="editorial"] .barLabel {
+  font-family: var(--font-mono);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-fg-muted);
+}
+
+.wrapper[data-theme="editorial"] .statValue,
+.wrapper[data-theme="editorial"] .barValue,
+.wrapper[data-theme="editorial"] .phaseDate {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
+}
+
+.wrapper[data-theme="editorial"] .phaseName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Dark-theme striping inverts on cream; flatten it here. */
+.wrapper[data-theme="editorial"] .stat:nth-child(even),
+.wrapper[data-theme="editorial"] .sectionLabel,
+.wrapper[data-theme="editorial"] .pageNav,
+.wrapper[data-theme="editorial"] .backBtn {
+  background: transparent;
+}
+
+.wrapper[data-theme="editorial"] .backBtn:hover {
+  background: var(--color-accent-wash);
+  color: var(--color-accent);
+}
+
+.wrapper[data-theme="editorial"] .detailHeader {
+  background: var(--color-accent-wash);
+}
+
+.wrapper[data-theme="editorial"]::before {
+  display: none;
+}
+
+.wrapper[data-theme="editorial"] .eventActive {
+  border-left-color: transparent;
+}
+
+/* The chrome-less space theme reads white text on pale atmosphere haze
+   during descent, so its colors get rebound on the wrapper for contrast. */
+:global(main[data-terminal]) .wrapper[data-theme="space"] {
+  --color-fg: #1b2733;
+  --color-fg-muted: rgba(27, 39, 51, 0.82);
+  --color-fg-dim: rgba(27, 39, 51, 0.58);
+  --color-fg-faint: rgba(27, 39, 51, 0.22);
+  --color-accent: #5f5c1d;
+  --color-accent-wash: rgba(95, 92, 29, 0.12);
+  --color-accent-glow: rgba(95, 92, 29, 0.45);
+  --panel-border: rgba(27, 39, 51, 0.16);
 }
