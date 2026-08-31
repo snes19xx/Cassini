@@ -123,7 +123,7 @@ const ROWS: Row[] = [
     key: "bloomIntensity",
     label: "bloom int",
     min: 0,
-    max: 2,
+    max: 8,
     step: 0.1,
     group: "GLOW",
   },
