@@ -4,14 +4,14 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
+  useRingBackdropStore,
+  type RingSource,
+} from "../lib/ringBackdropDebug";
+import {
   createRingDensityTexture,
   createRingGeometry,
   createRingMaterial,
 } from "../lib/ringShader";
-import {
-  useRingBackdropStore,
-  type RingSource,
-} from "../lib/ringBackdropDebug";
 
 const RTT_SIZE = 2048;
 
@@ -108,20 +108,39 @@ export function RingBackdrop() {
     };
   }, [rtt]);
 
-  const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
-  const cardMat = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        map: rt.texture,
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        fog: false,
-        side: THREE.DoubleSide,
-        clippingPlanes: [clipPlane],
-      }),
-    [rt, clipPlane],
+  const clipPlane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+    [],
   );
+  const innerFade = useMemo(
+    () => ({ value: new THREE.Vector2(0.28, 0.4) }),
+    [],
+  );
+  const cardMat = useMemo(() => {
+    const mat = new THREE.MeshBasicMaterial({
+      map: rt.texture,
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      fog: false,
+      side: THREE.DoubleSide,
+      clippingPlanes: [clipPlane],
+    });
+    // Ramps the band's inner edge out before the bake camera's curve turns it into a hard-edged skirt.
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uInnerFade = innerFade;
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nuniform vec2 uInnerFade;",
+        )
+        .replace(
+          "#include <alphatest_fragment>",
+          "diffuseColor.a *= smoothstep(uInnerFade.x, uInnerFade.y, vMapUv.y);\n#include <alphatest_fragment>",
+        );
+    };
+    return mat;
+  }, [rt, clipPlane, innerFade]);
   const cardGeo = useMemo(() => new THREE.PlaneGeometry(1, 1, 1, 32), []);
   const cardBase = useMemo(() => {
     const pos = cardGeo.attributes.position;
@@ -257,6 +276,7 @@ export function RingBackdrop() {
 
     m.scale.set(s.scaleX, s.scaleY, 1);
     (m.material as THREE.MeshBasicMaterial).opacity = s.opacity;
+    innerFade.value.set(s.innerFadeStart, s.innerFadeEnd);
   });
 
   return (

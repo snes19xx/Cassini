@@ -25,9 +25,13 @@ export interface RingBackdropState {
   // multiply scaleX at each edge, so equal values give a plain rectangle.
   topTaper: number;
   bottomTaper: number;
-  curvature: number; // sideways bow, since the rings are an arc of a circle
+  curvature: number; // bow from the ring's arc
   opacity: number;
-  horizonClip: number; // hides the band below eye height plus this offset
+  horizonClip: number; // hides band below eye height
+
+  // Fades the low-end skirt where the bake's grazing angle smears the inner edge.
+  innerFadeStart: number;
+  innerFadeEnd: number;
 
   // Grazing camera that foreshortens the annulus into a striped wall.
   bakeElev: number;
@@ -52,6 +56,8 @@ export const useRingBackdropStore = create<RingBackdropState>((set) => ({
   curvature: 1.5,
   opacity: 0.77,
   horizonClip: 0,
+  innerFadeStart: 0.28,
+  innerFadeEnd: 0.4,
 
   bakeElev: 200,
   bakeReach: 335,
