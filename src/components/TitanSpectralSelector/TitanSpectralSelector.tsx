@@ -55,7 +55,7 @@ const TITAN_MODE_ORDER: TitanSpectralMode[] = [
   "iss_cb3",
   "iss_nac_ir",
 ];
-const ENCELADUS_MODE_ORDER: EnceladusSpectralMode[] = ["visible", "visible"];
+const ENCELADUS_MODE_ORDER: EnceladusSpectralMode[] = ["visible", "vims_ir"];
 
 // Spectral filter panel for the Titan and Enceladus tableaus, button per instrument mode.
 export function SpectralSelector() {
