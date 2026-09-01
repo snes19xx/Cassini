@@ -2,6 +2,13 @@ import { Suspense, lazy } from "react";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { Timeline } from "./components/Timeline/Timeline";
+import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
+import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
+import { FinaleCameraSwitcher } from "./scenes/cassini/finale/ui/FinaleCameraSwitcher";
+import { FinaleDebugHUD } from "./scenes/cassini/finale/ui/FinaleDebugHUD";
+import { FinaleRingsDebug } from "./scenes/cassini/finale/ui/FinaleRingsDebug";
+import { MeteorDebug } from "./scenes/cassini/finale/ui/MeteorDebug";
+import { RingBackdropDebug } from "./scenes/cassini/finale/ui/RingBackdropDebug";
 import { infoPanelVisible, useMissionStore } from "./store/missionStore";
 import styles from "./styles/App.module.css";
 
@@ -21,6 +28,13 @@ export default function App() {
       </SceneErrorBoundary>
       {infoPanelOn && <InfoPanel />}
       <Timeline />
+      <FinaleCameraSwitcher />
+      <FinaleDebugHUD />
+      <RingBackdropDebug />
+      <CameraDebug />
+      <CassiniDebug />
+      <FinaleRingsDebug />
+      <MeteorDebug />
     </div>
   );
 }
