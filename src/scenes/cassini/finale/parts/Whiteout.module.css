@@ -1,0 +1,8 @@
+.whiteout {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  pointer-events: none;
+  z-index: 900;
+  transition: none; /* JS sets opacity every frame */
+}
