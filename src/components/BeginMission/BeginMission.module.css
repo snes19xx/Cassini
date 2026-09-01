@@ -1,0 +1,72 @@
+/* Pulsing pill above the timeline's play/pause control, on screen for the first 8 seconds. */
+.begin {
+  position: absolute;
+  left: clamp(30px, 2.5vw, 44px);
+  bottom: 138px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-03);
+  text-transform: uppercase;
+  color: var(--color-fg);
+  background: var(--panel-bg);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--color-accent-dim);
+  cursor: pointer;
+  z-index: 30;
+  opacity: 1;
+  animation: beginPulse 2.4s ease-in-out infinite;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    opacity 0.6s ease;
+}
+
+.beginOut {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.begin:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+  animation: none;
+}
+
+.begin:hover .glyph {
+  color: inherit;
+}
+
+.begin:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.glyph {
+  color: var(--color-accent);
+  font-size: 10px;
+  line-height: 1;
+}
+
+@keyframes beginPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 16px 0 var(--color-accent-glow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .begin {
+    animation: none;
+  }
+}
