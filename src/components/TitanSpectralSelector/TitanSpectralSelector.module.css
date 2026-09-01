@@ -1,4 +1,4 @@
-/* Two layouts share: row for Enceladus, 2x2 grid for Titan. */
+/* Titan and Enceladus share this: row for Enceladus, 2x2 grid for Titan. */
 
 .panel {
   position: absolute;
@@ -181,4 +181,13 @@
       0 0 0 0 rgba(232, 149, 10, 0),
       inset 0 0 0 rgba(232, 149, 10, 0);
   }
+}
+
+:global([data-theme="editorial"]) .btn.active .btnLabel {
+  color: var(--color-accent);
+}
+
+:global([data-theme="editorial"]) .btn.active .btnSub {
+  color: var(--color-accent);
+  opacity: 0.7;
 }
