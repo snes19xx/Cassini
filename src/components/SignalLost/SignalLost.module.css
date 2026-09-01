@@ -1,0 +1,392 @@
+/* Theme keys off _preTerminalRenderMode, whatever the user's pick was before the forced-space terminal descent. */
+
+.overlay {
+  --eom-bg: #000000;
+  --eom-fg: #e8eeff;
+  --eom-fg-muted: rgba(232, 238, 255, 0.8);
+  --eom-fg-dim: rgba(232, 238, 255, 0.5);
+  --eom-fg-faint: rgba(232, 238, 255, 0.22);
+  --eom-accent: #7e7b32;
+  --eom-accent-wash: rgba(126, 123, 50, 0.12);
+
+  --eom-title-font: var(--font-mono);
+  --eom-title-size: clamp(34px, 6vh, 62px);
+  --eom-title-tracking: var(--tracking-05);
+  --eom-title-weight: var(--weight-regular);
+  --eom-title-transform: uppercase;
+  --eom-copy-font: var(--font-mono);
+  --eom-copy-size: clamp(12px, 1.5vh, 15px);
+  --eom-copy-lh: 1.7;
+
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: var(--eom-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  /* Fast enough that the screen is up before the trace starts drawing. */
+  transition:
+    opacity 1.1s ease,
+    background 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay[data-eom-theme="editorial"] {
+  --eom-bg: #fdfbf7;
+  --eom-fg: #2d353b;
+  --eom-fg-muted: rgba(45, 53, 59, 0.78);
+  --eom-fg-dim: rgba(45, 53, 59, 0.52);
+  --eom-fg-faint: rgba(45, 53, 59, 0.22);
+  --eom-accent: #4f6d56;
+  --eom-accent-wash: rgba(79, 109, 86, 0.1);
+
+  --eom-title-font: var(--font-display);
+  --eom-title-size: clamp(48px, 8.6vh, 92px);
+  --eom-title-tracking: 0.01em;
+  --eom-title-weight: var(--weight-regular);
+  --eom-title-transform: none;
+  --eom-copy-font: var(--font-serif);
+  --eom-copy-size: clamp(14px, 1.85vh, 19px);
+  --eom-copy-lh: 1.6;
+}
+
+.overlay[data-eom-theme="blueprint"] {
+  --eom-bg: #0b2e55;
+  --eom-fg: #dceafe;
+  --eom-fg-muted: rgba(220, 234, 254, 0.8);
+  --eom-fg-dim: rgba(220, 234, 254, 0.55);
+  --eom-fg-faint: rgba(220, 234, 254, 0.28);
+  --eom-accent: #8fd2ff;
+  --eom-accent-wash: rgba(143, 210, 255, 0.1);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-eom-theme="blueprint"] .backdrop {
+  --grid-major-alpha: 0.03;
+  --grid-minor-alpha: 0.022;
+  background-color: #0b2e55;
+  background-image:
+    radial-gradient(
+      ellipse 130% 100% at 50% 50%,
+      rgba(0, 0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 22% 18%,
+      rgba(210, 225, 255, 0.06) 0%,
+      transparent 55%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>"),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    160px 160px,
+    80px 80px,
+    80px 80px,
+    20px 20px,
+    20px 20px;
+}
+
+[data-eom-theme="editorial"] .backdrop {
+  background-color: #fdfbf7;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+[data-eom-theme="space"] .backdrop {
+  background-color: #000000;
+  background-image: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+.starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.star {
+  fill: var(--eom-fg);
+}
+.starWarm {
+  fill: #f4d5a0;
+}
+.starCool {
+  fill: #c6dcf4;
+}
+.starTwinkle {
+  animation: starTwinkle 4.5s ease-in-out infinite;
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: var(--chrome-pad-y) var(--edge-inset);
+  gap: clamp(14px, 2.4vh, 28px);
+  color: var(--eom-fg);
+}
+
+.rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  letter-spacing: var(--tracking-07);
+  font-weight: var(--weight-medium);
+  color: var(--eom-fg);
+}
+
+[data-eom-theme="editorial"] .wordmark {
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vh, 48px);
+  min-height: 0;
+}
+
+.fig {
+  width: 100%;
+  max-width: 1000px;
+}
+
+.fig svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 34vh;
+  overflow: visible;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2vh, 22px);
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-10);
+  letter-spacing: var(--tracking-06);
+  text-transform: uppercase;
+  color: var(--eom-fg-dim);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--eom-title-font);
+  font-size: var(--eom-title-size);
+  letter-spacing: var(--eom-title-tracking);
+  font-weight: var(--eom-title-weight);
+  text-transform: var(--eom-title-transform);
+  line-height: 1;
+  color: var(--eom-fg);
+}
+
+.body {
+  margin: 0;
+  font-family: var(--eom-copy-font);
+  font-size: var(--eom-copy-size);
+  line-height: var(--eom-copy-lh);
+  color: var(--eom-fg-muted);
+  max-width: 54ch;
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: clamp(2px, 1.2vh, 10px);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--eom-fg);
+  border-radius: 0;
+  padding: clamp(10px, 1.5vh, 14px) 24px;
+  cursor: pointer;
+  background: none;
+  color: var(--eom-fg);
+  transition:
+    background 420ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 420ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btnSolid {
+  background: var(--eom-fg);
+  color: var(--eom-bg);
+}
+
+.btnSolid:hover {
+  background: var(--eom-accent);
+  border-color: var(--eom-accent);
+  color: var(--eom-bg);
+}
+
+.btnGhost:hover {
+  background: var(--eom-fg);
+  color: var(--eom-bg);
+}
+
+.btn:focus-visible {
+  outline: 1px solid var(--eom-accent);
+  outline-offset: 3px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--eom-copy-font);
+  font-size: var(--text-11);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--eom-fg-dim);
+}
+
+.decay {
+  transform-origin: 0 110px;
+}
+
+.visible .decay {
+  animation: wipe 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
+}
+
+@keyframes wipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.visible .marker {
+  animation: markerIn 0.5s ease 1s both;
+}
+
+@keyframes markerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.visible .eyebrow {
+  animation: eomReveal 0.6s ease 1.25s both;
+}
+.visible .title {
+  animation: eomReveal 0.6s ease 1.4s both;
+}
+.visible .body {
+  animation: eomReveal 0.6s ease 1.6s both;
+}
+.visible .actions {
+  animation: eomReveal 0.6s ease 1.8s both;
+}
+.visible .foot {
+  animation: eomReveal 0.6s ease 1.95s both;
+}
+
+@keyframes eomReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visible .decay,
+  .visible .marker,
+  .visible .eyebrow,
+  .visible .title,
+  .visible .body,
+  .visible .actions,
+  .visible .foot {
+    animation: none;
+  }
+  .starTwinkle {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .fig svg {
+    max-height: 24vh;
+  }
+}
