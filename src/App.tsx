@@ -1,7 +1,9 @@
 import { Suspense, lazy } from "react";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
+import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
+import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
 import { FinaleCameraSwitcher } from "./scenes/cassini/finale/ui/FinaleCameraSwitcher";
@@ -27,7 +29,9 @@ export default function App() {
         </Suspense>
       </SceneErrorBoundary>
       {infoPanelOn && <InfoPanel />}
+      <Whiteout />
       <Timeline />
+      <SignalLost />
       <FinaleCameraSwitcher />
       <FinaleDebugHUD />
       <RingBackdropDebug />
