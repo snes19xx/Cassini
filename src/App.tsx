@@ -6,6 +6,7 @@ import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
 import { PlumesToggle } from "./components/PlumesToggle/PlumesToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
+import { TableauTransition } from "./components/TableauTransition/TableauTransition";
 import { Timeline } from "./components/Timeline/Timeline";
 import { SpectralSelector } from "./components/TitanSpectralSelector/TitanSpectralSelector";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
@@ -397,6 +398,8 @@ export default function App() {
           </button>
         </div>
       </div>
+
+      <TableauTransition />
 
       <InspectionViewBar />
       <BeginMission />
