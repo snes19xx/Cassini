@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
+import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
@@ -388,6 +389,7 @@ export default function App() {
       <InspectionViewBar />
 
       <InfoPanelGate />
+      <MoonLightingToggle />
       <Whiteout />
       <Timeline />
       <SignalLost />
