@@ -220,6 +220,85 @@
   animation: appReveal 500ms ease-out 200ms both;
 }
 
+/* Grid-row 1fr -> 0fr transition collapses the height smoothly so the
+   chrome buttons slide up into the strip's place once t advances. */
+.statsWrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: 10px;
+  transition:
+    grid-template-rows 400ms var(--motion-ease-standard),
+    margin-bottom 400ms var(--motion-ease-standard),
+    opacity 260ms ease;
+}
+
+.statsWrapHidden {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.statsBar {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  /* Needed for the 0fr collapse above to actually clip the row. */
+  overflow: hidden;
+  min-height: 0;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.statKey {
+  font-size: var(--text-9);
+  letter-spacing: var(--tracking-04);
+  font-weight: var(--weight-medium);
+  color: var(--color-fg-dim);
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-03);
+  font-weight: var(--weight-semibold);
+  color: var(--color-fg);
+}
+
+.scaleRef {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 2;
+  animation: appReveal 500ms ease-out 700ms both;
+}
+
+.scaleRefLine {
+  stroke: var(--color-fg);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.scaleRefDash {
+  stroke: var(--color-fg);
+  stroke-width: 1;
+}
+
+.scaleRefLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-04);
+  fill: var(--color-fg);
+}
+
 .chromeControls {
   display: flex;
   align-items: center;
