@@ -18,10 +18,24 @@ const CassiniScene = lazy(() =>
   import("./scenes/cassini").then((m) => ({ default: m.CassiniScene })),
 );
 
+const MISSION_STATS = [
+  { key: "HEIGHT", value: "6.7m" },
+  { key: "MASS", value: "5,712kg" },
+  { key: "RTGs", value: "3" },
+  { key: "MISSION", value: "13yr" },
+];
+
+const VIEW_MODES = [
+  { id: "blueprint", label: "BLUEPRINT", dot: "#8fd2ff" },
+  { id: "space", label: "SPACE", dot: "#a4a148" },
+  { id: "editorial", label: "EDITORIAL", dot: "#4f6d56" },
+] as const;
+
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
   const reset = useMissionStore((s) => s.reset);
+  const setRenderMode = useMissionStore((s) => s.setRenderMode);
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = renderMode;
@@ -58,7 +72,42 @@ export default function App() {
             </a>
           </p>
         </div>
+
+        <div
+          className={styles.viewSwitcher}
+          role="group"
+          aria-label="View mode"
+        >
+          {VIEW_MODES.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={`${styles.viewBtn}${renderMode === v.id ? ` ${styles.viewBtnActive}` : ""}`}
+              onClick={() => setRenderMode(v.id as typeof renderMode)}
+              aria-pressed={renderMode === v.id}
+            >
+              <span
+                className={styles.viewDot}
+                style={{
+                  background: renderMode === v.id ? "currentColor" : v.dot,
+                }}
+              />
+              {v.label}
+            </button>
+          ))}
+        </div>
       </header>
+
+      <div className={styles.topRight}>
+        <div className={styles.statsBar} aria-label="Mission statistics">
+          {MISSION_STATS.map((s) => (
+            <div key={s.key} className={styles.stat}>
+              <span className={styles.statKey}>{s.key}</span>
+              <span className={styles.statValue}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {infoPanelOn && <InfoPanel />}
       <Whiteout />
