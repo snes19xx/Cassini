@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useLayoutEffect } from "react";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { SignalLost } from "./components/SignalLost/SignalLost";
@@ -19,15 +19,47 @@ const CassiniScene = lazy(() =>
 );
 
 export default function App() {
+  const renderMode = useMissionStore((s) => s.renderMode);
   const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
+  const reset = useMissionStore((s) => s.reset);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = renderMode;
+  }, [renderMode]);
 
   return (
-    <div className={styles.root}>
-      <SceneErrorBoundary>
-        <Suspense fallback={null}>
-          <CassiniScene />
-        </Suspense>
-      </SceneErrorBoundary>
+    <main className={styles.root} data-theme={renderMode}>
+      <div className={styles.scene}>
+        <div className={styles.sceneCanvas}>
+          <SceneErrorBoundary onReset={reset}>
+            <Suspense fallback={null}>
+              <CassiniScene />
+            </Suspense>
+          </SceneErrorBoundary>
+        </div>
+      </div>
+
+      <div className={styles.vignette} />
+
+      <header className={styles.header}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>CASSINI</h1>
+          <p className={styles.attribution}>
+            SOURCES: <strong className={styles.nasa}>NASA</strong> ·{" "}
+            <strong className={styles.esa}>ESA</strong> ·{" "}
+            <strong className={styles.jpl}>JPL</strong> ·{" "}
+            <a
+              href="https://snes19xx.github.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.snesLink}
+            >
+              BY SNES
+            </a>
+          </p>
+        </div>
+      </header>
+
       {infoPanelOn && <InfoPanel />}
       <Whiteout />
       <Timeline />
@@ -39,6 +71,6 @@ export default function App() {
       <CassiniDebug />
       <FinaleRingsDebug />
       <MeteorDebug />
-    </div>
+    </main>
   );
 }
