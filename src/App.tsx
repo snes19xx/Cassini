@@ -231,9 +231,13 @@ function ScaleReference() {
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const showLabels = useMissionStore((s) => s.showLabels);
+  const autoRotate = useMissionStore((s) => s.autoRotate);
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
   const toggleLabels = useMissionStore((s) => s.toggleLabels);
+  const toggleAutoRotate = useMissionStore((s) => s.toggleAutoRotate);
+  const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
+  const toggleInfoPanel = useMissionStore((s) => s.toggleInfoPanel);
   const labelsAvailable = useMissionStore((s) => {
     if (s.currentT < LABELS_HOMEPAGE_T_EPSILON) return true;
     const tab = getActiveTableau(s.currentT);
@@ -423,6 +427,14 @@ export default function App() {
         <div className={styles.chromeControls}>
           <button
             type="button"
+            className={`${styles.chromeBtn}${autoRotate ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={toggleAutoRotate}
+            aria-pressed={autoRotate}
+          >
+            AUTO-ROTATE
+          </button>
+          <button
+            type="button"
             className={`${styles.chromeBtn}${showLabels ? ` ${styles.chromeBtnActive}` : ""}`}
             onClick={() => {
               if (!labelsAvailable) return;
@@ -437,6 +449,23 @@ export default function App() {
             }
           >
             LABELS
+          </button>
+          <button
+            type="button"
+            className={`${styles.chromeBtn}${infoPanelOn && !onHomepage ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={toggleInfoPanel}
+            aria-pressed={infoPanelOn && !onHomepage}
+            disabled={onHomepage}
+            title={
+              onHomepage
+                ? "The info panel appears once the mission is underway"
+                : "Toggle the mission info panel"
+            }
+          >
+            INFOPANEL
+          </button>
+          <button type="button" className={styles.chromeBtn} onClick={reset}>
+            RESET
           </button>
         </div>
       </div>
