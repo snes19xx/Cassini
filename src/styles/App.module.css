@@ -44,6 +44,13 @@
   line-height: 1;
 }
 
+.root[data-theme="editorial"] .title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.15em;
+}
+
 .attribution {
   font-size: var(--text-9);
   letter-spacing: var(--tracking-04);
@@ -138,6 +145,12 @@
 .sceneBlueprintLabelsDim {
   --grid-major-alpha: 0.045;
   --grid-minor-alpha: 0.02;
+}
+
+.sceneEditorial {
+  background-color: #fdfbf7;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
 }
 
 /* z-index 1: geometry covers the starfield underneath it. */
