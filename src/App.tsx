@@ -175,6 +175,8 @@ export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
+  const isBlueprint = renderMode === "blueprint";
+  const isEditorial = renderMode === "editorial";
   const showStars = renderMode === "space";
 
   useLayoutEffect(() => {
@@ -183,7 +185,11 @@ export default function App() {
 
   return (
     <main className={styles.root} data-theme={renderMode}>
-      <div className={styles.scene}>
+      <div
+        className={`${styles.scene}${isBlueprint ? ` ${styles.sceneBlueprint}` : ""}${
+          isEditorial ? ` ${styles.sceneEditorial}` : ""
+        }`}
+      >
         {showStars && (
           <svg className={styles.starfield} aria-hidden>
             {STARS.map((s) => {
