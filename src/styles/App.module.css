@@ -509,6 +509,26 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .vignette,
+  .starfield,
+  .scaleRef,
+  .header,
+  .topRight {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .scaleRef {
+    display: none;
+  }
+  .statsBar {
+    gap: 16px;
+  }
+}
+
 /* BLUEPRINT is forced into SPACE for the terminal descent, and pale sky
    haze washes out the light-on-dark header, so darken just this chrome.
    Not a --color-fg override: the same tokens paint the dark info/timeline
