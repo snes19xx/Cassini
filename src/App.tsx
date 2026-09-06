@@ -4,6 +4,10 @@ import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
+import {
+  INSPECTION_VIEWS,
+  INSPECTION_VIEW_ORDER,
+} from "./scenes/cassini/data/inspectionViews";
 import { TERMINAL_T_START } from "./scenes/cassini/data/missionConstants";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
@@ -15,6 +19,8 @@ import { MeteorDebug } from "./scenes/cassini/finale/ui/MeteorDebug";
 import { RingBackdropDebug } from "./scenes/cassini/finale/ui/RingBackdropDebug";
 import { infoPanelVisible, useMissionStore } from "./store/missionStore";
 import styles from "./styles/App.module.css";
+
+const LABELS_HOMEPAGE_T_EPSILON = 0.001;
 
 const CassiniScene = lazy(() =>
   import("./scenes/cassini").then((m) => ({ default: m.CassiniScene })),
@@ -113,6 +119,41 @@ function generateStars(count: number, seed: number): Star[] {
 
 const STARS = generateStars(140, 0xca551_011);
 
+function InspectionViewBar() {
+  const show = useMissionStore(
+    (s) => s.showLabels && s.currentT < LABELS_HOMEPAGE_T_EPSILON,
+  );
+  const activeView = useMissionStore((s) => s.inspectionView);
+  const setInspectionView = useMissionStore((s) => s.setInspectionView);
+
+  if (!show) return null;
+
+  return (
+    <div
+      className={styles.inspectionBar}
+      role="group"
+      aria-label="Inspection views"
+    >
+      {INSPECTION_VIEW_ORDER.map((id) => {
+        const view = INSPECTION_VIEWS[id];
+        const isActive = activeView === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            className={`${styles.inspectionBtn}${isActive ? ` ${styles.inspectionBtnActive}` : ""}`}
+            onClick={() => setInspectionView(id)}
+            aria-pressed={isActive}
+            title={view.hint}
+          >
+            <span className={styles.inspectionBtnLabel}>{view.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function InfoPanelGate() {
   const show = useMissionStore((s) => infoPanelVisible(s));
   if (!show) return null;
@@ -174,8 +215,10 @@ function ScaleReference() {
 
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
+  const showLabels = useMissionStore((s) => s.showLabels);
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
+  const toggleLabels = useMissionStore((s) => s.toggleLabels);
   const isBlueprint = renderMode === "blueprint";
   const isEditorial = renderMode === "editorial";
   const showStars = renderMode === "space";
@@ -308,7 +351,21 @@ export default function App() {
             </div>
           ))}
         </div>
+
+        <div className={styles.chromeControls}>
+          <button
+            type="button"
+            className={`${styles.chromeBtn}${showLabels ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={toggleLabels}
+            aria-pressed={showLabels}
+            title="Toggle labels overlay"
+          >
+            LABELS
+          </button>
+        </div>
       </div>
+
+      <InspectionViewBar />
 
       <InfoPanelGate />
       <Whiteout />
