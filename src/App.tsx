@@ -310,6 +310,8 @@ export default function App() {
       <div
         className={`${styles.scene}${isBlueprint ? ` ${styles.sceneBlueprint}` : ""}${
           isEditorial ? ` ${styles.sceneEditorial}` : ""
+        }${
+          isBlueprint && showLabels ? ` ${styles.sceneBlueprintLabelsDim}` : ""
         }`}
       >
         {showStars && (

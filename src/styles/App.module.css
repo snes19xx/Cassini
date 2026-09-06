@@ -86,8 +86,61 @@
   animation: appReveal 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
-/* The R3F canvas clears to transparent, so it sits over the starfield
-   (z-index 0) rather than under it, letting geometry occlude the stars. */
+.sceneBlueprint {
+  --grid-major-alpha: 0.09;
+  --grid-minor-alpha: 0.04;
+
+  background-color: #0b2e55;
+  background-image:
+    radial-gradient(
+      ellipse 130% 100% at 50% 50%,
+      rgba(0, 0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 22% 18%,
+      rgba(210, 225, 255, 0.06) 0%,
+      transparent 55%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>"),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    160px 160px,
+    80px 80px,
+    80px 80px,
+    20px 20px,
+    20px 20px;
+  transition:
+    background-color var(--motion-duration-theme) var(--motion-ease-standard),
+    --grid-major-alpha var(--motion-duration-theme) var(--motion-ease-standard),
+    --grid-minor-alpha var(--motion-duration-theme) var(--motion-ease-standard);
+}
+
+.sceneBlueprintLabelsDim {
+  --grid-major-alpha: 0.045;
+  --grid-minor-alpha: 0.02;
+}
+
+/* z-index 1: geometry covers the starfield underneath it. */
 .sceneCanvas {
   position: absolute;
   inset: 0;
@@ -303,7 +356,6 @@
   display: flex;
   align-items: baseline;
   gap: 28px;
-  /* Needed for the 0fr collapse above to actually clip the row. */
   overflow: hidden;
   min-height: 0;
 }
