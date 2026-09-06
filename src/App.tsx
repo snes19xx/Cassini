@@ -3,8 +3,10 @@ import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
+import { PlumesToggle } from "./components/PlumesToggle/PlumesToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
+import { SpectralSelector } from "./components/TitanSpectralSelector/TitanSpectralSelector";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
 import {
   INSPECTION_VIEWS,
@@ -390,6 +392,8 @@ export default function App() {
 
       <InfoPanelGate />
       <MoonLightingToggle />
+      <PlumesToggle />
+      <SpectralSelector />
       <Whiteout />
       <Timeline />
       <SignalLost />
