@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
+import { BeginMission } from "./components/BeginMission/BeginMission";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
@@ -236,6 +237,10 @@ export default function App() {
   const isEditorial = renderMode === "editorial";
   const showStars = renderMode === "space";
 
+  const onHomepage = useMissionStore(
+    (s) => s.currentT < LABELS_HOMEPAGE_T_EPSILON,
+  );
+
   const inTerminalPhase = useMissionStore(
     (s) => s.currentT >= TERMINAL_T_START,
   );
@@ -358,13 +363,18 @@ export default function App() {
       </header>
 
       <div className={styles.topRight}>
-        <div className={styles.statsBar} aria-label="Mission statistics">
-          {MISSION_STATS.map((s) => (
-            <div key={s.key} className={styles.stat}>
-              <span className={styles.statKey}>{s.key}</span>
-              <span className={styles.statValue}>{s.value}</span>
-            </div>
-          ))}
+        <div
+          className={`${styles.statsWrap}${onHomepage ? "" : ` ${styles.statsWrapHidden}`}`}
+          aria-hidden={!onHomepage}
+        >
+          <div className={styles.statsBar} aria-label="Mission statistics">
+            {MISSION_STATS.map((s) => (
+              <div key={s.key} className={styles.stat}>
+                <span className={styles.statKey}>{s.key}</span>
+                <span className={styles.statValue}>{s.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className={styles.chromeControls}>
@@ -389,6 +399,7 @@ export default function App() {
       </div>
 
       <InspectionViewBar />
+      <BeginMission />
 
       <InfoPanelGate />
       <MoonLightingToggle />
