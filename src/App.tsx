@@ -3,6 +3,7 @@ import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
+import { useProjectionStore } from "./hooks/useProjectedPoints";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
@@ -117,6 +118,59 @@ function InfoPanelGate() {
   return <InfoPanel />;
 }
 
+const SCALE_METERS = [0, 2, 4, 6];
+
+function ScaleReference() {
+  const projections = useProjectionStore((s) => s.projections);
+  const viewport = useProjectionStore((s) => s.viewport);
+
+  if (viewport.width < 768) return null;
+
+  const SAFE_TOP = 160;
+  const SAFE_BOTTOM = 140;
+
+  const ticks = SCALE_METERS.map((m) => {
+    const p = projections[`scale:${m}`];
+    if (!p || !p.onScreen) return null;
+    if (p.y < SAFE_TOP || p.y > viewport.height - SAFE_BOTTOM) return null;
+    return { m, y: Math.round(p.y) };
+  }).filter((t): t is { m: number; y: number } => t !== null);
+
+  if (ticks.length < 2) return null;
+
+  const topY = Math.min(...ticks.map((t) => t.y));
+  const bottomY = Math.max(...ticks.map((t) => t.y));
+
+  const paddingX = Math.min(28, Math.max(12, viewport.width * 0.02));
+  const colX = viewport.width - paddingX;
+
+  return (
+    <svg
+      className={styles.scaleRef}
+      aria-hidden
+      viewBox={`0 0 ${viewport.width} ${viewport.height}`}
+      width={viewport.width}
+      height={viewport.height}
+    >
+      <line
+        className={styles.scaleRefLine}
+        x1={colX}
+        x2={colX}
+        y1={topY}
+        y2={bottomY}
+      />
+      {ticks.map(({ m, y }) => (
+        <g key={m} transform={`translate(${colX} ${y})`}>
+          <line className={styles.scaleRefDash} x1={0} x2={-12} y1={0} y2={0} />
+          <text className={styles.scaleRefLabel} x={-18} y={4} textAnchor="end">
+            {String(m).padStart(2, "0")}m
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const reset = useMissionStore((s) => s.reset);
@@ -170,6 +224,8 @@ export default function App() {
       </div>
 
       <div className={styles.vignette} />
+
+      <ScaleReference />
 
       <header className={styles.header}>
         <div className={styles.titleBlock}>
