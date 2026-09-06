@@ -10,9 +10,6 @@ final plunge into Saturn's atmosphere on September 15, 2017.
 Built with React, [React Three Fiber](https://docs.pmnd.rs/react-three-fiber),
 Three.js, zustand, and Vite.
 
-## WORK IN PROGRESS!!
-
 <p align="center">
   <img src="assets/progress.png" alt="screenshot" height="420" />
 </p>
-
