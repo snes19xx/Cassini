@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saturn Rings Simulation</title>
+
+    <script
+      src="https://unpkg.com/react@18/umd/react.development.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #111;
+        color: #fff;
+        font-family: monospace;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .panel {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #444;
+        text-align: left;
+        padding: 8px 4px;
+      }
+      .canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        background: #000;
+        border: 1px solid #333;
+      }
+      canvas {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+        background-color: #000;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" src="SaturnRingsSimulator.js"></script>
+  </body>
+</html>
