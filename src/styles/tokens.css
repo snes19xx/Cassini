@@ -101,3 +101,33 @@
   --transition-veil: rgba(11, 46, 85, 0.92);
   --motion-duration-panel: 320ms;
 }
+
+[data-theme="editorial"] {
+  --color-bg: #fdfbf7;
+  --color-fg: #2d353b;
+  --color-fg-muted: rgba(45, 53, 59, 0.78);
+  --color-fg-dim: rgba(45, 53, 59, 0.52);
+  --color-fg-faint: rgba(45, 53, 59, 0.22);
+
+  --color-wire: rgba(45, 53, 59, 1);
+  --color-wire-dim: rgba(45, 53, 59, 0.92);
+  --color-wire-faint: rgba(45, 53, 59, 0.28);
+
+  --color-accent: #4f6d56;
+  --color-accent-dim: rgba(79, 109, 86, 0.55);
+  --color-accent-wash: rgba(79, 109, 86, 0.1);
+  --color-accent-glow: rgba(79, 109, 86, 0.4);
+
+  /* Opaque cream surfaces, no backdrop blur. */
+  --panel-bg: #fdfbf7;
+  --panel-bg-heavy: #fdfbf7;
+  --panel-bg-strong: #fdfbf7;
+  --panel-bg-chip: #fdfbf7;
+  --panel-bg-info: #fdfbf7;
+  --panel-border: rgba(45, 53, 59, 0.22);
+  --panel-blur: 0px;
+
+  --scene-bg: #fdfbf7;
+  --transition-veil: rgba(253, 251, 247, 0.96);
+  --motion-duration-panel: 420ms;
+}
