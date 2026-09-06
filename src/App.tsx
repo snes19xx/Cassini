@@ -241,6 +241,30 @@ export default function App() {
   const onHomepage = useMissionStore(
     (s) => s.currentT < LABELS_HOMEPAGE_T_EPSILON,
   );
+  const setActiveComponent = useMissionStore((s) => s.setActiveComponent);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      )
+        return;
+      if (e.key === "Escape") {
+        setActiveComponent(null);
+        return;
+      }
+      if (e.key === " ") {
+        e.preventDefault();
+        useMissionStore.getState().togglePlay();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setActiveComponent]);
 
   const inTerminalPhase = useMissionStore(
     (s) => s.currentT >= TERMINAL_T_START,
