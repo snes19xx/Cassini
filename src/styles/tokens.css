@@ -9,22 +9,34 @@
   --color-wire-dim: rgba(232, 238, 255, 0.32);
   --color-wire-faint: rgba(232, 238, 255, 0.1);
 
-  --color-accent: #4a9fff;
-  --color-accent-dim: rgba(74, 159, 255, 0.5);
-  --color-accent-wash: rgba(74, 159, 255, 0.09);
-  --color-accent-glow: rgba(74, 159, 255, 0.5);
+  --color-accent: #7e7b32;
+  --color-accent-dim: rgba(126, 123, 50, 0.5);
+  --color-accent-wash: rgba(126, 123, 50, 0.12);
+  --color-accent-glow: rgba(126, 123, 50, 0.55);
 
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Global so component CSS can reference any theme's font from any theme;
+     the others just never get picked up since their selectors set
+     font-family directly. */
+  --font-display: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --font-serif: "Lora", "Times New Roman", Georgia, serif;
+  --font-eyebrow: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --font-sans: var(--font-mono);
 
   --tracking-01: 0.1em;
   --tracking-02: 0.12em;
   --tracking-03: 0.14em;
   --tracking-04: 0.16em;
   --tracking-05: 0.2em;
+  --tracking-06: 0.24em;
+  --tracking-07: 0.35em;
 
   --text-9: 12px;
+  --text-10: 12.5px;
   --text-11: 13px;
   --text-12: 14px;
+  --text-13: 15px;
   --text-14: 16px;
   --text-18: clamp(16px, 1.6vw, 20px);
   --text-22: clamp(20px, 2.2vw, 28px);
@@ -37,9 +49,11 @@
   --hairline-faint: 1px solid var(--color-fg-faint);
   --hairline-accent: 1px solid var(--color-accent);
 
+  --motion-ease-spring: cubic-bezier(0.34, 1.28, 0.64, 1);
   --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --motion-duration-panel: 420ms;
   --motion-duration-micro: 240ms;
+  --motion-duration-theme: 420ms;
 
   --chrome-pad-x: clamp(14px, 2.2vw, 28px);
   --chrome-pad-y: clamp(12px, 1.8vw, 20px);
@@ -51,10 +65,39 @@
   --panel-bg-heavy: rgba(0, 0, 0, 0.75);
   --panel-bg-strong: rgba(0, 0, 0, 0.9);
   --panel-bg-chip: rgba(0, 0, 0, 0.25);
+  --panel-bg-info: rgba(0, 0, 0, 0.85);
   --panel-border: rgba(232, 238, 255, 0.14);
   --panel-blur: 12px;
 
   --scene-bg: var(--color-bg);
 
   --transition-veil: rgba(0, 0, 0, 0.92);
+
+  --vignette-bg: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+[data-theme="blueprint"] {
+  --color-bg: #0b2e55;
+  --color-fg: #dceafe;
+  --color-fg-muted: rgba(220, 234, 254, 0.8);
+  --color-fg-dim: rgba(220, 234, 254, 0.55);
+  --color-fg-faint: rgba(220, 234, 254, 0.28);
+  --color-accent: #8fd2ff;
+  --color-accent-dim: rgba(143, 210, 255, 0.55);
+  --color-accent-wash: rgba(143, 210, 255, 0.1);
+  --color-accent-glow: rgba(143, 210, 255, 0.5);
+
+  --panel-bg: rgba(10, 38, 72, 0.65);
+  --panel-bg-heavy: rgba(10, 38, 72, 0.85);
+  --panel-bg-strong: rgba(10, 38, 72, 0.93);
+  --panel-bg-chip: rgba(10, 38, 72, 0.4);
+  --panel-bg-info: rgba(10, 38, 72, 0.88);
+  --panel-border: rgba(143, 210, 255, 0.2);
+  --scene-bg: #0b2e55;
+  --transition-veil: rgba(11, 46, 85, 0.92);
+  --motion-duration-panel: 320ms;
 }
