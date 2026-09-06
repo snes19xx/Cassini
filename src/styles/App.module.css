@@ -77,6 +77,140 @@
   text-decoration: underline;
 }
 
+.viewSwitcher {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: var(--hairline);
+  width: fit-content;
+}
+
+.viewBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  color: var(--color-fg-dim);
+  background: transparent;
+  border: none;
+  border-right: var(--hairline-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.viewBtn:last-child {
+  border-right: none;
+}
+
+.viewBtn:hover {
+  color: var(--color-fg);
+}
+
+.viewBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  box-shadow:
+    -1px 0 0 var(--color-fg),
+    1px 0 0 var(--color-fg);
+  position: relative;
+}
+
+.viewBtnActive:hover {
+  color: var(--color-bg);
+}
+
+.viewBtn:disabled,
+.viewBtn[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.viewBtn:disabled:hover,
+.viewBtn[disabled]:hover {
+  color: var(--color-fg-dim);
+  background: transparent;
+}
+
+.viewDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.topRight {
+  position: absolute;
+  top: var(--chrome-pad-y);
+  right: var(--chrome-pad-x);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  animation: appReveal 500ms ease-out 200ms both;
+}
+
+.chromeControls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.chromeBtn {
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  color: var(--color-fg);
+  background: var(--panel-bg-chip);
+  border: var(--hairline);
+  border-right: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.chromeBtn:last-child {
+  border-right: var(--hairline);
+}
+
+.chromeBtn:hover {
+  background: var(--color-fg-faint);
+}
+
+.chromeBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.chromeBtnActive:hover {
+  background: var(--color-fg-muted);
+  color: var(--color-bg);
+}
+
+.chromeBtn:disabled,
+.chromeBtn[disabled] {
+  color: var(--color-fg-dim);
+  cursor: not-allowed;
+}
+
+.chromeBtn:disabled:hover,
+.chromeBtn[disabled]:hover {
+  background: var(--panel-bg-chip);
+}
+
 .tableauVeil {
   position: absolute;
   inset: 0;
