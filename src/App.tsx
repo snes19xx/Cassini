@@ -31,11 +31,92 @@ const VIEW_MODES = [
   { id: "editorial", label: "EDITORIAL", dot: "#4f6d56" },
 ] as const;
 
+type Star = {
+  id: number;
+  cx: number;
+  cy: number;
+  r: number;
+  o: number;
+  tone: "neutral" | "warm" | "cool";
+  twinkle?: boolean;
+  delay?: number;
+};
+
+function makeRand(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
+function generateStars(count: number, seed: number): Star[] {
+  const rand = makeRand(seed);
+  const stars: Star[] = [];
+  const clusterCount = Math.max(6, Math.floor(count / 18));
+  type Cluster = { x: number; y: number; spread: number };
+  const clusters: Cluster[] = [];
+  let attempts = 0;
+  while (clusters.length < clusterCount && attempts < clusterCount * 8) {
+    attempts++;
+    const c = { x: rand() * 100, y: rand() * 100, spread: 4 + rand() * 5 };
+    if (!clusters.some((e) => Math.hypot(e.x - c.x, e.y - c.y) < 14))
+      clusters.push(c);
+  }
+  for (const c of clusters) {
+    const tone = (r: number): Star["tone"] =>
+      r < 0.2 ? "warm" : r < 0.38 ? "cool" : "neutral";
+    stars.push({
+      id: stars.length,
+      cx: c.x,
+      cy: c.y,
+      r: 1.3 + rand() * 0.4,
+      o: 0.75 + rand() * 0.2,
+      tone: tone(rand()),
+    });
+    const companions = 2 + Math.floor(rand() * 5);
+    for (let k = 0; k < companions; k++) {
+      const angle = rand() * Math.PI * 2,
+        dist = rand() * c.spread;
+      stars.push({
+        id: stars.length,
+        cx: Math.max(0, Math.min(100, c.x + Math.cos(angle) * dist)),
+        cy: Math.max(0, Math.min(100, c.y + Math.sin(angle) * dist)),
+        r: 0.4 + rand() * 0.4,
+        o: 0.35 + rand() * 0.45,
+        tone: tone(rand()),
+      });
+    }
+  }
+  while (stars.length < count) {
+    const tone = (r: number): Star["tone"] =>
+      r < 0.2 ? "warm" : r < 0.38 ? "cool" : "neutral";
+    stars.push({
+      id: stars.length,
+      cx: rand() * 100,
+      cy: rand() * 100,
+      r: rand() < 0.08 ? 0.9 : 0.4,
+      o: 0.18 + rand() * 0.3,
+      tone: tone(rand()),
+    });
+  }
+  for (const s of stars) {
+    if (rand() < 0.08) {
+      s.twinkle = true;
+      s.delay = rand() * 6;
+    }
+  }
+  return stars;
+}
+
+const STARS = generateStars(140, 0xca551_011);
+
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
+  const showStars = renderMode === "space";
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = renderMode;
@@ -44,6 +125,36 @@ export default function App() {
   return (
     <main className={styles.root} data-theme={renderMode}>
       <div className={styles.scene}>
+        {showStars && (
+          <svg className={styles.starfield} aria-hidden>
+            {STARS.map((s) => {
+              const toneClass =
+                s.tone === "warm"
+                  ? styles.starWarm
+                  : s.tone === "cool"
+                    ? styles.starCool
+                    : styles.star;
+              const cls = s.twinkle
+                ? `${toneClass} ${styles.starTwinkle}`
+                : toneClass;
+              return (
+                <circle
+                  key={s.id}
+                  cx={`${s.cx}%`}
+                  cy={`${s.cy}%`}
+                  r={s.r}
+                  opacity={s.o}
+                  className={cls}
+                  style={
+                    s.twinkle
+                      ? { animationDelay: `${s.delay ?? 0}s` }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </svg>
+        )}
         <div className={styles.sceneCanvas}>
           <SceneErrorBoundary onReset={reset}>
             <Suspense fallback={null}>
