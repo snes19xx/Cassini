@@ -501,3 +501,66 @@
     opacity: 0;
   }
 }
+
+@keyframes appRevealUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* BLUEPRINT is forced into SPACE for the terminal descent, and pale sky
+   haze washes out the light-on-dark header, so darken just this chrome.
+   Not a --color-fg override: the same tokens paint the dark info/timeline
+   panels, which would invert to black-on-black. EDITORIAL is untouched,
+   already dark-on-cream. */
+.root[data-theme="space"][data-terminal] .title {
+  color: #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .attribution {
+  color: rgba(27, 39, 51, 0.75);
+}
+
+.root[data-theme="space"][data-terminal] .nasa {
+  color: #1f6b5d;
+}
+
+.root[data-theme="space"][data-terminal] .esa {
+  color: #2d5170;
+}
+
+.root[data-theme="space"][data-terminal] .jpl {
+  color: #7d2130;
+}
+
+.root[data-theme="space"][data-terminal] .snesLink {
+  color: rgba(27, 39, 51, 0.72);
+}
+
+.root[data-theme="space"][data-terminal] .viewSwitcher {
+  border-color: rgba(27, 39, 51, 0.32);
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn {
+  color: rgba(27, 39, 51, 0.6);
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn:hover {
+  color: #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .viewBtnActive,
+.root[data-theme="space"][data-terminal] .viewBtnActive:hover {
+  background: #1b2733;
+  color: #eef2f5;
+  box-shadow:
+    -1px 0 0 #1b2733,
+    1px 0 0 #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn:disabled,
+.root[data-theme="space"][data-terminal] .viewBtn[disabled],
+.root[data-theme="space"][data-terminal] .viewBtn:disabled:hover {
+  color: rgba(27, 39, 51, 0.3);
+}
