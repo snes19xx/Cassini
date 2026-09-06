@@ -1,9 +1,10 @@
-import { Suspense, lazy, useLayoutEffect } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { Timeline } from "./components/Timeline/Timeline";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
+import { TERMINAL_T_START } from "./scenes/cassini/data/missionConstants";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
@@ -179,12 +180,25 @@ export default function App() {
   const isEditorial = renderMode === "editorial";
   const showStars = renderMode === "space";
 
+  const inTerminalPhase = useMissionStore(
+    (s) => s.currentT >= TERMINAL_T_START,
+  );
+  useEffect(() => {
+    const s = useMissionStore.getState();
+    if (inTerminalPhase) s.enterTerminalTheme();
+    else s.exitTerminalTheme();
+  }, [inTerminalPhase]);
+
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = renderMode;
   }, [renderMode]);
 
   return (
-    <main className={styles.root} data-theme={renderMode}>
+    <main
+      className={styles.root}
+      data-theme={renderMode}
+      data-terminal={inTerminalPhase || undefined}
+    >
       <div
         className={`${styles.scene}${isBlueprint ? ` ${styles.sceneBlueprint}` : ""}${
           isEditorial ? ` ${styles.sceneEditorial}` : ""
@@ -256,23 +270,32 @@ export default function App() {
           role="group"
           aria-label="View mode"
         >
-          {VIEW_MODES.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              className={`${styles.viewBtn}${renderMode === v.id ? ` ${styles.viewBtnActive}` : ""}`}
-              onClick={() => setRenderMode(v.id as typeof renderMode)}
-              aria-pressed={renderMode === v.id}
-            >
-              <span
-                className={styles.viewDot}
-                style={{
-                  background: renderMode === v.id ? "currentColor" : v.dot,
-                }}
-              />
-              {v.label}
-            </button>
-          ))}
+          {VIEW_MODES.map((v) => {
+            const locked = v.id === "blueprint" && inTerminalPhase;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                className={`${styles.viewBtn}${renderMode === v.id ? ` ${styles.viewBtnActive}` : ""}`}
+                onClick={() => setRenderMode(v.id as typeof renderMode)}
+                aria-pressed={renderMode === v.id}
+                disabled={locked}
+                title={
+                  locked
+                    ? "Blueprint is unavailable during the terminal descent"
+                    : undefined
+                }
+              >
+                <span
+                  className={styles.viewDot}
+                  style={{
+                    background: renderMode === v.id ? "currentColor" : v.dot,
+                  }}
+                />
+                {v.label}
+              </button>
+            );
+          })}
         </div>
       </header>
 
