@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
+import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { SignalLost } from "./components/SignalLost/SignalLost";
@@ -8,7 +9,11 @@ import {
   INSPECTION_VIEWS,
   INSPECTION_VIEW_ORDER,
 } from "./scenes/cassini/data/inspectionViews";
-import { TERMINAL_T_START } from "./scenes/cassini/data/missionConstants";
+import {
+  ATMOSPHERE_TABLEAU_ID,
+  TERMINAL_T_START,
+} from "./scenes/cassini/data/missionConstants";
+import { getActiveTableau } from "./scenes/cassini/data/tableaus";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
@@ -219,6 +224,11 @@ export default function App() {
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
   const toggleLabels = useMissionStore((s) => s.toggleLabels);
+  const labelsAvailable = useMissionStore((s) => {
+    if (s.currentT < LABELS_HOMEPAGE_T_EPSILON) return true;
+    const tab = getActiveTableau(s.currentT);
+    return tab.kind === "moon" || tab.id === ATMOSPHERE_TABLEAU_ID;
+  });
   const isBlueprint = renderMode === "blueprint";
   const isEditorial = renderMode === "editorial";
   const showStars = renderMode === "space";
@@ -290,6 +300,8 @@ export default function App() {
 
       <ScaleReference />
 
+      <AtmosphereNote />
+
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>CASSINI</h1>
@@ -356,9 +368,17 @@ export default function App() {
           <button
             type="button"
             className={`${styles.chromeBtn}${showLabels ? ` ${styles.chromeBtnActive}` : ""}`}
-            onClick={toggleLabels}
+            onClick={() => {
+              if (!labelsAvailable) return;
+              toggleLabels();
+            }}
             aria-pressed={showLabels}
-            title="Toggle labels overlay"
+            disabled={!labelsAvailable}
+            title={
+              labelsAvailable
+                ? "Toggle labels overlay"
+                : "Labels are only available on the startup view or in a moon tableau"
+            }
           >
             LABELS
           </button>
