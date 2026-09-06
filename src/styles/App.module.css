@@ -147,6 +147,66 @@
   width: fit-content;
 }
 
+/* Clears the timeline bar with a comfortable margin above it. */
+.inspectionBar {
+  position: absolute;
+  left: 50%;
+  bottom: 180px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: var(--hairline);
+  background: var(--panel-bg-chip);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: appReveal 350ms ease-out both;
+}
+
+.inspectionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  color: var(--color-fg);
+  background: transparent;
+  border: none;
+  border-right: var(--hairline-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.inspectionBtn:last-child {
+  border-right: none;
+}
+
+.inspectionBtn:hover {
+  background: var(--color-fg-faint);
+}
+
+.inspectionBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.inspectionBtnActive:hover {
+  background: var(--color-fg-muted);
+  color: var(--color-bg);
+}
+
+.inspectionBtnLabel {
+  font-size: var(--text-10);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
 .viewBtn {
   display: flex;
   align-items: center;
