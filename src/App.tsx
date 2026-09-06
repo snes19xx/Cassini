@@ -111,9 +111,14 @@ function generateStars(count: number, seed: number): Star[] {
 
 const STARS = generateStars(140, 0xca551_011);
 
+function InfoPanelGate() {
+  const show = useMissionStore((s) => infoPanelVisible(s));
+  if (!show) return null;
+  return <InfoPanel />;
+}
+
 export default function App() {
   const renderMode = useMissionStore((s) => s.renderMode);
-  const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
   const reset = useMissionStore((s) => s.reset);
   const setRenderMode = useMissionStore((s) => s.setRenderMode);
   const showStars = renderMode === "space";
@@ -220,7 +225,7 @@ export default function App() {
         </div>
       </div>
 
-      {infoPanelOn && <InfoPanel />}
+      <InfoPanelGate />
       <Whiteout />
       <Timeline />
       <SignalLost />
