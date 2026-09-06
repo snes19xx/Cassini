@@ -17,8 +17,13 @@ import {
 import {
   ATMOSPHERE_TABLEAU_ID,
   TERMINAL_T_START,
+  clampSeekT,
 } from "./scenes/cassini/data/missionConstants";
-import { getActiveTableau } from "./scenes/cassini/data/tableaus";
+import {
+  TABLEAUS,
+  findActiveTableauIndex,
+  getActiveTableau,
+} from "./scenes/cassini/data/tableaus";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
@@ -260,6 +265,19 @@ export default function App() {
       if (e.key === " ") {
         e.preventDefault();
         useMissionStore.getState().togglePlay();
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const { currentT, setTime } = useMissionStore.getState();
+        const idx = findActiveTableauIndex(currentT);
+        const next = e.key === "ArrowRight" ? idx + 1 : idx - 1;
+        const target =
+          TABLEAUS[Math.max(0, Math.min(TABLEAUS.length - 1, next))];
+        if (target) {
+          setTime(clampSeekT(target.tStart + 1e-5));
+          useMissionStore.getState().resetCamera();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
