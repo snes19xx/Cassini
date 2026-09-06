@@ -1,8 +1,29 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
+import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
+import { BeginMission } from "./components/BeginMission/BeginMission";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
+import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
+import { PlumesToggle } from "./components/PlumesToggle/PlumesToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
+import { TableauTransition } from "./components/TableauTransition/TableauTransition";
 import { Timeline } from "./components/Timeline/Timeline";
+import { SpectralSelector } from "./components/TitanSpectralSelector/TitanSpectralSelector";
+import { useProjectionStore } from "./hooks/useProjectedPoints";
+import {
+  INSPECTION_VIEWS,
+  INSPECTION_VIEW_ORDER,
+} from "./scenes/cassini/data/inspectionViews";
+import {
+  ATMOSPHERE_TABLEAU_ID,
+  TERMINAL_T_START,
+  clampSeekT,
+} from "./scenes/cassini/data/missionConstants";
+import {
+  TABLEAUS,
+  findActiveTableauIndex,
+  getActiveTableau,
+} from "./scenes/cassini/data/tableaus";
 import { Whiteout } from "./scenes/cassini/finale/parts/Whiteout";
 import { CameraDebug } from "./scenes/cassini/finale/ui/CameraDebug";
 import { CassiniDebug } from "./scenes/cassini/finale/ui/CassiniDebug";
@@ -14,21 +35,452 @@ import { RingBackdropDebug } from "./scenes/cassini/finale/ui/RingBackdropDebug"
 import { infoPanelVisible, useMissionStore } from "./store/missionStore";
 import styles from "./styles/App.module.css";
 
+const LABELS_HOMEPAGE_T_EPSILON = 0.001;
+
 const CassiniScene = lazy(() =>
   import("./scenes/cassini").then((m) => ({ default: m.CassiniScene })),
 );
 
-export default function App() {
-  const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
+const MISSION_STATS = [
+  { key: "HEIGHT", value: "6.7m" },
+  { key: "MASS", value: "5,712kg" },
+  { key: "RTGs", value: "3" },
+  { key: "MISSION", value: "13yr" },
+];
+
+const VIEW_MODES = [
+  { id: "blueprint", label: "BLUEPRINT", dot: "#8fd2ff" },
+  { id: "space", label: "SPACE", dot: "#a4a148" },
+  { id: "editorial", label: "EDITORIAL", dot: "#4f6d56" },
+] as const;
+
+type Star = {
+  id: number;
+  cx: number;
+  cy: number;
+  r: number;
+  o: number;
+  tone: "neutral" | "warm" | "cool";
+  twinkle?: boolean;
+  delay?: number;
+};
+
+function makeRand(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
+function generateStars(count: number, seed: number): Star[] {
+  const rand = makeRand(seed);
+  const stars: Star[] = [];
+  const clusterCount = Math.max(6, Math.floor(count / 18));
+  type Cluster = { x: number; y: number; spread: number };
+  const clusters: Cluster[] = [];
+  let attempts = 0;
+  while (clusters.length < clusterCount && attempts < clusterCount * 8) {
+    attempts++;
+    const c = { x: rand() * 100, y: rand() * 100, spread: 4 + rand() * 5 };
+    if (!clusters.some((e) => Math.hypot(e.x - c.x, e.y - c.y) < 14))
+      clusters.push(c);
+  }
+  for (const c of clusters) {
+    const tone = (r: number): Star["tone"] =>
+      r < 0.2 ? "warm" : r < 0.38 ? "cool" : "neutral";
+    stars.push({
+      id: stars.length,
+      cx: c.x,
+      cy: c.y,
+      r: 1.3 + rand() * 0.4,
+      o: 0.75 + rand() * 0.2,
+      tone: tone(rand()),
+    });
+    const companions = 2 + Math.floor(rand() * 5);
+    for (let k = 0; k < companions; k++) {
+      const angle = rand() * Math.PI * 2,
+        dist = rand() * c.spread;
+      stars.push({
+        id: stars.length,
+        cx: Math.max(0, Math.min(100, c.x + Math.cos(angle) * dist)),
+        cy: Math.max(0, Math.min(100, c.y + Math.sin(angle) * dist)),
+        r: 0.4 + rand() * 0.4,
+        o: 0.35 + rand() * 0.45,
+        tone: tone(rand()),
+      });
+    }
+  }
+  while (stars.length < count) {
+    const tone = (r: number): Star["tone"] =>
+      r < 0.2 ? "warm" : r < 0.38 ? "cool" : "neutral";
+    stars.push({
+      id: stars.length,
+      cx: rand() * 100,
+      cy: rand() * 100,
+      r: rand() < 0.08 ? 0.9 : 0.4,
+      o: 0.18 + rand() * 0.3,
+      tone: tone(rand()),
+    });
+  }
+  for (const s of stars) {
+    if (rand() < 0.08) {
+      s.twinkle = true;
+      s.delay = rand() * 6;
+    }
+  }
+  return stars;
+}
+
+const STARS = generateStars(140, 0xca551_011);
+
+function InspectionViewBar() {
+  const show = useMissionStore(
+    (s) => s.showLabels && s.currentT < LABELS_HOMEPAGE_T_EPSILON,
+  );
+  const activeView = useMissionStore((s) => s.inspectionView);
+  const setInspectionView = useMissionStore((s) => s.setInspectionView);
+
+  if (!show) return null;
 
   return (
-    <div className={styles.root}>
-      <SceneErrorBoundary>
-        <Suspense fallback={null}>
-          <CassiniScene />
-        </Suspense>
-      </SceneErrorBoundary>
-      {infoPanelOn && <InfoPanel />}
+    <div
+      className={styles.inspectionBar}
+      role="group"
+      aria-label="Inspection views"
+    >
+      {INSPECTION_VIEW_ORDER.map((id) => {
+        const view = INSPECTION_VIEWS[id];
+        const isActive = activeView === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            className={`${styles.inspectionBtn}${isActive ? ` ${styles.inspectionBtnActive}` : ""}`}
+            onClick={() => setInspectionView(id)}
+            aria-pressed={isActive}
+            title={view.hint}
+          >
+            <span className={styles.inspectionBtnLabel}>{view.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfoPanelGate() {
+  const show = useMissionStore((s) => infoPanelVisible(s));
+  if (!show) return null;
+  return <InfoPanel />;
+}
+
+const SCALE_METERS = [0, 2, 4, 6];
+
+function ScaleReference() {
+  const projections = useProjectionStore((s) => s.projections);
+  const viewport = useProjectionStore((s) => s.viewport);
+
+  if (viewport.width < 768) return null;
+
+  const SAFE_TOP = 160;
+  const SAFE_BOTTOM = 140;
+
+  const ticks = SCALE_METERS.map((m) => {
+    const p = projections[`scale:${m}`];
+    if (!p || !p.onScreen) return null;
+    if (p.y < SAFE_TOP || p.y > viewport.height - SAFE_BOTTOM) return null;
+    return { m, y: Math.round(p.y) };
+  }).filter((t): t is { m: number; y: number } => t !== null);
+
+  if (ticks.length < 2) return null;
+
+  const topY = Math.min(...ticks.map((t) => t.y));
+  const bottomY = Math.max(...ticks.map((t) => t.y));
+
+  const paddingX = Math.min(28, Math.max(12, viewport.width * 0.02));
+  const colX = viewport.width - paddingX;
+
+  return (
+    <svg
+      className={styles.scaleRef}
+      aria-hidden
+      viewBox={`0 0 ${viewport.width} ${viewport.height}`}
+      width={viewport.width}
+      height={viewport.height}
+    >
+      <line
+        className={styles.scaleRefLine}
+        x1={colX}
+        x2={colX}
+        y1={topY}
+        y2={bottomY}
+      />
+      {ticks.map(({ m, y }) => (
+        <g key={m} transform={`translate(${colX} ${y})`}>
+          <line className={styles.scaleRefDash} x1={0} x2={-12} y1={0} y2={0} />
+          <text className={styles.scaleRefLabel} x={-18} y={4} textAnchor="end">
+            {String(m).padStart(2, "0")}m
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export default function App() {
+  const renderMode = useMissionStore((s) => s.renderMode);
+  const showLabels = useMissionStore((s) => s.showLabels);
+  const autoRotate = useMissionStore((s) => s.autoRotate);
+  const reset = useMissionStore((s) => s.reset);
+  const setRenderMode = useMissionStore((s) => s.setRenderMode);
+  const toggleLabels = useMissionStore((s) => s.toggleLabels);
+  const toggleAutoRotate = useMissionStore((s) => s.toggleAutoRotate);
+  const infoPanelOn = useMissionStore((s) => infoPanelVisible(s));
+  const toggleInfoPanel = useMissionStore((s) => s.toggleInfoPanel);
+  const labelsAvailable = useMissionStore((s) => {
+    if (s.currentT < LABELS_HOMEPAGE_T_EPSILON) return true;
+    const tab = getActiveTableau(s.currentT);
+    return tab.kind === "moon" || tab.id === ATMOSPHERE_TABLEAU_ID;
+  });
+  const isBlueprint = renderMode === "blueprint";
+  const isEditorial = renderMode === "editorial";
+  const showStars = renderMode === "space";
+
+  const onHomepage = useMissionStore(
+    (s) => s.currentT < LABELS_HOMEPAGE_T_EPSILON,
+  );
+  const setActiveComponent = useMissionStore((s) => s.setActiveComponent);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      )
+        return;
+      if (e.key === "Escape") {
+        setActiveComponent(null);
+        return;
+      }
+      if (e.key === " ") {
+        e.preventDefault();
+        useMissionStore.getState().togglePlay();
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const { currentT, setTime } = useMissionStore.getState();
+        const idx = findActiveTableauIndex(currentT);
+        const next = e.key === "ArrowRight" ? idx + 1 : idx - 1;
+        const target =
+          TABLEAUS[Math.max(0, Math.min(TABLEAUS.length - 1, next))];
+        if (target) {
+          setTime(clampSeekT(target.tStart + 1e-5));
+          useMissionStore.getState().resetCamera();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setActiveComponent]);
+
+  const inTerminalPhase = useMissionStore(
+    (s) => s.currentT >= TERMINAL_T_START,
+  );
+  useEffect(() => {
+    const s = useMissionStore.getState();
+    if (inTerminalPhase) s.enterTerminalTheme();
+    else s.exitTerminalTheme();
+  }, [inTerminalPhase]);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = renderMode;
+  }, [renderMode]);
+
+  return (
+    <main
+      className={styles.root}
+      data-theme={renderMode}
+      data-terminal={inTerminalPhase || undefined}
+    >
+      <div
+        className={`${styles.scene}${isBlueprint ? ` ${styles.sceneBlueprint}` : ""}${
+          isEditorial ? ` ${styles.sceneEditorial}` : ""
+        }${
+          isBlueprint && showLabels ? ` ${styles.sceneBlueprintLabelsDim}` : ""
+        }`}
+      >
+        {showStars && (
+          <svg className={styles.starfield} aria-hidden>
+            {STARS.map((s) => {
+              const toneClass =
+                s.tone === "warm"
+                  ? styles.starWarm
+                  : s.tone === "cool"
+                    ? styles.starCool
+                    : styles.star;
+              const cls = s.twinkle
+                ? `${toneClass} ${styles.starTwinkle}`
+                : toneClass;
+              return (
+                <circle
+                  key={s.id}
+                  cx={`${s.cx}%`}
+                  cy={`${s.cy}%`}
+                  r={s.r}
+                  opacity={s.o}
+                  className={cls}
+                  style={
+                    s.twinkle
+                      ? { animationDelay: `${s.delay ?? 0}s` }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </svg>
+        )}
+        <div className={styles.sceneCanvas}>
+          <SceneErrorBoundary onReset={reset}>
+            <Suspense fallback={null}>
+              <CassiniScene />
+            </Suspense>
+          </SceneErrorBoundary>
+        </div>
+      </div>
+
+      <div className={styles.vignette} />
+
+      <ScaleReference />
+
+      <AtmosphereNote />
+
+      <header className={styles.header}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>CASSINI</h1>
+          <p className={styles.attribution}>
+            SOURCES: <strong className={styles.nasa}>NASA</strong> ·{" "}
+            <strong className={styles.esa}>ESA</strong> ·{" "}
+            <strong className={styles.jpl}>JPL</strong> ·{" "}
+            <a
+              href="https://snes19xx.github.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.snesLink}
+            >
+              BY SNES
+            </a>
+          </p>
+        </div>
+
+        <div
+          className={styles.viewSwitcher}
+          role="group"
+          aria-label="View mode"
+        >
+          {VIEW_MODES.map((v) => {
+            const locked = v.id === "blueprint" && inTerminalPhase;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                className={`${styles.viewBtn}${renderMode === v.id ? ` ${styles.viewBtnActive}` : ""}`}
+                onClick={() => setRenderMode(v.id as typeof renderMode)}
+                aria-pressed={renderMode === v.id}
+                disabled={locked}
+                title={
+                  locked
+                    ? "Blueprint is unavailable during the terminal descent"
+                    : undefined
+                }
+              >
+                <span
+                  className={styles.viewDot}
+                  style={{
+                    background: renderMode === v.id ? "currentColor" : v.dot,
+                  }}
+                />
+                {v.label}
+              </button>
+            );
+          })}
+        </div>
+      </header>
+
+      <div className={styles.topRight}>
+        <div
+          className={`${styles.statsWrap}${onHomepage ? "" : ` ${styles.statsWrapHidden}`}`}
+          aria-hidden={!onHomepage}
+        >
+          <div className={styles.statsBar} aria-label="Mission statistics">
+            {MISSION_STATS.map((s) => (
+              <div key={s.key} className={styles.stat}>
+                <span className={styles.statKey}>{s.key}</span>
+                <span className={styles.statValue}>{s.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.chromeControls}>
+          <button
+            type="button"
+            className={`${styles.chromeBtn}${autoRotate ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={toggleAutoRotate}
+            aria-pressed={autoRotate}
+          >
+            AUTO-ROTATE
+          </button>
+          <button
+            type="button"
+            className={`${styles.chromeBtn}${showLabels ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={() => {
+              if (!labelsAvailable) return;
+              toggleLabels();
+            }}
+            aria-pressed={showLabels}
+            disabled={!labelsAvailable}
+            title={
+              labelsAvailable
+                ? "Toggle labels overlay"
+                : "Labels are only available on the startup view or in a moon tableau"
+            }
+          >
+            LABELS
+          </button>
+          <button
+            type="button"
+            className={`${styles.chromeBtn}${infoPanelOn && !onHomepage ? ` ${styles.chromeBtnActive}` : ""}`}
+            onClick={toggleInfoPanel}
+            aria-pressed={infoPanelOn && !onHomepage}
+            disabled={onHomepage}
+            title={
+              onHomepage
+                ? "The info panel appears once the mission is underway"
+                : "Toggle the mission info panel"
+            }
+          >
+            INFOPANEL
+          </button>
+          <button type="button" className={styles.chromeBtn} onClick={reset}>
+            RESET
+          </button>
+        </div>
+      </div>
+
+      <TableauTransition />
+
+      <InspectionViewBar />
+      <BeginMission />
+
+      <InfoPanelGate />
+      <MoonLightingToggle />
+      <PlumesToggle />
+      <SpectralSelector />
       <Whiteout />
       <Timeline />
       <SignalLost />
@@ -39,6 +491,6 @@ export default function App() {
       <CassiniDebug />
       <FinaleRingsDebug />
       <MeteorDebug />
-    </div>
+    </main>
   );
 }

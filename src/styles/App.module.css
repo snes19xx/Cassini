@@ -7,6 +7,474 @@
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-mono);
+  transition:
+    background-color var(--motion-duration-theme) var(--motion-ease-standard),
+    color var(--motion-duration-theme) var(--motion-ease-standard);
+}
+
+@keyframes appReveal {
+  from {
+    opacity: 0;
+  }
+}
+
+.header {
+  position: absolute;
+  top: var(--chrome-pad-y);
+  left: var(--chrome-pad-x);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: appReveal 500ms ease-out 200ms both;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: var(--text-22);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-07);
+  text-transform: uppercase;
+  color: var(--color-fg);
+  line-height: 1;
+}
+
+.root[data-theme="editorial"] .title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.15em;
+}
+
+.attribution {
+  font-size: var(--text-9);
+  letter-spacing: var(--tracking-04);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+}
+
+.attribution strong {
+  font-weight: var(--weight-semibold);
+}
+
+.nasa {
+  color: #57a497;
+}
+
+.esa {
+  color: #5a7c98;
+}
+
+.jpl {
+  color: #9b404d;
+}
+
+.snesLink {
+  color: #b8c0b0;
+  text-decoration: none;
+  font-weight: var(--weight-semibold);
+}
+
+.snesLink:hover {
+  text-decoration: underline;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  transition: background-color var(--motion-duration-theme)
+    var(--motion-ease-standard);
+  animation: appReveal 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.sceneBlueprint {
+  --grid-major-alpha: 0.09;
+  --grid-minor-alpha: 0.04;
+
+  background-color: #0b2e55;
+  background-image:
+    radial-gradient(
+      ellipse 130% 100% at 50% 50%,
+      rgba(0, 0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 22% 18%,
+      rgba(210, 225, 255, 0.06) 0%,
+      transparent 55%
+    ),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/></svg>"),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-major-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--grid-minor-alpha)) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    160px 160px,
+    80px 80px,
+    80px 80px,
+    20px 20px,
+    20px 20px;
+  transition:
+    background-color var(--motion-duration-theme) var(--motion-ease-standard),
+    --grid-major-alpha var(--motion-duration-theme) var(--motion-ease-standard),
+    --grid-minor-alpha var(--motion-duration-theme) var(--motion-ease-standard);
+}
+
+.sceneBlueprintLabelsDim {
+  --grid-major-alpha: 0.045;
+  --grid-minor-alpha: 0.02;
+}
+
+.sceneEditorial {
+  background-color: #fdfbf7;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+/* z-index 1: geometry covers the starfield underneath it. */
+.sceneCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.starfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  width: 100%;
+  height: 100%;
+  animation: appReveal 650ms ease-out 450ms both;
+}
+
+.star {
+  fill: var(--color-fg);
+}
+
+.starWarm {
+  fill: #f4d5a0;
+}
+
+.starCool {
+  fill: #c6dcf4;
+}
+
+.starTwinkle {
+  animation: starTwinkle 4.5s ease-in-out infinite;
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--vignette-bg);
+  animation: appReveal 500ms ease-out 300ms both;
+}
+
+.viewSwitcher {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: var(--hairline);
+  width: fit-content;
+}
+
+/* Clears the timeline bar with a comfortable margin above it. */
+.inspectionBar {
+  position: absolute;
+  left: 50%;
+  bottom: 180px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: var(--hairline);
+  background: var(--panel-bg-chip);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: appReveal 350ms ease-out both;
+}
+
+.inspectionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  color: var(--color-fg);
+  background: transparent;
+  border: none;
+  border-right: var(--hairline-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.inspectionBtn:last-child {
+  border-right: none;
+}
+
+.inspectionBtn:hover {
+  background: var(--color-fg-faint);
+}
+
+.inspectionBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.inspectionBtnActive:hover {
+  background: var(--color-fg-muted);
+  color: var(--color-bg);
+}
+
+.inspectionBtnLabel {
+  font-size: var(--text-10);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.viewBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  color: var(--color-fg-dim);
+  background: transparent;
+  border: none;
+  border-right: var(--hairline-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.viewBtn:last-child {
+  border-right: none;
+}
+
+.viewBtn:hover {
+  color: var(--color-fg);
+}
+
+.viewBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  box-shadow:
+    -1px 0 0 var(--color-fg),
+    1px 0 0 var(--color-fg);
+  position: relative;
+}
+
+.viewBtnActive:hover {
+  color: var(--color-bg);
+}
+
+.viewBtn:disabled,
+.viewBtn[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.viewBtn:disabled:hover,
+.viewBtn[disabled]:hover {
+  color: var(--color-fg-dim);
+  background: transparent;
+}
+
+.viewDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.topRight {
+  position: absolute;
+  top: var(--chrome-pad-y);
+  right: var(--chrome-pad-x);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  animation: appReveal 500ms ease-out 200ms both;
+}
+
+/* Grid-row 1fr -> 0fr transition collapses the height smoothly so the
+   chrome buttons slide up into the strip's place once t advances. */
+.statsWrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: 10px;
+  transition:
+    grid-template-rows 400ms var(--motion-ease-standard),
+    margin-bottom 400ms var(--motion-ease-standard),
+    opacity 260ms ease;
+}
+
+.statsWrapHidden {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.statsBar {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.statKey {
+  font-size: var(--text-9);
+  letter-spacing: var(--tracking-04);
+  font-weight: var(--weight-medium);
+  color: var(--color-fg-dim);
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-03);
+  font-weight: var(--weight-semibold);
+  color: var(--color-fg);
+}
+
+.scaleRef {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 2;
+  animation: appReveal 500ms ease-out 700ms both;
+}
+
+.scaleRefLine {
+  stroke: var(--color-fg);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.scaleRefDash {
+  stroke: var(--color-fg);
+  stroke-width: 1;
+}
+
+.scaleRefLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-04);
+  fill: var(--color-fg);
+}
+
+.chromeControls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.chromeBtn {
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-05);
+  text-transform: uppercase;
+  color: var(--color-fg);
+  background: var(--panel-bg-chip);
+  border: var(--hairline);
+  border-right: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.chromeBtn:last-child {
+  border-right: var(--hairline);
+}
+
+.chromeBtn:hover {
+  background: var(--color-fg-faint);
+}
+
+.chromeBtnActive {
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.chromeBtnActive:hover {
+  background: var(--color-fg-muted);
+  color: var(--color-bg);
+}
+
+.chromeBtn:disabled,
+.chromeBtn[disabled] {
+  color: var(--color-fg-dim);
+  cursor: not-allowed;
+}
+
+.chromeBtn:disabled:hover,
+.chromeBtn[disabled]:hover {
+  background: var(--panel-bg-chip);
 }
 
 .tableauVeil {
@@ -32,4 +500,87 @@
   100% {
     opacity: 0;
   }
+}
+
+@keyframes appRevealUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .vignette,
+  .starfield,
+  .scaleRef,
+  .header,
+  .topRight {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .scaleRef {
+    display: none;
+  }
+  .statsBar {
+    gap: 16px;
+  }
+}
+
+/* BLUEPRINT is forced into SPACE for the terminal descent, and pale sky
+   haze washes out the light-on-dark header, so darken just this chrome.
+   Not a --color-fg override: the same tokens paint the dark info/timeline
+   panels, which would invert to black-on-black. EDITORIAL is untouched,
+   already dark-on-cream. */
+.root[data-theme="space"][data-terminal] .title {
+  color: #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .attribution {
+  color: rgba(27, 39, 51, 0.75);
+}
+
+.root[data-theme="space"][data-terminal] .nasa {
+  color: #1f6b5d;
+}
+
+.root[data-theme="space"][data-terminal] .esa {
+  color: #2d5170;
+}
+
+.root[data-theme="space"][data-terminal] .jpl {
+  color: #7d2130;
+}
+
+.root[data-theme="space"][data-terminal] .snesLink {
+  color: rgba(27, 39, 51, 0.72);
+}
+
+.root[data-theme="space"][data-terminal] .viewSwitcher {
+  border-color: rgba(27, 39, 51, 0.32);
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn {
+  color: rgba(27, 39, 51, 0.6);
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn:hover {
+  color: #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .viewBtnActive,
+.root[data-theme="space"][data-terminal] .viewBtnActive:hover {
+  background: #1b2733;
+  color: #eef2f5;
+  box-shadow:
+    -1px 0 0 #1b2733,
+    1px 0 0 #1b2733;
+}
+
+.root[data-theme="space"][data-terminal] .viewBtn:disabled,
+.root[data-theme="space"][data-terminal] .viewBtn[disabled],
+.root[data-theme="space"][data-terminal] .viewBtn:disabled:hover {
+  color: rgba(27, 39, 51, 0.3);
 }
