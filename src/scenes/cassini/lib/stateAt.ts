@@ -62,7 +62,12 @@ function orientationAt(t: number): THREE.Euler {
   return new THREE.Euler().setFromQuaternion(_qScratch, "YXZ");
 }
 
+// skip recompute if t matches the last call
+let _lastT = NaN;
+let _lastState: MissionState | null = null;
+
 export function stateAt(t: number): MissionState {
+  if (t === _lastT && _lastState !== null) return _lastState;
   const cassini = defaultStage();
   const huygens = defaultStage();
   const mli = defaultStage();
@@ -196,7 +201,7 @@ export function stateAt(t: number): MissionState {
     return 70;
   })();
 
-  return {
+  const result: MissionState = {
     cassini,
     huygens,
     mliThermalBlanket: mli,
@@ -204,4 +209,7 @@ export function stateAt(t: number): MissionState {
     orientation,
     cameraRadius,
   };
+  _lastT = t;
+  _lastState = result;
+  return result;
 }
