@@ -14,6 +14,7 @@ import {
   getBodyContentId,
 } from "@/scenes/cassini/data/tableaus";
 import { FinaleTelemetryBlock } from "@/scenes/cassini/finale/parts/FinaleTelemetryBlock";
+import { useThrottledMissionT } from "@/hooks/useThrottledMissionT";
 import { useMissionStore } from "@/store/missionStore";
 import { useEffect, useRef, useState } from "react";
 import styles from "./InfoPanel.module.css";
@@ -167,7 +168,8 @@ function PageNav({ page, label, onPrev, onNext }: PageNavProps) {
 // Main component
 
 export function InfoPanel() {
-  const currentT = useMissionStore((s) => s.currentT);
+  // date/stat text doesn't need to update faster than 12hz
+  const currentT = useThrottledMissionT(12);
   const activeComponentId = useMissionStore((s) => s.activeComponent);
   const setActiveComponent = useMissionStore((s) => s.setActiveComponent);
   const renderMode = useMissionStore((s) => s.renderMode);

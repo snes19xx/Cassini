@@ -213,6 +213,25 @@ function configureTexture(tex: THREE.Texture, maxAniso: number) {
   tex.needsUpdate = true;
 }
 
+const uploadQueue: { tex: THREE.Texture; label: string }[] = [];
+const UPLOADS_PER_TICK = 2;
+
+function queueUpload(tex: THREE.Texture, label: string) {
+  uploadQueue.push({ tex, label });
+}
+
+function drainUploads(gl: THREE.WebGLRenderer) {
+  for (let i = 0; i < UPLOADS_PER_TICK && uploadQueue.length > 0; i++) {
+    const next = uploadQueue.shift();
+    if (!next) return;
+    try {
+      gl.initTexture(next.tex);
+    } catch (err) {
+      console.warn(`[TextureService] initTexture failed ${next.label}`, err);
+    }
+  }
+}
+
 async function loadTexture(
   url: string,
   signal: AbortSignal,
@@ -240,15 +259,9 @@ async function loadTexture(
     const tex = new THREE.Texture(bitmap);
     configureTexture(tex, gl.capabilities.getMaxAnisotropy());
     const tConfigure = performance.now();
-    // Pre-upload to GPU now, outside the render loop, so the first frame
-    // that uses this texture doesn't stall on the upload. Logging over
-    // 200 ms here means the texture is almost certainly oversized.
-    try {
-      gl.initTexture(tex);
-    } catch (err) {
-      console.warn(`[TextureService] initTexture failed ${url}`, err);
-    }
-    const tUpload = performance.now();
+    // queued: uploading every placeholder here bursts the whole batch
+    // into a single frame
+    queueUpload(tex, label);
     const w = bitmap.width;
     const h = bitmap.height;
     console.log(
@@ -257,8 +270,8 @@ async function loadTexture(
         `blob ${(tBlob - tFetch).toFixed(0)}ms  ` +
         `decode ${(tDecode - tBlob).toFixed(0)}ms  ` +
         `init ${(tConfigure - tDecode).toFixed(0)}ms  ` +
-        `upload ${(tUpload - tConfigure).toFixed(0)}ms  ` +
-        `total ${(tUpload - t0).toFixed(0)}ms`,
+        `upload queued  ` +
+        `total ${(tConfigure - t0).toFixed(0)}ms`,
     );
     return tex;
   } catch (err) {
@@ -404,6 +417,8 @@ export function tick(t: number, gl: THREE.WebGLRenderer) {
   if (!initialized) return;
   // Always flush prior-tick disposals first: React has committed by now.
   flushDisposals();
+  // uploads are queued regardless of theme, so they drain in every mode
+  drainUploads(gl);
   if (isBlueprintMode) return;
 
   const owner = activeHiresOwner(t);

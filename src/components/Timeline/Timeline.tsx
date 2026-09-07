@@ -9,6 +9,7 @@ import {
   displayToMission,
   missionToDisplay,
 } from "@/scenes/cassini/lib/tRemap";
+import { useThrottledMissionT } from "@/hooks/useThrottledMissionT";
 import { PlaybackSpeed, useMissionStore } from "@/store/missionStore";
 import { useCallback, useMemo, useRef, useState } from "react";
 import styles from "./Timeline.module.css";
@@ -70,7 +71,9 @@ const JUMP_LABELS: { label: string; tableauId: string }[] = [
 //  Component
 
 export function Timeline() {
-  const currentT = useMissionStore((s) => s.currentT);
+  // dragDisplayT drives the head at full rate while dragging, this only
+  // throttles the idle/playback repaint rate
+  const currentT = useThrottledMissionT(12);
   const isPlaying = useMissionStore((s) => s.isPlaying);
   const playbackSpeed = useMissionStore((s) => s.playbackSpeed);
 

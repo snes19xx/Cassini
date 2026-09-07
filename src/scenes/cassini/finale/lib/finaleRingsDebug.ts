@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 
-export const FINALE_RINGS_DEBUG = false;
+export const FINALE_RINGS_DEBUG = import.meta.env.DEV && false;
 
 // The InstancedMesh cannot grow past its allocation, so it is built at this
 // capacity and `partCount` only controls how many of them draw.
@@ -17,9 +17,9 @@ export interface FinaleRingsState {
   ringG: number;
   ringB: number;
   ringOpacity: number;
-  swirlBase: number; // noise floor, noise = swirlBase + n * swirlAmount
+  swirlBase: number; // noise floor
   swirlAmount: number;
-  swirlBakeTime: number; // which frozen swirl frame to bake
+  swirlBakeTime: number; // frozen swirl frame
   bakeRev: number;
 
   texOpacity: number; // 0 skips the layer entirely

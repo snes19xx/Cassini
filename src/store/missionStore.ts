@@ -7,22 +7,23 @@ export type ActiveModel =
   | "CassiniHuygensA.glb"
   | "CassiniHuygensAwithout_Cassini.glb"
   | "CassiniHuygensAwithoutHyugens.glb";
-export type TitanSpectralMode = "visible" | "vims_ir" | "iss_cb3" | "iss_nac_ir";
+export type TitanSpectralMode =
+  | "visible"
+  | "vims_ir"
+  | "iss_cb3"
+  | "iss_nac_ir";
 export type EnceladusSpectralMode = "visible" | "vims_ir";
 export type LightingMode = "natural" | "rim" | "full";
 
-// Ring-dive camera modes, surfaced as a 3-button segmented control while
-// the finale_ring_dive tableau is active.
-//   thirdPerson: chase-cam behind Cassini, Saturn ahead.
-//   pov: first-person from Cassini, looking forward along velocity.
-//   wide: pulled-back external camera framing the whole tilted loop.
-export type FinaleCameraMode = "thirdPerson" | "pov" | "wide";
+// ring-dive segmented control, only shown during finale_ring_dive
+export type FinaleCameraMode =
+  | "thirdPerson" // chase-cam behind Cassini
+  | "pov" // forward along velocity
+  | "wide"; // pulled back, whole loop
 
 const LABEL_MODEL: ActiveModel = "CassiniHuygensA.glb";
 
-// Effective mission-panel visibility: user pin wins, otherwise the
-// per-theme defaults. Shared by InfoPanelGate (render) and the INFOPANEL
-// chrome button (pressed state) so the two can never disagree.
+// override replaces the theme default; panel and button both call this
 export const infoPanelVisible = (s: {
   infoPanelOverride: "on" | "off" | null;
   renderMode: RenderMode;
@@ -51,37 +52,24 @@ interface MissionState {
   uiScale: number;
   cameraResetNonce: number;
 
-  // Guided inspection: which orthogonal view (TOP / FRONT / REAR / MAG) is
-  // active. Only meaningful when showLabels is true on the homepage. Null
-  // means free orbit with labels suppressed.
+  // orthogonal view (TOP/FRONT/REAR/MAG); null is free orbit, labels off
   inspectionView: InspectionViewId | null;
-  // Bumped when the same inspection-view button is clicked again, so
-  // Spacecraft.tsx can force a re-snap if the user orbited away since.
+  // bumped on re-click, forces a re-snap after camera drift
   inspectionViewNonce: number;
 
-  // Model shown before label mode swapped it to LABEL_MODEL, restored when
-  // labels are toggled back off.
+  // model active before labels swapped it to LABEL_MODEL
   _preLabelModel: ActiveModel;
 
-  // User pin on the mission info panel. Null defers to infoPanelVisible's
-  // per-theme default.
+  // null defers to the per-theme default
   infoPanelOverride: "on" | "off" | null;
 
-  // Consumed by FinaleCameraDirector to pick the chase, first-person, or
-  // pulled-back framing.
   finaleCameraMode: FinaleCameraMode;
-  // Bumped whenever finaleCameraMode is set, even to its current value, so
-  // FinaleCameraDirector can force a clean re-snap after the camera drifts.
-  finaleCameraModeNonce: number;
 
-  // Theme stashed on entering the terminal descent, restored on exit. Null
-  // when no restore is pending: pre-terminal, entered already in SPACE, or
-  // the user picked a theme manually during the descent (a manual pick
-  // wins over the stash).
+  // theme stashed entering the terminal descent, restored on exit. null if
+  // nothing to restore: pre-terminal, already in space, or picked manually
   _preTerminalRenderMode: RenderMode | null;
 
-  // Set when opening a panel/popover auto-paused playback, so closing it
-  // resumes only if the panel itself was the reason it paused.
+  // marks an auto-pause from opening a panel, not a manual pause
   resumeOnPanelClose: boolean;
   resumeOnPopoverClose: boolean;
 
@@ -130,7 +118,6 @@ export const useMissionStore = create<MissionState>((set) => ({
   _preLabelModel: "CassiniHuygensA.glb",
   infoPanelOverride: null,
   finaleCameraMode: "thirdPerson",
-  finaleCameraModeNonce: 0,
   _preTerminalRenderMode: null,
   resumeOnPanelClose: false,
   resumeOnPopoverClose: false,
@@ -169,16 +156,12 @@ export const useMissionStore = create<MissionState>((set) => ({
       return { openPhaseId };
     }),
   setRenderMode: (renderMode) => {
-    // A manual theme pick always clears the terminal restore stash. If the
-    // user chooses EDITORIAL mid-descent, scrubbing back out must not yank
-    // them to the stashed pre-terminal theme.
+    // clears the stash so exiting the descent later won't revert this pick
     set({ renderMode, _preTerminalRenderMode: null });
   },
 
-  // From SATURN'S ATMOSPHERE onward, BLUEPRINT is disallowed since the
-  // terminal stage is authored against the photoreal sky and the wireframe
-  // breaks it. Only BLUEPRINT gets forced to SPACE; EDITORIAL and SPACE are
-  // left alone.
+  // blueprint is disallowed from SATURN'S ATMOSPHERE onward, the photoreal
+  // terminal sky breaks the wireframe
   enterTerminalTheme: () =>
     set((s) =>
       s.renderMode !== "blueprint"
@@ -211,8 +194,7 @@ export const useMissionStore = create<MissionState>((set) => ({
 
   togglePlumes: () => set((s) => ({ showPlumes: !s.showPlumes })),
 
-  // Pin the panel to the opposite of whatever is effectively showing, so
-  // the button always does what it visually promises.
+  // pins the opposite of the current effective visibility
   toggleInfoPanel: () =>
     set((s) => ({ infoPanelOverride: infoPanelVisible(s) ? "off" : "on" })),
 
@@ -227,9 +209,8 @@ export const useMissionStore = create<MissionState>((set) => ({
           _preLabelModel: s.activeModel,
           activeModel: LABEL_MODEL,
           cameraResetNonce: s.cameraResetNonce + 1,
-          // Default to TOP so labels are visible immediately, no empty
-          // intermediate state. Bump nonce so the camera re-snaps even if
-          // the previous toggle-off left inspectionView at "top" already.
+          // defaults to TOP so labels show right away; nonce forces a
+          // re-snap even if inspectionView was already "top"
           inspectionView: "top",
           inspectionViewNonce: s.inspectionViewNonce + 1,
         };
@@ -251,11 +232,7 @@ export const useMissionStore = create<MissionState>((set) => ({
         view !== null ? s.inspectionViewNonce + 1 : s.inspectionViewNonce,
     })),
 
-  setFinaleCameraMode: (mode) =>
-    set((s) => ({
-      finaleCameraMode: mode,
-      finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
-    })),
+  setFinaleCameraMode: (mode) => set({ finaleCameraMode: mode }),
 
   cycleFinaleCameraMode: () =>
     set((s) => {
@@ -264,10 +241,7 @@ export const useMissionStore = create<MissionState>((set) => ({
         pov: "wide",
         wide: "thirdPerson",
       };
-      return {
-        finaleCameraMode: next[s.finaleCameraMode],
-        finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
-      };
+      return { finaleCameraMode: next[s.finaleCameraMode] };
     }),
 
   reset: () =>
@@ -291,7 +265,6 @@ export const useMissionStore = create<MissionState>((set) => ({
       _preLabelModel: "CassiniHuygensA.glb",
       infoPanelOverride: null,
       finaleCameraMode: "thirdPerson",
-      finaleCameraModeNonce: s.finaleCameraModeNonce + 1,
       _preTerminalRenderMode: null,
     })),
 }));

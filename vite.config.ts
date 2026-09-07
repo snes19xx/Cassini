@@ -19,7 +19,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
 
@@ -29,13 +29,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // three barely changes, keep it out of the app chunk
-        manualChunks: {
-          "three-vendor": ["three"],
-          "r3f-vendor": [
-            "@react-three/fiber",
-            "@react-three/drei",
-            "@react-three/postprocessing",
-            "postprocessing",
+        // rolldown replaced manualChunks with groups, first match wins
+        codeSplitting: {
+          groups: [
+            { name: "three-vendor", test: /node_modules[\\/]three[\\/]/ },
+            {
+              name: "r3f-vendor",
+              test: /node_modules[\\/](@react-three[\\/]|postprocessing[\\/])/,
+            },
           ],
         },
       },
