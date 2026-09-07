@@ -5,7 +5,8 @@
 // Renders nothing.
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { getActiveTableau } from "../data/tableaus";
 import {
   initialize,
   setBlueprintMode,
@@ -20,6 +21,7 @@ export function TextureServiceDriver() {
   const renderMode = useMissionStore((s) => s.renderMode);
   const titanMode = useMissionStore((s) => s.titanSpectralMode);
   const enceladusMode = useMissionStore((s) => s.enceladusSpectralMode);
+  const prevTableauRef = useRef<string>("");
 
   useEffect(() => {
     void initialize(gl);
@@ -38,7 +40,26 @@ export function TextureServiceDriver() {
   }, [enceladusMode, gl]);
 
   useFrame(() => {
-    const t = useMissionStore.getState().currentT;
+    const state = useMissionStore.getState();
+    const t = state.currentT;
+    const tableau = getActiveTableau(t);
+
+    if (prevTableauRef.current && prevTableauRef.current !== tableau.id) {
+      if (
+        prevTableauRef.current === "titan_huygens" &&
+        state.titanSpectralMode !== "visible"
+      ) {
+        state.setTitanSpectralMode("visible");
+      }
+      if (
+        prevTableauRef.current === "enceladus" &&
+        state.enceladusSpectralMode !== "visible"
+      ) {
+        state.setEnceladusSpectralMode("visible");
+      }
+    }
+    prevTableauRef.current = tableau.id;
+
     tick(t, gl);
   });
 
