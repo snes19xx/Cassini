@@ -174,13 +174,13 @@ function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
 
 function DisplayModel({
   activeModel,
-  renderMode,
+  materialMode,
   groupRef,
   materials,
   modelScale,
 }: {
   activeModel: string;
-  renderMode: string;
+  materialMode: string;
   groupRef: React.RefObject<THREE.Group>;
   materials: ReturnType<typeof useThematicMaterials>;
   modelScale: number;
@@ -201,16 +201,16 @@ function DisplayModel({
           }
         }
         let target = child.userData.originalMaterial as THREE.Material;
-        if (renderMode === "blueprint") {
+        if (materialMode === "blueprint") {
           target = materials.blueprint;
         }
-        if (renderMode === "editorial") {
+        if (materialMode === "editorial") {
           target = materials.editorial;
         }
         child.material = target;
       }
     });
-  }, [clonedScene, renderMode, activeModel, materials]);
+  }, [clonedScene, materialMode, activeModel, materials]);
 
   return (
     <group ref={groupRef} scale={modelScale}>
@@ -220,13 +220,13 @@ function DisplayModel({
 }
 
 function LabelModel({
-  renderMode,
+  materialMode,
   groupRef,
   materials,
   huygensHasSeparated,
   modelScale,
 }: {
-  renderMode: string;
+  materialMode: string;
   groupRef: React.RefObject<THREE.Group>;
   materials: ReturnType<typeof useThematicMaterials>;
   huygensHasSeparated: boolean;
@@ -241,8 +241,8 @@ function LabelModel({
   };
 
   const overrideMaterial = (() => {
-    if (renderMode === "blueprint") return materials.blueprint;
-    if (renderMode === "editorial") return materials.editorial;
+    if (materialMode === "blueprint") return materials.blueprint;
+    if (materialMode === "editorial") return materials.editorial;
     return null;
   })();
 
@@ -288,10 +288,17 @@ export function Spacecraft() {
     }
   }
 
+  // editorial's wireframe has no PBR hull for heat glow and opacity erosion
+  const isTerminal = useMissionStore((s) =>
+    isTerminalTableau(getActiveTableau(s.currentT).id),
+  );
+  const materialMode =
+    renderMode === "editorial" && isTerminal ? "space" : renderMode;
+
   const needsMaterialResetRef = useRef(false);
   useEffect(() => {
     needsMaterialResetRef.current = true;
-  }, [actualModel, showLabels, renderMode]);
+  }, [actualModel, showLabels, materialMode]);
 
   const materials = useThematicMaterials();
 
@@ -531,7 +538,7 @@ export function Spacecraft() {
     return (
       <group>
         <LabelModel
-          renderMode={renderMode}
+          materialMode={materialMode}
           groupRef={groupRef}
           materials={materials}
           huygensHasSeparated={huygensHasSeparated}
@@ -547,7 +554,7 @@ export function Spacecraft() {
     <group>
       <DisplayModel
         activeModel={actualModel}
-        renderMode={renderMode}
+        materialMode={materialMode}
         groupRef={groupRef}
         materials={materials}
         modelScale={modelScale}
