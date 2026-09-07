@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 
-export const RING_BACKDROP_DEBUG = false;
+export const RING_BACKDROP_DEBUG = import.meta.env.DEV && false;
 
 export type RingSource = "procedural" | "textured";
 

@@ -1,26 +1,25 @@
 // src/scenes/cassini/finale/lib/meteorDebug.ts
 //
 // Break-up shower knobs. Each fragment peels off at its own emission point
-// along the route, so the debris strews the whole crossing instead of bursting
-// at one instant.
+// along the route, strewing the debris across the whole crossing.
 
 import { create } from "zustand";
 
-export const METEOR_DEBUG = false;
+export const METEOR_DEBUG = import.meta.env.DEV && false;
 
 // Every fragment is its own Trail draw, so this caps the live count.
 export const METEOR_MAX_COUNT = 60;
 
 export interface MeteorDebugState {
   count: number;
-  spread: number; // world units a fragment drifts from its shed point
-  splitStart: number; // fraction of the route before shedding begins
-  elongation: number; // drift back along the travel axis
-  fan: number; // multiplier on the perpendicular drift, so cone width
+  spread: number; // drift from shed point
+  splitStart: number; // route fraction before shedding
+  elongation: number; // drift along travel axis
+  fan: number; // perpendicular drift multiplier
 
-  gravity: number; // downward bend added as a fragment ages
-  burstEase: number; // lateral burst exponent, below 0.5 is snappier
-  vBias: number; // vertical share of the side fan
+  gravity: number; // downward bend with age
+  burstEase: number; // lateral burst exponent
+  vBias: number; // side-fan vertical share
   waver: number; // S-bend depth
   waverFreq: number; // bends along one streak
 

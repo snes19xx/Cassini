@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 
-export const CAMERA_DEBUG = false;
+export const CAMERA_DEBUG = import.meta.env.DEV && false;
 
 // The viewer may only pan posX, tilt pitch, and resize Cassini. Everything else
 // stays frozen, and these clamp the three that move.
@@ -21,7 +21,7 @@ export interface CameraDebugState {
   posX: number;
   posY: number;
   posZ: number;
-  pitchDeg: number; // 0 is level, negative looks down
+  pitchDeg: number; // 0 is level
   yawDeg: number; // 0 is downrange, along +X
   fov: number;
   // The pinch gesture resizes the craft, since the camera cannot dolly.

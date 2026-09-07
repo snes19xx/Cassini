@@ -4,10 +4,10 @@
 
 import { create } from "zustand";
 
-export const CASSINI_PATH_DEBUG = false;
+export const CASSINI_PATH_DEBUG = import.meta.env.DEV && false;
 
-// The path is built against this fixed pose, so panning the live camera leaves
-// it alone. Basis is fwd +X, up +Y, right +Z.
+// The path is built against this static pose, panning the live camera
+// does not affect it. Basis is fwd +X, up +Y, right +Z.
 export const CAM_BASE = { x: -30, y: 12, z: 205 };
 
 export interface CassiniDebugState {
@@ -16,12 +16,12 @@ export interface CassiniDebugState {
   entryUp: number;
   exitRight: number;
   exitUp: number;
-  speedEase: number; // 1 linear, below 1 fast start, above 1 slow start
+  speedEase: number; // 1 is linear
 
   trailOpacity: number;
   trailWidth: number;
   trailLength: number;
-  trailWander: number; // sideways waviness, 0 is a straight line
+  trailWander: number; // sideways waviness
 
   // Descent-p window over which the model shrinks and fades into the meteor.
   meteorShrinkStart: number;
