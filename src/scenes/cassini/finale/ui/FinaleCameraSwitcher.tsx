@@ -1,3 +1,4 @@
+import { isOrbitalTableau } from "@/scenes/cassini/data/missionConstants";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
 import { type FinaleCameraMode, useMissionStore } from "@/store/missionStore";
 import styles from "./FinaleCameraSwitcher.module.css";
@@ -13,11 +14,6 @@ const NEXT_HINT: Record<FinaleCameraMode, string> = {
   pov: "Switch to WIDE — pull back, see the whole orbit",
   wide: "Switch to CHASE — follow Cassini with Saturn behind",
 };
-
-// Terminal tableaus use the locked plunge camera, so the switcher stays hidden there.
-function isOrbitalTableau(id: string): boolean {
-  return id === "finale_swing_around" || id === "finale_ring_dive";
-}
 
 // Cycles the finale camera between chase, POV, and wide during the orbital tableaus.
 export function FinaleCameraSwitcher() {
