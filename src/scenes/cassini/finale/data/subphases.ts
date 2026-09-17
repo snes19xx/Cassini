@@ -12,8 +12,8 @@ export type FinaleSubphase =
 
 export const SUBPHASE_THRESHOLDS = {
   pre: 0.960,
-  dives: 0.980471,
-  final5: 0.993788,
+  dives: 0.980471, // tuned ramp start
+  final5: 0.993788, // tuned Final Five drift
   plunge: DISINTEGRATION_T_START,
   plasma: 0.9999,
   los: 1.0,

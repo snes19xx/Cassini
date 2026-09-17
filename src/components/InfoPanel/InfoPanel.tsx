@@ -410,7 +410,10 @@ function SpacecraftSection({
           value={`${(lightDelaySec / 60).toFixed(1)} min`}
         />
         {isGrandFinale && rDive > 0 && (
-          <Stat label="Ring dive" value={`${rDive} / 22`} />
+          <Stat
+            label="Ring dive"
+            value={`${rDive} / ${RING_CROSSING_T_VALUES.length}`}
+          />
         )}
       </div>
 
