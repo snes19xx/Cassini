@@ -6,6 +6,14 @@ import {
   useCassiniDebugStore,
   type CassiniDebugState,
 } from "../lib/cassiniDebug";
+import { DebugReadout, DebugSlider, WIDE_THEME } from "./debugPanelKit";
+
+const THEME = {
+  ...WIDE_THEME,
+  accent: "#7CFCA0",
+  labelWidth: 78,
+  precision: 2,
+};
 
 interface Row {
   key: keyof CassiniDebugState;
@@ -150,61 +158,32 @@ export function CassiniDebug() {
           >
             {grp}
           </div>
-          {ROWS.filter((r) => r.group === grp).map((r) => {
-            const val = state[r.key] as number;
-            return (
-              <div
-                key={r.key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginBottom: 3,
-                }}
-              >
-                <label style={{ width: 78, fontSize: 11 }}>{r.label}</label>
-                <input
-                  type="range"
-                  min={r.min}
-                  max={r.max}
-                  step={r.step}
-                  value={val}
-                  onChange={(e) =>
-                    set({
-                      [r.key]: parseFloat(e.target.value),
-                    } as Partial<CassiniDebugState>)
-                  }
-                  style={{ flex: 1, accentColor: "#7CFCA0" }}
-                />
-                <span style={{ width: 42, textAlign: "right", fontSize: 11 }}>
-                  {Number.isInteger(val) ? val : val.toFixed(2)}
-                </span>
-              </div>
-            );
-          })}
+          {ROWS.filter((r) => r.group === grp).map((r) => (
+            <DebugSlider
+              key={r.key}
+              label={r.label}
+              min={r.min}
+              max={r.max}
+              step={r.step}
+              value={state[r.key] as number}
+              theme={THEME}
+              onChange={(next) =>
+                set({ [r.key]: next } as Partial<CassiniDebugState>)
+              }
+            />
+          ))}
         </div>
       ))}
 
-      <textarea
-        readOnly
+      <DebugReadout
         value={readout}
-        onFocus={(e) => e.currentTarget.select()}
-        style={{
-          width: "100%",
-          height: 110,
-          marginTop: 6,
-          background: "rgba(0,0,0,0.45)",
-          color: "#aef0bf",
-          border: "1px solid rgba(150,255,180,0.2)",
-          borderRadius: 4,
-          fontFamily: "inherit",
-          fontSize: 10.5,
-          resize: "none",
-        }}
+        height={110}
+        marginTop={6}
+        background="rgba(0,0,0,0.45)"
+        color="#aef0bf"
+        border="1px solid rgba(150,255,180,0.2)"
+        fontSize={10.5}
       />
-      <div style={{ opacity: 0.5, fontSize: 9.5, marginTop: 4 }}>
-        click box → auto-selects → copy → paste to Claude
-      </div>
     </div>
   );
 }

@@ -21,8 +21,7 @@ export interface AnchorPoint {
 interface ProjectionState {
   projections: Record<string, ProjectedPoint>;
   viewport: { width: number; height: number };
-  // One store update per frame for every anchor's projection, instead of
-  // one update (and one subscriber notify) per anchor per frame.
+  // One store update per frame covering every anchor's projection.
   setProjections: (patch: Record<string, ProjectedPoint>) => void;
   setViewport: (width: number, height: number) => void;
 }

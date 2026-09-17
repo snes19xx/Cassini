@@ -77,12 +77,12 @@ export function RingDiveCameraDriver() {
 
   useEffect(() => {
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- reads the latest ref
       camera.up.copy(savedUpRef.current);
     };
   }, [camera]);
 
-  // Drag accumulates yaw/pitch only while pov is the live mode, so the
-  // listeners stay inert everywhere else without a mount/unmount churn.
+  // Drag only accumulates yaw/pitch while pov is the live mode.
   useEffect(() => {
     const el = gl.domElement;
     const povActive = () => {

@@ -83,7 +83,7 @@ export function getPlungeCassiniPos(
 /**
  * Endpoints of the straight plunge line. The path is lerp(entry, exit, f), so
  * projecting any point on it back onto the line recovers its f, which is how
- * the break-up sheds debris along the route instead of all at one instant.
+ * the break-up sheds debris along the route.
  */
 export function getPlungeEndpoints(
   entryOut: THREE.Vector3,

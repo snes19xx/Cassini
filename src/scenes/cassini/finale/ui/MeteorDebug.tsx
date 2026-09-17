@@ -7,6 +7,7 @@ import {
   useMeteorDebugStore,
   type MeteorDebugState,
 } from "../lib/meteorDebug";
+import { COMPACT_THEME, DebugReadout, DebugSlider } from "./debugPanelKit";
 
 interface Row {
   key: keyof MeteorDebugState;
@@ -198,61 +199,32 @@ export function MeteorDebug() {
           >
             {grp}
           </div>
-          {ROWS.filter((r) => r.group === grp).map((r) => {
-            const val = state[r.key] as number;
-            return (
-              <div
-                key={String(r.key)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  marginBottom: 1,
-                }}
-              >
-                <label style={{ width: 56, fontSize: 9.5 }}>{r.label}</label>
-                <input
-                  type="range"
-                  min={r.min}
-                  max={r.max}
-                  step={r.step}
-                  value={val}
-                  onChange={(e) =>
-                    set({
-                      [r.key]: parseFloat(e.target.value),
-                    } as Partial<MeteorDebugState>)
-                  }
-                  style={{ flex: 1, height: 11, accentColor: "#ff9a4a" }}
-                />
-                <span style={{ width: 30, textAlign: "right", fontSize: 9.5 }}>
-                  {Number.isInteger(val) ? val : val.toFixed(2)}
-                </span>
-              </div>
-            );
-          })}
+          {ROWS.filter((r) => r.group === grp).map((r) => (
+            <DebugSlider
+              key={String(r.key)}
+              label={r.label}
+              min={r.min}
+              max={r.max}
+              step={r.step}
+              value={state[r.key] as number}
+              theme={COMPACT_THEME}
+              onChange={(next) =>
+                set({ [r.key]: next } as Partial<MeteorDebugState>)
+              }
+            />
+          ))}
         </div>
       ))}
 
-      <textarea
-        readOnly
+      <DebugReadout
         value={readout}
-        onFocus={(e) => e.currentTarget.select()}
-        style={{
-          width: "100%",
-          height: 120,
-          marginTop: 4,
-          background: "rgba(0,0,0,0.55)",
-          color: "#ffcfa0",
-          border: "1px solid rgba(255,170,90,0.25)",
-          borderRadius: 4,
-          fontFamily: "inherit",
-          fontSize: 9.5,
-          resize: "none",
-        }}
+        height={120}
+        marginTop={4}
+        background="rgba(0,0,0,0.55)"
+        color="#ffcfa0"
+        border="1px solid rgba(255,170,90,0.25)"
+        fontSize={9.5}
       />
-      <div style={{ opacity: 0.5, fontSize: 8.5, marginTop: 3 }}>
-        click box → auto-selects → copy → paste to Claude
-      </div>
     </div>
   );
 }

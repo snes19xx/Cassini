@@ -6,6 +6,15 @@ import {
   useFinaleRingsStore,
   type FinaleRingsState,
 } from "../lib/finaleRingsDebug";
+import { DebugReadout, DebugSlider, WIDE_THEME } from "./debugPanelKit";
+
+const THEME = {
+  ...WIDE_THEME,
+  accent: "#ffb259",
+  labelWidth: 70,
+  valueWidth: 48,
+  precision: 2,
+};
 
 interface Row {
   key: keyof FinaleRingsState;
@@ -129,6 +138,7 @@ const ROWS: Row[] = [
 ];
 
 // Slider panel for the finale rings disk and particle field.
+/* eslint-disable react-hooks/rules-of-hooks -- gated on a compile-time constant */
 export function FinaleRingsDebug() {
   if (!FINALE_RINGS_DEBUG) return null;
 
@@ -195,63 +205,35 @@ export function FinaleRingsDebug() {
           >
             {grp}
           </div>
-          {ROWS.filter((r) => r.group === grp).map((r) => {
-            const val = state[r.key] as number;
-            return (
-              <div
-                key={r.key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginBottom: 3,
-                }}
-              >
-                <label style={{ width: 70, fontSize: 11 }}>{r.label}</label>
-                <input
-                  type="range"
-                  min={r.min}
-                  max={r.max}
-                  step={r.step}
-                  value={val}
-                  onChange={(e) =>
-                    set({
-                      [r.key]: parseFloat(e.target.value),
-                    } as Partial<FinaleRingsState>)
-                  }
-                  onPointerUp={
-                    r.commitBake ? () => state.commitBake() : undefined
-                  }
-                  style={{ flex: 1, accentColor: "#ffb259" }}
-                />
-                <span style={{ width: 48, textAlign: "right", fontSize: 11 }}>
-                  {Number.isInteger(val) ? val : val.toFixed(2)}
-                </span>
-              </div>
-            );
-          })}
+          {ROWS.filter((r) => r.group === grp).map((r) => (
+            <DebugSlider
+              key={r.key}
+              label={r.label}
+              min={r.min}
+              max={r.max}
+              step={r.step}
+              value={state[r.key] as number}
+              theme={THEME}
+              onChange={(next) =>
+                set({ [r.key]: next } as Partial<FinaleRingsState>)
+              }
+              onCommit={r.commitBake ? () => state.commitBake() : undefined}
+            />
+          ))}
         </div>
       ))}
 
-      <textarea
-        readOnly
+      <DebugReadout
         value={readout}
-        onFocus={(e) => e.currentTarget.select()}
-        style={{
-          width: "100%",
-          height: 120,
-          marginTop: 6,
-          background: "rgba(0,0,0,0.45)",
-          color: "#ffd9a8",
-          border: "1px solid rgba(255,210,150,0.2)",
-          borderRadius: 4,
-          fontFamily: "inherit",
-          fontSize: 10.5,
-          resize: "none",
-        }}
+        height={120}
+        marginTop={6}
+        background="rgba(0,0,0,0.45)"
+        color="#ffd9a8"
+        border="1px solid rgba(255,210,150,0.2)"
+        fontSize={10.5}
       />
       <div style={{ opacity: 0.5, fontSize: 9.5, marginTop: 4 }}>
-        swirl time rebuilds on release · click box → copy → paste to Claude
+        swirl time rebuilds on release
       </div>
     </div>
   );

@@ -132,7 +132,7 @@ function jsPolarValueNoise(
   return a + (b - a) * fy;
 }
 
-// Pre-bake the polar swirl noise into a texture instead of computing per-fragment.
+// Pre-bakes the polar swirl noise into a texture.
 export function buildRingNoiseTexture(
   bakeTime: number = RING_SWIRL_BAKE_TIME,
 ): THREE.DataTexture {

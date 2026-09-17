@@ -385,7 +385,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       groupRef.current.scale.setScalar(0.00001);
       groupRef.current.visible = false;
     }
-    // eslint-disable-next-line react-hooks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraResetNonce]);
 
   useFrame((frameState, deltaRaw) => {

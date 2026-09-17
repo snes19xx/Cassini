@@ -6,6 +6,7 @@ import {
   useCameraDebugStore,
   type CameraDebugState,
 } from "../lib/cameraDebug";
+import { DebugReadout, DebugSlider, WIDE_THEME } from "./debugPanelKit";
 
 interface Row {
   key: keyof CameraDebugState;
@@ -75,59 +76,30 @@ export function CameraDebug() {
         CAMERA / STAGE
       </div>
 
-      {ROWS.map((r) => {
-        const val = state[r.key] as number;
-        return (
-          <div
-            key={r.key}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 3,
-            }}
-          >
-            <label style={{ width: 92, fontSize: 11 }}>{r.label}</label>
-            <input
-              type="range"
-              min={r.min}
-              max={r.max}
-              step={r.step}
-              value={val}
-              onChange={(e) =>
-                set({
-                  [r.key]: parseFloat(e.target.value),
-                } as Partial<CameraDebugState>)
-              }
-              style={{ flex: 1, accentColor: "#ffb454" }}
-            />
-            <span style={{ width: 42, textAlign: "right", fontSize: 11 }}>
-              {Number.isInteger(val) ? val : val.toFixed(1)}
-            </span>
-          </div>
-        );
-      })}
+      {ROWS.map((r) => (
+        <DebugSlider
+          key={r.key}
+          label={r.label}
+          min={r.min}
+          max={r.max}
+          step={r.step}
+          value={state[r.key] as number}
+          theme={WIDE_THEME}
+          onChange={(next) =>
+            set({ [r.key]: next } as Partial<CameraDebugState>)
+          }
+        />
+      ))}
 
-      <textarea
-        readOnly
+      <DebugReadout
         value={readout}
-        onFocus={(e) => e.currentTarget.select()}
-        style={{
-          width: "100%",
-          height: 78,
-          marginTop: 8,
-          background: "rgba(0,0,0,0.45)",
-          color: "#ffd9a8",
-          border: "1px solid rgba(255,200,120,0.2)",
-          borderRadius: 4,
-          fontFamily: "inherit",
-          fontSize: 10.5,
-          resize: "none",
-        }}
+        height={78}
+        marginTop={8}
+        background="rgba(0,0,0,0.45)"
+        color="#ffd9a8"
+        border="1px solid rgba(255,200,120,0.2)"
+        fontSize={10.5}
       />
-      <div style={{ opacity: 0.5, fontSize: 9.5, marginTop: 4 }}>
-        click box → auto-selects → copy → paste to Claude
-      </div>
     </div>
   );
 }

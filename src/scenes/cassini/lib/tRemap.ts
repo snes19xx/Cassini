@@ -1,11 +1,7 @@
 // Piecewise-linear bijection between missionT (raw 0-1 timeline) and
-// displayT (0-1 scrubber position). Cruise is compressed hard; encounters
-// and the Grand Finale each get a deliberate wall-clock slice.
-//
-// REMAP_POINTS pairs [missionT, displayT]. There is an anchor on every late
-// tableau boundary so each scene's duration is stated outright instead of
-// falling out of the interpolation.
-//
+// displayT (0-1 scrubber position). REMAP_POINTS pairs [missionT, displayT],
+// with an anchor on every late tableau boundary.
+
 // Wall-clock budget at 1x, seconds per segment:
 //   FAMILY PORTRAIT      0.810    -> 0.870     12.4
 //   THREE CRESCENTS      0.870    -> 0.945     13.0
@@ -16,11 +12,9 @@
 //   RING DIVE            0.978    -> 0.994677  42.0
 //   SATURN'S ATMOSPHERE  0.994677 -> 0.999115  23.7
 //   END OF MISSION       0.999115 -> 1.0        7.3
-// The terminal durations are held to the decimal so the finale shot
-// schedule lands on the same T+ seconds. FULL_MISSION_SECONDS is 281.4,
-// not 300: FAMILY PORTRAIT's neighbors are pinned by locked content on
-// both sides, so cutting its duration shortens the total runtime instead
-// of shifting anything adjacent.
+
+// Terminal durations are held to the decimal so the finale shot schedule
+// lands on the same T+ seconds.
 
 import {
   DISINTEGRATION_T_START,
@@ -29,9 +23,9 @@ import {
 
 const REMAP_POINTS: [number, number][] = [
   [0.000000, 0.000000],  // Launch
-  [0.180000, 0.015158],  // Cruise/arrival boundary, pins cruise at 4.3s
+  [0.180000, 0.015158],  // Cruise/arrival boundary, 4.3s cruise
   [0.253196, 0.039274],  // Camera Test (Oct 2002)
-  [0.336770, 0.066809],  // Saturn Orbit Insertion, approach = 14.5s
+  [0.336770, 0.066809],  // Saturn Orbit Insertion, 14.5s approach
   [0.352000, 0.079602],  // Pre titan_huygens
   [0.364000, 0.105188],  // titan_huygens peak, Huygens descent
   [0.380000, 0.126510],  // Post titan_huygens

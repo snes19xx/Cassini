@@ -1,8 +1,6 @@
-// Tiny zustand slice for the camera fly-through. `phase` gates React state
-// (SceneControls suppresses autoRotate/disables controls while flying).
+// Camera fly-through state. `phase` gates React state while flying, and
 // flyStartMs/flyDurationMs let any useFrame consumer recompute the same
-// eased progress as the camera lerp, so Cassini's offset and the moons'
-// scales land on the same frame instead of finishing at staggered times.
+// eased progress as the camera lerp.
 
 import { create } from "zustand";
 

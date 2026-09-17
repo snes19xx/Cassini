@@ -24,6 +24,7 @@ function fmtClock(seconds: number): string {
 }
 
 // On-screen clock and phase readout for the terminal finale window.
+/* eslint-disable react-hooks/rules-of-hooks -- gated on a compile-time constant */
 export function FinaleDebugHUD() {
   if (!DEBUG_HUD_ENABLED) return null;
 
