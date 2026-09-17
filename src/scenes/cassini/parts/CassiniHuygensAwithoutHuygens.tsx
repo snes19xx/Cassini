@@ -120,5 +120,3 @@ export function CassiniHuygensAwithoutHuygens({
     </group>
   );
 }
-
-useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
