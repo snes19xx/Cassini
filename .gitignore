@@ -2,12 +2,13 @@ node_modules
 dist
 public/textures
 
-
+# Windows Explorer metadata
 desktop.ini
 Thumbs.db
 
+# Editor and tooling droppings
 *.log
 .DS_Store
 coverage
 package-lock.json
-diff.md
+

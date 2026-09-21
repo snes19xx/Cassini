@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Cassini-Huygens Viz</title>
+    <title>Cassini-Huygens Mission</title>
+    <meta name="theme-color" content="#000000" />
     <meta
       name="description"
       content="An interactive 3D visualization of the Cassini-Huygens mission: 20 years orbiting Saturn, culminating in the spacecraft's final plunge into the planet's atmosphere on September 15, 2017."
@@ -17,15 +18,16 @@
     />
     <meta
       property="og:description"
-      content="Watch Cassini's 13-year Saturn mission in 90 seconds."
+      content="Fly Cassini's 20-year journey, launch to the final plunge into Saturn, in under five minutes."
     />
 
     <link
       rel="icon"
       type="image/svg+xml"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='24' fill='%23e8c98a'/><ellipse cx='50' cy='50' rx='46' ry='9' fill='none' stroke='%23e8c98a' stroke-width='4'/></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='20' fill='%23fff'/><ellipse cx='50' cy='50' rx='42' ry='9' fill='none' stroke='%23fff' stroke-width='7'/></svg>"
     />
 
+    <!-- The Editorial theme pulls these two faces from Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -33,7 +35,8 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
     />
 
-    <!-- no external runtime deps, everything's bundled by Vite -->
+    <!-- Never preload the GLBs with as="fetch": three's FileLoader sends
+         credentials, so the browser fetches each model twice. -->
   </head>
   <body>
     <!-- black background here, not CSS, so there's no white flash pre-paint -->
@@ -41,6 +44,21 @@
       id="root"
       style="background: #000; width: 100%; height: 100dvh; overflow: hidden"
     ></div>
+
+    <noscript>
+      <div
+        style="
+          color: #ddd;
+          background: #000;
+          font: 16px/1.5 system-ui;
+          padding: 2rem;
+          text-align: center;
+        "
+      >
+        This interactive 3D visualization of the Cassini-Huygens mission
+        requires JavaScript and WebGL.
+      </div>
+    </noscript>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>
