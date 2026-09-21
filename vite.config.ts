@@ -47,4 +47,13 @@ export default defineConfig({
     port: 5173,
     open: true,
   },
+
+  test: {
+    environment: "node", // lib is pure math
+    include: ["src/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/scenes/cassini/lib/**"],
+    },
+  },
 });

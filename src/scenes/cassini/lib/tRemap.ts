@@ -21,7 +21,7 @@ import {
   TERMINAL_T_START,
 } from "../data/missionConstants";
 
-const REMAP_POINTS: [number, number][] = [
+export const REMAP_POINTS: [number, number][] = [
   [0.000000, 0.000000],  // Launch
   [0.180000, 0.015158],  // Cruise/arrival boundary, 4.3s cruise
   [0.253196, 0.039274],  // Camera Test (Oct 2002)
