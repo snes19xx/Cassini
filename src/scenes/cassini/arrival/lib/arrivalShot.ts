@@ -30,7 +30,7 @@ export const ARRIVAL_SNAP_RATIO = 1.6;
 export function arrivalRadius(p: number): number {
   const f = clamp01(p);
   // Geometric interpolation: apparent size grows at a constant relative rate.
-  return ARRIVAL_RADIUS_START * Math.pow(ARRIVAL_RADIUS_START / ARRIVAL_RADIUS_END, f);
+  return ARRIVAL_RADIUS_START * Math.pow(ARRIVAL_RADIUS_END / ARRIVAL_RADIUS_START, f);
 }
 
 export const ARRIVAL_POLAR_START_DEG = 85;
@@ -58,4 +58,36 @@ export function arrivalRollDeg(p: number): number {
 /** Saturn group roll about world Z, in radians, at progress p. */
 export function arrivalRollRad(p: number): number {
   return arrivalRollDeg(p) * DEG;
+}
+
+export const ARRIVAL_START_CAMERA_POS: [number, number, number] = [
+  0,
+  ARRIVAL_RADIUS_START * Math.cos(ARRIVAL_POLAR_START_DEG * DEG),
+  ARRIVAL_RADIUS_START * Math.sin(ARRIVAL_POLAR_START_DEG * DEG),
+];
+
+export const ARRIVAL_ZOOM_MIN = 0.75;
+export const ARRIVAL_ZOOM_MAX = 1.25;
+
+// Ignore tiny radius drift from OrbitControls
+const ZOOM_DEAD_ZONE = 1e-4;
+
+/** Updates the zoom from this frame's scroll. */
+export function accumulateArrivalZoom(
+  zoom: number,
+  written: number,
+  observed: number,
+): number {
+  if (!(written > 0) || !Number.isFinite(observed)) return zoom;
+  const ratio = observed / written;
+  if (!Number.isFinite(ratio) || Math.abs(ratio - 1) <= ZOOM_DEAD_ZONE) {
+    return zoom;
+  }
+  const next = zoom * ratio;
+  if (!Number.isFinite(next)) return zoom;
+  return next < ARRIVAL_ZOOM_MIN
+    ? ARRIVAL_ZOOM_MIN
+    : next > ARRIVAL_ZOOM_MAX
+      ? ARRIVAL_ZOOM_MAX
+      : next;
 }
