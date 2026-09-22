@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { isOrbitalTableau, isTerminalTableau } from "../data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "../data/tableaus";
+import { isArrivalTableau } from "../arrival/lib/arrivalShot";
 import { cassiniWorldPos } from "../lib/cassiniAnchor";
 import {
   easeInOutCubic,
@@ -108,6 +109,9 @@ export function TransitionDriver() {
     if (isOrbitalTableau(tableauId) && isOrbitalTableau(prevId)) return;
 
     if (isTerminalTableau(tableauId)) return;
+
+    // ArrivalCameraDriver drives the camera from its first frame.
+    if (isArrivalTableau(tableauId)) return;
 
     const tab = getActiveTableau(state.currentT);
     const [ex, ey, ez] = tab.camera.pos;
