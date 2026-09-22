@@ -11,20 +11,32 @@ import { getActiveTableau } from "../../data/tableaus";
 import { useTransitionStore } from "../../lib/useTransitionStore";
 import {
   ARRIVAL_SNAP_RATIO,
+  TITAN_CAMERA_POS,
+  TITAN_TABLEAU_ID,
   accumulateArrivalZoom,
+  arrivalDepartureState,
   arrivalPolarRad,
   arrivalProgress,
   arrivalRadius,
+  arrivalSwingProgress,
   isArrivalTableau,
+  titanEntryProgress,
+  titanEntryState,
 } from "../lib/arrivalShot";
 
 // Ease from wherever the ride-along left the camera onto the scripted pose.
 const BLEND_MS = 600;
 
+// Must be inside the active tableau's zoom clamps (saturn_arrival 400-15200,
+// titan_huygens 70-2200).
+const DEPART_TARGET_LEAD = 1200;
+const ENTRY_TARGET_LEAD = 400;
+
 const _offset = new THREE.Vector3();
 const _sph = new THREE.Spherical();
 const _next = new THREE.Vector3();
 const _origin = new THREE.Vector3();
+const _aim = new THREE.Vector3();
 
 function smoothstep01(x: number): number {
   const c = x < 0 ? 0 : x > 1 ? 1 : x;
@@ -34,7 +46,7 @@ function smoothstep01(x: number): number {
 export function ArrivalCameraDriver() {
   const { camera, controls } = useThree() as unknown as {
     camera: THREE.Camera;
-    controls: { target?: THREE.Vector3 } | null;
+    controls: { target?: THREE.Vector3; update?: () => void } | null;
   };
 
   const armedRef = useRef(false);
@@ -43,13 +55,63 @@ export function ArrivalCameraDriver() {
   const blendFromPolarRef = useRef(0);
   const lastWrittenRadiusRef = useRef(0);
   const zoomRef = useRef(1);
+  // the swing continues from wherever the user had orbited to
+  const swingAzRef = useRef<number | null>(null);
+  const sawDepartureRef = useRef(false);
+  const entryCommittedRef = useRef(false);
+  // True while the departure or entry beat holds controls.target ahead of the lens.
+  const targetOffOriginRef = useRef(false);
+  const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
+  const lastNonceRef = useRef(cameraResetNonce);
+  if (lastNonceRef.current !== cameraResetNonce) {
+    lastNonceRef.current = cameraResetNonce;
+    sawDepartureRef.current = false;
+  }
 
   useFrame(() => {
     try {
       const t = useMissionStore.getState().currentT;
       const tab = getActiveTableau(t);
+
+      // Titan entry is the second half of the SOI handoff; it runs on mission t.
+      if (tab.id === TITAN_TABLEAU_ID) {
+        armedRef.current = false;
+        swingAzRef.current = null;
+        if (!sawDepartureRef.current) return;
+        const v = titanEntryProgress(t);
+        if (v >= 1) {
+          // Commits once: OrbitControls then reads the tableau preset, not
+          // the lead point past Titan.
+          if (!entryCommittedRef.current) {
+            entryCommittedRef.current = true;
+            camera.position.set(
+              TITAN_CAMERA_POS[0],
+              TITAN_CAMERA_POS[1],
+              TITAN_CAMERA_POS[2],
+            );
+            if (controls?.target) controls.target.set(0, 0, 0);
+            camera.lookAt(0, 0, 0);
+            controls?.update?.();
+            targetOffOriginRef.current = false;
+          }
+          return;
+        }
+        entryCommittedRef.current = false;
+        const st = titanEntryState(v);
+        camera.position.set(st.pos[0], st.pos[1], st.pos[2]);
+        _aim.set(st.aim[0], st.aim[1], st.aim[2]);
+        _next.copy(camera.position).addScaledVector(_aim, ENTRY_TARGET_LEAD);
+        if (controls?.target) controls.target.copy(_next);
+        camera.lookAt(_next);
+        targetOffOriginRef.current = true;
+        return;
+      }
+
       if (!isArrivalTableau(tab.id)) {
         armedRef.current = false;
+        swingAzRef.current = null;
+        sawDepartureRef.current = false;
+        entryCommittedRef.current = false;
         return;
       }
       // TransitionDriver's cruise ride-along has the first 2.2s.
@@ -58,14 +120,42 @@ export function ArrivalCameraDriver() {
         return;
       }
 
+      // The departure drives the camera directly. Aim leaves Saturn here;
+      // controls.target rides ahead of the lens.
+      const p0 = arrivalProgress(t);
+      const u = arrivalSwingProgress(p0);
+      if (u > 0) {
+        if (swingAzRef.current === null) {
+          swingAzRef.current = Math.atan2(camera.position.x, camera.position.z);
+        }
+        sawDepartureRef.current = true;
+        const st = arrivalDepartureState(u, swingAzRef.current);
+        camera.position.set(st.pos[0], st.pos[1], st.pos[2]);
+        _aim.set(st.aim[0], st.aim[1], st.aim[2]);
+        _next.copy(camera.position).addScaledVector(_aim, DEPART_TARGET_LEAD);
+        if (controls?.target) controls.target.copy(_next);
+        camera.lookAt(_next);
+        targetOffOriginRef.current = true;
+        lastWrittenRadiusRef.current = camera.position.length();
+        return;
+      }
+      swingAzRef.current = null;
+
+      // Scrubbing back from the departure or entry pan leaves controls.target
+      // parked ahead of the lens; reset it to Saturn's centre.
+      if (targetOffOriginRef.current) {
+        targetOffOriginRef.current = false;
+        armedRef.current = false;
+        if (controls?.target) controls.target.set(0, 0, 0);
+      }
+
       const target = controls?.target ?? _origin;
       _offset.copy(camera.position).sub(target);
       if (_offset.lengthSq() < 1e-6) return;
       _sph.setFromVector3(_offset);
 
-      const p = arrivalProgress(t);
-      const scriptRadius = arrivalRadius(p);
-      const scriptPolar = arrivalPolarRad(p);
+      const scriptRadius = arrivalRadius(p0);
+      const scriptPolar = arrivalPolarRad(p0);
 
       if (!armedRef.current) {
         armedRef.current = true;
@@ -75,7 +165,7 @@ export function ArrivalCameraDriver() {
           _sph.radius / scriptRadius,
           scriptRadius / _sph.radius,
         );
-        const snap = !Number.isFinite(offBy) || offBy < ARRIVAL_SNAP_RATIO;
+        const snap = !Number.isFinite(offBy) || offBy > ARRIVAL_SNAP_RATIO;
         blendStartRef.current = snap
           ? performance.now() - BLEND_MS
           : performance.now();
@@ -112,6 +202,7 @@ export function ArrivalCameraDriver() {
 
       _next.setFromSpherical(_sph).add(target);
       camera.position.copy(_next);
+
       camera.lookAt(target);
       lastWrittenRadiusRef.current = _sph.radius;
     } catch (err) {
