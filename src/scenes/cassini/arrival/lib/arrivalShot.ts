@@ -19,3 +19,16 @@ function clamp01(v: number): number {
 export function arrivalProgress(t: number): number {
   return clamp01((t - ARRIVAL_T_START) / (ARRIVAL_T_END - ARRIVAL_T_START));
 }
+
+export const ARRIVAL_RADIUS_START = 12000;
+export const ARRIVAL_RADIUS_END = 620;
+
+// Ratio of actual to scripted camera distance past which the driver snaps.
+export const ARRIVAL_SNAP_RATIO = 1.6;
+
+/** Camera distance to Saturn's centre at progress p. */
+export function arrivalRadius(p: number): number {
+  const f = clamp01(p);
+  // Geometric interpolation: apparent size grows at a constant relative rate.
+  return ARRIVAL_RADIUS_START * Math.pow(ARRIVAL_RADIUS_START / ARRIVAL_RADIUS_END, f);
+}
