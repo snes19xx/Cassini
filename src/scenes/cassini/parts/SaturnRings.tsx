@@ -10,6 +10,7 @@ import * as THREE from "three";
 import { TextureLoader } from "three";
 import { getActiveTableau } from "../data/tableaus";
 import { stateAt } from "../lib/stateAt";
+import { isArrivalTableau } from "../arrival/lib/arrivalShot";
 
 const RING_INNER = 222.5;
 const RING_OUTER = 419.3;
@@ -133,10 +134,12 @@ export function SaturnRings({ renderMode }: { renderMode: string }) {
 
       // FinaleStage renders its own volumetric rings for every finale
       // tableau; mute this flat texture there so the two don't overlap.
+      const activeTab = getActiveTableau(t);
       const photoreal = renderMode === "space" || renderMode === "editorial";
-      const inFinalePhotoreal =
-        getActiveTableau(t).kind === "finale" && photoreal;
-      const finaleMute = inFinalePhotoreal ? 0 : 1;
+      const inFinalePhotoreal = activeTab.kind === "finale" && photoreal;
+      // ArrivalRings draws the same shader rings during saturn_arrival.
+      const inArrivalPhotoreal = isArrivalTableau(activeTab.id) && photoreal;
+      const finaleMute = inFinalePhotoreal || inArrivalPhotoreal ? 0 : 1;
 
       if (renderMode === "space" || renderMode === "editorial") {
         if (!ringTexture) return;
