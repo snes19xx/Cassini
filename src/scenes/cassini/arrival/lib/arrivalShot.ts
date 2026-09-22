@@ -32,3 +32,30 @@ export function arrivalRadius(p: number): number {
   // Geometric interpolation: apparent size grows at a constant relative rate.
   return ARRIVAL_RADIUS_START * Math.pow(ARRIVAL_RADIUS_START / ARRIVAL_RADIUS_END, f);
 }
+
+export const ARRIVAL_POLAR_START_DEG = 85;
+export const ARRIVAL_POLAR_END_DEG = 58;
+
+export const ARRIVAL_ROLL_START_DEG = 0;
+export const ARRIVAL_ROLL_END_DEG = 26.73;
+
+const DEG = Math.PI / 180;
+
+/** Camera polar angle from +Y, in radians, at progress p. */
+export function arrivalPolarRad(p: number): number {
+  const f = clamp01(p);
+  return (
+    (ARRIVAL_POLAR_START_DEG + (ARRIVAL_POLAR_END_DEG - ARRIVAL_POLAR_START_DEG) * f) * DEG
+  );
+}
+
+/** Saturn group roll about world Z, in degrees, at progress p. */
+export function arrivalRollDeg(p: number): number {
+  const f = clamp01(p);
+  return ARRIVAL_ROLL_START_DEG + (ARRIVAL_ROLL_END_DEG - ARRIVAL_ROLL_START_DEG) * f;
+}
+
+/** Saturn group roll about world Z, in radians, at progress p. */
+export function arrivalRollRad(p: number): number {
+  return arrivalRollDeg(p) * DEG;
+}
