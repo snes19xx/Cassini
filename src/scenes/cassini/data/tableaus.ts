@@ -6,6 +6,7 @@
 // windows are non-overlapping and cover [0,1].
 //
 import { DISINTEGRATION_T_START, TERMINAL_T_START } from "./missionConstants";
+import { ARRIVAL_START_CAMERA_POS } from "../arrival/lib/arrivalShot";
 
 // Each moon sits at a set world position inside its own tableau, with
 // Cassini beside it and the user free to orbit the pair. Saturn, when
@@ -107,8 +108,7 @@ export interface Tableau {
   camera: CameraPreset;
   /**
    * Optional override for JUMP-TO's landing point inside this tableau's
-   * window, default `tStart + 1e-5`. `saturn_arrival` uses it to drop the
-   * user partway into the scale ramp, past the invisible-dot start.
+   * window, default `tStart + 1e-5`. No tableau sets it currently.
    */
   jumpT?: number;
   /** Bounds OrbitControls' zoom range while this tableau is active. */
@@ -167,24 +167,31 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 18, maxDist: 200 },
   },
 
-  // Saturn grows from a dot at tStart to full size by tEnd; the SOI burn
-  // (stateAt.ts) fires most of the way through, against a near-full Saturn.
-  // JUMP-TO lands mid-ramp, past the blank-dot start, with Cassini in
-  // chase-cam foreground against the growing Saturn.
+  // Saturn holds full scale at the origin; the camera does the approach.
   {
     id: "saturn_arrival",
     kind: "saturn_focus",
     tStart: 0.18,
     tEnd: 0.353,
     label: "SATURN ORBIT INSERTION",
-    cassiniOffset: [0, 20, 700],
     camera: {
-      pos: [0, 90, 980],
+      pos: ARRIVAL_START_CAMERA_POS,
       lookAt: [0, 0, 0],
     },
-    jumpT: 0.235,
-    zoom: { minDist: 200, maxDist: 4000 },
-    effects: { rings: true, soiBurn: true },
+    // Default 0.5 sweeps the moons across frame during the dolly.
+    autoRotateSpeed: 0.2,
+    moons: [
+      // True semi-major axes (1 unit = 334.822 km), 8x true radius.
+      { body: "rhea",      pos: [-1500, 0,  480], effectiveRadius: 18.24, axialTiltDeg: 0.35, spinPeriodHours: 108.42, orbitRadPerSec: 0.00291 },
+      { body: "dione",     pos: [  900, 0, -680], effectiveRadius: 13.41, axialTiltDeg: 0.02, spinPeriodHours:  65.69, orbitRadPerSec: 0.00481 },
+      { body: "tethys",    pos: [ -520, 0, -710], effectiveRadius: 12.69, axialTiltDeg: 1.09, spinPeriodHours:  45.31, orbitRadPerSec: 0.00697 },
+      { body: "enceladus", pos: [  640, 0,  310], effectiveRadius:  6.02, axialTiltDeg: 0.01, spinPeriodHours:  32.89, orbitRadPerSec: 0.00961 },
+      { body: "mimas",     pos: [ -400, 0,  383], effectiveRadius:  4.74, axialTiltDeg: 1.57, spinPeriodHours:  22.62, orbitRadPerSec: 0.01398 },
+    ],
+    // +-25% user zoom on both ends of the dolly, 465 to 15000.
+    zoom: { minDist: 400, maxDist: 15200 },
+    // Camera outruns any stationary Cassini position.
+    effects: { rings: true, soiBurn: true, hideCassini: true },
   },
 
   // Huygens probe descends here (HuygensSeparation.tsx). Titan sits 1.22M km
