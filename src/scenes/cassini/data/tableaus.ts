@@ -6,7 +6,10 @@
 // windows are non-overlapping and cover [0,1].
 //
 import { DISINTEGRATION_T_START, TERMINAL_T_START } from "./missionConstants";
-import { ARRIVAL_START_CAMERA_POS } from "../arrival/lib/arrivalShot";
+import {
+  ARRIVAL_START_CAMERA_POS,
+  TITAN_CAMERA_POS,
+} from "../arrival/lib/arrivalShot";
 
 // Each moon sits at a set world position inside its own tableau, with
 // Cassini beside it and the user free to orbit the pair. Saturn, when
@@ -206,7 +209,8 @@ export const TABLEAUS: Tableau[] = [
     moonEffectiveRadius: 50,
     cassiniOffset: [70, 18, 35],
     camera: {
-      pos: [110, 40, 220],
+      // The Titan entry beat in arrivalShot.ts lands exactly on this point.
+      pos: TITAN_CAMERA_POS,
       lookAt: [0, 0, 0],
     },
     // minDist: keep camera at least ~30% beyond the moon surface so
