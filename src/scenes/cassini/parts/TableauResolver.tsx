@@ -5,6 +5,13 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
+import { ArrivalStage } from "../arrival/ArrivalStage";
+import {
+  TITAN_TABLEAU_ID,
+  arrivalProgress,
+  arrivalRollDeg,
+  isArrivalTableau,
+} from "../arrival/lib/arrivalShot";
 import { FinaleStage } from "../finale/FinaleStage";
 import { SaturnGroup } from "./SaturnGroup";
 import { TableauMoonRenderer } from "./TableauMoonRenderer";
@@ -18,6 +25,8 @@ export function useActiveTableauId(): string {
 }
 
 const NO_ROT: [number, number, number] = [0, 0, 0];
+// targetSaturnTransform runs every frame; reuse one vector.
+const _targetPos = new THREE.Vector3();
 
 function targetSaturnTransform(t: number): {
   pos: THREE.Vector3;
@@ -29,20 +38,17 @@ function targetSaturnTransform(t: number): {
   const tab = getActiveTableau(t);
 
   if (tab.kind === "saturn_focus" || tab.kind === "finale") {
-    if (tab.id === "saturn_arrival") {
-      const span = Math.max(1e-6, tab.tEnd - tab.tStart);
-      const p = Math.max(0, Math.min(1, (t - tab.tStart) / span));
-      const pEff = Math.min(1, p / 0.55);
-      const eased = pEff * pEff * (3 - 2 * pEff);
+    if (isArrivalTableau(tab.id)) {
+      // Saturn holds full scale; the roll tips the ring plane to match ArrivalRings.
       return {
-        pos: new THREE.Vector3(0, 0, 0),
-        scale: eased,
+        pos: _targetPos.set(0, 0, 0),
+        scale: 1,
         visible: true,
-        rotDeg: NO_ROT,
+        rotDeg: [0, 0, arrivalRollDeg(arrivalProgress(t))],
       };
     }
     return {
-      pos: new THREE.Vector3(0, 0, 0),
+      pos: _targetPos.set(0, 0, 0),
       scale: 1,
       visible: true,
       rotDeg: NO_ROT,
@@ -52,7 +58,7 @@ function targetSaturnTransform(t: number): {
   if (tab.kind === "moon" && tab.saturnBackdrop) {
     const [px, py, pz] = tab.saturnBackdrop.pos;
     return {
-      pos: new THREE.Vector3(px, py, pz),
+      pos: _targetPos.set(px, py, pz),
       scale: tab.saturnBackdrop.scale,
       visible: true,
       rotDeg: tab.saturnBackdrop.rotDeg ?? NO_ROT,
@@ -61,7 +67,7 @@ function targetSaturnTransform(t: number): {
 
   // cruise / moon without backdrop: Saturn hidden.
   return {
-    pos: new THREE.Vector3(-9999, 0, 0),
+    pos: _targetPos.set(-9999, 0, 0),
     scale: 0,
     visible: false,
     rotDeg: NO_ROT,
@@ -86,7 +92,8 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       const t = useMissionStore.getState().currentT;
       const target = targetSaturnTransform(t);
       const tab = getActiveTableau(t);
-      const tabChanged = lastTabIdRef.current !== tab.id;
+      const prevTabId = lastTabIdRef.current;
+      const tabChanged = prevTabId !== tab.id;
       if (tabChanged) {
         lastTabIdRef.current = tab.id;
         // Only arm the hide-gate if the position actually moved.
@@ -106,6 +113,15 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
         if (!target.visible) {
           liveScaleRef.current = 0;
         }
+        // Snap Saturn to its backdrop scale on the cut into titan_huygens.
+        if (
+          prevTabId !== null &&
+          isArrivalTableau(prevTabId) &&
+          tab.id === TITAN_TABLEAU_ID
+        ) {
+          liveScaleRef.current = target.scale;
+          tabEnterAtMsRef.current = 0;
+        }
       }
       // Detect JUMP-TO / RESET (instant-snap path)
       const nonceChanged = lastNonceRef.current !== cameraResetNonce;
@@ -122,6 +138,16 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
         tabEnterAtMsRef.current = 0;
       }
 
+      // The roll animates across the whole window; it can't wait for the tabChanged snap above.
+      const inArrival = isArrivalTableau(tab.id);
+      if (inArrival) {
+        groupRef.current.rotation.set(
+          (target.rotDeg[0] * Math.PI) / 180,
+          (target.rotDeg[1] * Math.PI) / 180,
+          (target.rotDeg[2] * Math.PI) / 180,
+        );
+      }
+
       // for the first ~100 ms after a natural tableau
       // change, hold scale at 0 so the just-snapped position can't peek
       // through the curtain's ramp-up. JUMP-TO skips this (nonceChanged
@@ -130,13 +156,17 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       const dampTarget =
         sinceEnterMs < 100 ? 0 : target.visible ? target.scale : 0;
 
-      liveScaleRef.current = THREE.MathUtils.damp(
-        liveScaleRef.current,
-        dampTarget,
-        // saturn_arrival uses an eased curve
-        tab.id === "saturn_arrival" ? 12 : 3.5,
-        delta,
-      );
+      if (inArrival && dampTarget > 0) {
+        // Saturn never grows during arrival.
+        liveScaleRef.current = dampTarget;
+      } else {
+        liveScaleRef.current = THREE.MathUtils.damp(
+          liveScaleRef.current,
+          dampTarget,
+          3.5,
+          delta,
+        );
+      }
       if (!Number.isFinite(liveScaleRef.current)) {
         liveScaleRef.current = target.scale;
       }
@@ -172,6 +202,7 @@ export function TableauResolver() {
       <GlobalSaturn renderMode={renderMode} />
       <TableauMoonRenderer renderMode={renderMode} />
       <FinaleStage />
+      <ArrivalStage />
     </>
   );
 }

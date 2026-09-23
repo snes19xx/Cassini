@@ -3,11 +3,12 @@
 // with an anchor on every late tableau boundary.
 
 // Wall-clock budget at 1x, seconds per segment:
+//   CRUISE               0.0      -> 0.180      4.3
+//   SATURN ORBIT INS.    0.180    -> 0.353     35.7   (30.7 approach + 5.0 fling)
 //   FAMILY PORTRAIT      0.810    -> 0.870     12.4
 //   THREE CRESCENTS      0.870    -> 0.945     13.0
 //   FINAL APPROACH       0.945    -> 0.955      9.0
-//   POLAR PASSAGE        0.955    -> 0.961      7.0
-//   INTO THE RINGS       0.961    -> 0.963      7.4
+//   POLAR PASSAGE        0.955    -> 0.963      7.0
 //   SWING AROUND         0.963    -> 0.978     24.0
 //   RING DIVE            0.978    -> 0.994677  42.0
 //   SATURN'S ATMOSPHERE  0.994677 -> 0.999115  23.7
@@ -22,39 +23,39 @@ import {
 } from "../data/missionConstants";
 
 export const REMAP_POINTS: [number, number][] = [
-  [0.000000, 0.000000],  // Launch
-  [0.180000, 0.015158],  // Cruise/arrival boundary, 4.3s cruise
-  [0.253196, 0.039274],  // Camera Test (Oct 2002)
-  [0.336770, 0.066809],  // Saturn Orbit Insertion, 14.5s approach
-  [0.352000, 0.079602],  // Pre titan_huygens
-  [0.364000, 0.105188],  // titan_huygens peak, Huygens descent
-  [0.380000, 0.126510],  // Post titan_huygens
-  [0.389000, 0.139303],  // enceladus_first
-  [0.421000, 0.160625],  // enceladus_liquid_water
-  [0.440000, 0.181947],  // titan_lakes
-  [0.447560, 0.194740],  // seeing_new_rings
-  [0.497000, 0.220327],  // iapetus_close
-  [0.501000, 0.232215],  // enceladus_tiger
-  [0.522000, 0.247076],  // enceladus_organic
-  [0.551000, 0.264909],  // enceladus_closest
-  [0.593402, 0.285714],  // equinox
-  [0.619000, 0.307036],  // mimas_close
-  [0.637000, 0.328358],  // titan_close
-  [0.659000, 0.349680],  // rhea_exosphere
-  [0.687000, 0.375267],  // enceladus_ocean
-  [0.699000, 0.400853],  // moon trio release
-  [0.722000, 0.422175],  // dione_air
-  [0.739519, 0.439232],  // more_rings
-  [0.791065, 0.464819],  // wave_at_saturn
-  [0.810000, 0.481876],  // FAMILY PORTRAIT start
-  [0.870000, 0.525978],  // THREE CRESCENTS start
-  [0.945000, 0.572175],  // FINAL APPROACH start
-  [0.955000, 0.604158],  // POLAR PASSAGE start
-  [0.961000, 0.628998],  // INTO THE RINGS start
-  [0.963000, 0.655330],  // SWING AROUND start
-  [0.978000, 0.740618],  // RING DIVE start
-  [TERMINAL_T_START, 0.889872],       // SATURN'S ATMOSPHERE start
-  [DISINTEGRATION_T_START, 0.974094], // END OF MISSION start
+  [0.000000, 0.000000],
+  [0.180000, 0.014658],  // Cruise/arrival boundary, 4.3s cruise
+  [0.253196, 0.059142],  // Camera Test (Oct 2002)
+  [0.336770, 0.109931],  // Saturn Orbit Insertion
+  [0.352000, 0.133529],
+  [0.353000, 0.137461],  // Arrival/titan_huygens boundary
+  [0.364000, 0.160143],
+  [0.380000, 0.180763],
+  [0.389000, 0.193133],
+  [0.421000, 0.213752],
+  [0.440000, 0.234372],
+  [0.447560, 0.246743],
+  [0.497000, 0.271487],
+  [0.501000, 0.282983],
+  [0.522000, 0.297354],
+  [0.551000, 0.314599],
+  [0.593402, 0.334719],
+  [0.619000, 0.355338],
+  [0.637000, 0.375958],
+  [0.659000, 0.396577],
+  [0.687000, 0.421320],
+  [0.699000, 0.446064],
+  [0.722000, 0.466683],
+  [0.739519, 0.483177],
+  [0.791065, 0.507922],
+  [0.810000, 0.524416],  // FAMILY PORTRAIT start
+  [0.870000, 0.567064],  // THREE CRESCENTS start
+  [0.945000, 0.611739],  // FINAL APPROACH start
+  [0.955000, 0.642668],  // POLAR PASSAGE start
+  [0.963000, 0.666689],  // SWING AROUND start
+  [0.978000, 0.749166],  // RING DIVE start
+  [TERMINAL_T_START, 0.893501],       // SATURN'S ATMOSPHERE start
+  [DISINTEGRATION_T_START, 0.974948], // END OF MISSION start
   [1.000000, 1.000000],  // Signal lost / impact
 ];
 

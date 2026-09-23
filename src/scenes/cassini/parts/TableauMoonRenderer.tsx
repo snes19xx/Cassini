@@ -26,6 +26,12 @@ import {
   getBinding,
   subscribe,
 } from "../lib/textureService";
+import {
+  TITAN_TABLEAU_ID,
+  arrivalProgress,
+  arrivalRollRad,
+  isArrivalTableau,
+} from "../arrival/lib/arrivalShot";
 
 // Live world position per visible moon, read by the labels Projector.
 export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
@@ -225,7 +231,8 @@ function resolveMoonTarget(
   body: string,
   realR: number,
 ): MoonTarget | null {
-  if (tab.kind !== "moon") return null;
+  // saturn_arrival is kind "saturn_focus" but still places moons.
+  if (tab.kind !== "moon" && !isArrivalTableau(tab.id)) return null;
   if (tab.body === body && tab.moonEffectiveRadius) {
     return {
       scale: tab.moonEffectiveRadius / realR,
@@ -321,6 +328,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const hazeRef = useRef<THREE.Mesh>(null);
   const plumeRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
+  const prevTabIdRef = useRef("");
   const livePosRef = useRef(new THREE.Vector3());
 
   const hazeMaterial = useMemo(() => {
@@ -399,6 +407,17 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       const target = resolveMoonTarget(tab, body, realR);
       const targetScale = target ? target.scale : 0;
 
+      // Titan is off-frame for the first part of the entry pan. Snap scale while hidden.
+      const prevTabId = prevTabIdRef.current;
+      prevTabIdRef.current = tab.id;
+      if (
+        prevTabId !== tab.id &&
+        isArrivalTableau(prevTabId) &&
+        tab.id === TITAN_TABLEAU_ID
+      ) {
+        liveScaleRef.current = targetScale;
+      }
+
       liveScaleRef.current = THREE.MathUtils.damp(
         liveScaleRef.current,
         targetScale,
@@ -415,7 +434,25 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
         let tz = target.pz;
         // Swing the placement about the backdrop's ring axis, prograde.
         const sat = tab.saturnBackdrop;
-        if (sat && target.orbitRadPerSec !== 0) {
+        if (isArrivalTableau(tab.id)) {
+          // Saturn has no saturnBackdrop here; the ring plane itself rolls.
+          const elapsedSec =
+            Math.max(0, missionToDisplay(t) - missionToDisplay(tab.tStart)) *
+            FULL_MISSION_SECONDS;
+          _orbOffset.set(tx, ty, tz);
+          if (target.orbitRadPerSec !== 0) {
+            _orbAxis.set(0, 1, 0);
+            _orbOffset.applyAxisAngle(
+              _orbAxis,
+              target.orbitRadPerSec * elapsedSec,
+            );
+          }
+          _orbAxis.set(0, 0, 1);
+          _orbOffset.applyAxisAngle(_orbAxis, arrivalRollRad(arrivalProgress(t)));
+          tx = _orbOffset.x;
+          ty = _orbOffset.y;
+          tz = _orbOffset.z;
+        } else if (sat && target.orbitRadPerSec !== 0) {
           const elapsedSec =
             Math.max(0, missionToDisplay(t) - missionToDisplay(tab.tStart)) *
             FULL_MISSION_SECONDS;
