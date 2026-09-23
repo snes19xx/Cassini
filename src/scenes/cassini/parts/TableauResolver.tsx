@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { getActiveTableau, type Tableau } from "../data/tableaus";
 import { ArrivalStage } from "../arrival/ArrivalStage";
 import {
+  TITAN_TABLEAU_ID,
   arrivalProgress,
   arrivalRollDeg,
   isArrivalTableau,
@@ -24,6 +25,8 @@ export function useActiveTableauId(): string {
 }
 
 const NO_ROT: [number, number, number] = [0, 0, 0];
+// targetSaturnTransform runs every frame; reuse one vector.
+const _targetPos = new THREE.Vector3();
 
 function targetSaturnTransform(t: number): {
   pos: THREE.Vector3;
@@ -38,14 +41,14 @@ function targetSaturnTransform(t: number): {
     if (isArrivalTableau(tab.id)) {
       // Saturn holds full scale; the roll tips the ring plane to match ArrivalRings.
       return {
-        pos: new THREE.Vector3(0, 0, 0),
+        pos: _targetPos.set(0, 0, 0),
         scale: 1,
         visible: true,
         rotDeg: [0, 0, arrivalRollDeg(arrivalProgress(t))],
       };
     }
     return {
-      pos: new THREE.Vector3(0, 0, 0),
+      pos: _targetPos.set(0, 0, 0),
       scale: 1,
       visible: true,
       rotDeg: NO_ROT,
@@ -55,7 +58,7 @@ function targetSaturnTransform(t: number): {
   if (tab.kind === "moon" && tab.saturnBackdrop) {
     const [px, py, pz] = tab.saturnBackdrop.pos;
     return {
-      pos: new THREE.Vector3(px, py, pz),
+      pos: _targetPos.set(px, py, pz),
       scale: tab.saturnBackdrop.scale,
       visible: true,
       rotDeg: tab.saturnBackdrop.rotDeg ?? NO_ROT,
@@ -64,7 +67,7 @@ function targetSaturnTransform(t: number): {
 
   // cruise / moon without backdrop: Saturn hidden.
   return {
-    pos: new THREE.Vector3(-9999, 0, 0),
+    pos: _targetPos.set(-9999, 0, 0),
     scale: 0,
     visible: false,
     rotDeg: NO_ROT,
@@ -89,7 +92,8 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       const t = useMissionStore.getState().currentT;
       const target = targetSaturnTransform(t);
       const tab = getActiveTableau(t);
-      const tabChanged = lastTabIdRef.current !== tab.id;
+      const prevTabId = lastTabIdRef.current;
+      const tabChanged = prevTabId !== tab.id;
       if (tabChanged) {
         lastTabIdRef.current = tab.id;
         // Only arm the hide-gate if the position actually moved.
@@ -108,6 +112,15 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
 
         if (!target.visible) {
           liveScaleRef.current = 0;
+        }
+        // Snap Saturn to its backdrop scale on the cut into titan_huygens.
+        if (
+          prevTabId !== null &&
+          isArrivalTableau(prevTabId) &&
+          tab.id === TITAN_TABLEAU_ID
+        ) {
+          liveScaleRef.current = target.scale;
+          tabEnterAtMsRef.current = 0;
         }
       }
       // Detect JUMP-TO / RESET (instant-snap path)

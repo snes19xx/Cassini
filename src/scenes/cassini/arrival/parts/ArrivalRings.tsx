@@ -13,7 +13,12 @@ import {
   createRingGeometry,
   createRingMaterial,
 } from "../../finale/lib/ringShader";
-import { arrivalProgress, arrivalRollRad } from "../lib/arrivalShot";
+import { getActiveTableau } from "../../data/tableaus";
+import {
+  arrivalProgress,
+  arrivalRollRad,
+  isArrivalTableau,
+} from "../lib/arrivalShot";
 
 // swirlAmount 0 turns the procedural swirl off. The textured layer below is the ring detail.
 const RING_COLOR = new THREE.Color(1.0, 0.82, 0.57);
@@ -122,6 +127,9 @@ export function ArrivalRings() {
     if (!group) return;
     try {
       const t = useMissionStore.getState().currentT;
+      // Gate visibility on currentT: the unmount lands a frame or two later.
+      group.visible = isArrivalTableau(getActiveTableau(t).id);
+      if (!group.visible) return;
       // Rolls on the same curve TableauResolver applies to the Saturn body.
       group.rotation.z = arrivalRollRad(arrivalProgress(t));
 

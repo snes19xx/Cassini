@@ -10,7 +10,10 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { isOrbitalTableau, isTerminalTableau } from "../data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "../data/tableaus";
-import { isArrivalTableau } from "../arrival/lib/arrivalShot";
+import {
+  TITAN_TABLEAU_ID,
+  isArrivalTableau,
+} from "../arrival/lib/arrivalShot";
 import { cassiniWorldPos } from "../lib/cassiniAnchor";
 import {
   easeInOutCubic,
@@ -112,6 +115,9 @@ export function TransitionDriver() {
 
     // ArrivalCameraDriver drives the camera from its first frame.
     if (isArrivalTableau(tableauId)) return;
+
+    // ArrivalCameraDriver drives the camera across the cut into titan_huygens.
+    if (isArrivalTableau(prevId) && tableauId === TITAN_TABLEAU_ID) return;
 
     const tab = getActiveTableau(state.currentT);
     const [ex, ey, ez] = tab.camera.pos;

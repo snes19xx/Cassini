@@ -42,7 +42,7 @@ export function isOrbitalTableau(id: string): boolean {
 
 // Wall-clock seconds for the full mission at 1x playback (displayT 0 to 1).
 // MissionTimeAdvancer divides by this.
-export const FULL_MISSION_SECONDS = 298.4;
+export const FULL_MISSION_SECONDS = 290.99;
 
 // Huygens probe separation, Dec 25 2004. Spacecraft model swap, probe stage
 // animation, and label anchors key off this t.

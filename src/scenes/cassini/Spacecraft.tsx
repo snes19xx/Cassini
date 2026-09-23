@@ -28,6 +28,7 @@ import {
   getSwingAroundSample,
 } from "./finale/lib/swingAroundTrajectory";
 import { cassiniWorldPos } from "./lib/cassiniAnchor";
+import { isArrivalTableau } from "./arrival/lib/arrivalShot";
 import { stateAt } from "./lib/stateAt";
 import { CassiniHuygensA, type CassiniAAnchors } from "./parts/CassiniHuygensA";
 import { CassiniHuygensAwithoutHuygens } from "./parts/CassiniHuygensAwithoutHuygens";
@@ -317,6 +318,8 @@ export function Spacecraft() {
 
   const targetPosRef = useRef(new THREE.Vector3(0, 0, 0));
   const livePosRef = useRef(new THREE.Vector3(0, 0, 0));
+  // Tableau id from the previous frame, for the snap on the way out of the arrival.
+  const prevTableauIdRef = useRef<string>("");
   const driftClockRef = useRef(0);
   const liveDriftAmpRef = useRef(6.5);
   const liveDriftSpeedRef = useRef(0.18);
@@ -354,7 +357,7 @@ export function Spacecraft() {
     }
   }, [cameraResetNonce]);
 
-  useFrame((_, deltaRaw) => {
+  useFrame(({ camera }, deltaRaw) => {
     if (!groupRef.current) return;
     const delta = Number.isFinite(deltaRaw)
       ? Math.min(0.1, Math.max(0, deltaRaw))
@@ -384,6 +387,9 @@ export function Spacecraft() {
         targetPosRef.current.copy(sample.position);
         ringDiveStateRef.position.copy(sample.position);
         ringDiveStateRef.velocity.copy(sample.velocity);
+      } else if (isArrivalTableau(tableau.id)) {
+        // Cassini is hidden here (effects.hideCassini) and parks on the camera position.
+        targetPosRef.current.copy(camera.position);
       } else if (tableau.cassiniOffset) {
         targetPosRef.current.set(
           tableau.cassiniOffset[0],
@@ -397,7 +403,8 @@ export function Spacecraft() {
       if (
         tableau.id === "finale_swing_around" ||
         tableau.id === "finale_ring_dive" ||
-        isTerminalTableau(tableau.id)
+        isTerminalTableau(tableau.id) ||
+        isArrivalTableau(tableau.id)
       ) {
         // Orbital tableaus: trajectory IS the position, no drift or damping.
         groupRef.current.position.copy(targetPosRef.current);
@@ -406,6 +413,13 @@ export function Spacecraft() {
       } else {
         const live = livePosRef.current;
         const target = targetPosRef.current;
+        // Snap on the way out of the arrival, ahead of Titan's own frame.
+        if (
+          isArrivalTableau(prevTableauIdRef.current) &&
+          !isArrivalTableau(tableau.id)
+        ) {
+          live.copy(target);
+        }
         live.x = THREE.MathUtils.damp(live.x, target.x, 3.5, delta);
         live.y = THREE.MathUtils.damp(live.y, target.y, 3.5, delta);
         live.z = THREE.MathUtils.damp(live.z, target.z, 3.5, delta);
@@ -468,6 +482,8 @@ export function Spacecraft() {
           );
         }
       }
+
+      prevTableauIdRef.current = tableau.id;
 
       cassiniWorldPos.copy(groupRef.current.position);
 

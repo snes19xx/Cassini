@@ -27,6 +27,7 @@ import {
   subscribe,
 } from "../lib/textureService";
 import {
+  TITAN_TABLEAU_ID,
   arrivalProgress,
   arrivalRollRad,
   isArrivalTableau,
@@ -327,6 +328,7 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
   const hazeRef = useRef<THREE.Mesh>(null);
   const plumeRef = useRef<THREE.Group>(null);
   const liveScaleRef = useRef(0);
+  const prevTabIdRef = useRef("");
   const livePosRef = useRef(new THREE.Vector3());
 
   const hazeMaterial = useMemo(() => {
@@ -404,6 +406,17 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       const tab = getActiveTableau(t);
       const target = resolveMoonTarget(tab, body, realR);
       const targetScale = target ? target.scale : 0;
+
+      // Titan is off-frame for the first part of the entry pan. Snap scale while hidden.
+      const prevTabId = prevTabIdRef.current;
+      prevTabIdRef.current = tab.id;
+      if (
+        prevTabId !== tab.id &&
+        isArrivalTableau(prevTabId) &&
+        tab.id === TITAN_TABLEAU_ID
+      ) {
+        liveScaleRef.current = targetScale;
+      }
 
       liveScaleRef.current = THREE.MathUtils.damp(
         liveScaleRef.current,

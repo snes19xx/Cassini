@@ -496,7 +496,7 @@ export const TABLEAUS: Tableau[] = [
     id: "finale_polar",
     kind: "finale",
     tStart: 0.955,
-    tEnd: 0.961,
+    tEnd: 0.963,
     label: "POLAR PASSAGE",
     cassiniOffset: [60, 420, 90],
     camera: {
@@ -504,24 +504,6 @@ export const TABLEAUS: Tableau[] = [
       lookAt: [0, 0, 0],
     },
     zoom: { minDist: 200, maxDist: 3000 },
-    effects: { rings: true },
-  },
-
-  // Over-the-shoulder behind Cassini with the ring plane ahead. Camera
-  // sits close behind and slightly above Cassini, keeping it foreground
-  // against the rings.
-  {
-    id: "finale_ring_edge",
-    kind: "finale",
-    tStart: 0.961,
-    tEnd: 0.963,
-    label: "INTO THE RINGS",
-    cassiniOffset: [460, 4, 180],
-    camera: {
-      pos: [477, 12, 186],
-      lookAt: [432, 4, 169],
-    },
-    zoom: { minDist: 12, maxDist: 2000 },
     effects: { rings: true },
   },
 
