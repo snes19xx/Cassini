@@ -120,7 +120,7 @@ export function buildTraverse(
 
   // Cap the fly against the window it flies into.
   const windowMs = (tableauSeconds(to) * 1000) / playbackSpeed;
-  const durationMs = Math.min(TRAVERSE_BASE_MS, windowMs);
+  const durationMs = Math.min(TRAVERSE_BASE_MS, windowMs / 3);
 
   // Shrink the corridor with the duration to hold ground speed.
   const factor = Math.max(
