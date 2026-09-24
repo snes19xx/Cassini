@@ -25,16 +25,23 @@ export function FinalePlungeCamera() {
     controls: { target?: THREE.Vector3 } | null;
   };
   const wasActiveRef = useRef(false);
-  // Glides into the locked camera over ~0.4s, re-seeded from the live camera
-  // on each (re)activation.
+  // Glides into the locked camera over ~0.4s, seeded from the live camera.
   const dampPosRef = useRef(new THREE.Vector3());
   const dampLookRef = useRef(new THREE.Vector3());
   const dampFovRef = useRef(DEFAULT_FOV);
+  const lastNonceRef = useRef(useMissionStore.getState().cameraResetNonce);
+  const snapNextRef = useRef(false);
 
   useFrame((_, delta) => {
     const t = useMissionStore.getState().currentT;
     const tableau = getActiveTableau(t);
     const active = isTerminalTableau(tableau.id);
+
+    const nonce = useMissionStore.getState().cameraResetNonce;
+    if (nonce !== lastNonceRef.current) {
+      lastNonceRef.current = nonce;
+      snapNextRef.current = true;
+    }
 
     if (!active) {
       if (wasActiveRef.current) {
@@ -45,6 +52,7 @@ export function FinalePlungeCamera() {
         }
       }
       wasActiveRef.current = false;
+      snapNextRef.current = false;
       return;
     }
 
@@ -61,7 +69,11 @@ export function FinalePlungeCamera() {
     const targetFov = cs.fov;
 
     const dt = Math.min(0.05, Math.max(0, delta));
-    if (justActivated) {
+    if (justActivated && snapNextRef.current) {
+      dampPosRef.current.copy(_camPos);
+      dampLookRef.current.copy(_look);
+      dampFovRef.current = targetFov;
+    } else if (justActivated) {
       dampPosRef.current.copy(camera.position);
       dampLookRef.current.copy(
         (controls?.target as THREE.Vector3 | undefined) ?? _look,
@@ -69,6 +81,7 @@ export function FinalePlungeCamera() {
       dampFovRef.current =
         camera instanceof THREE.PerspectiveCamera ? camera.fov : targetFov;
     }
+    snapNextRef.current = false;
     const a = 1 - Math.exp(-4 * dt);
     dampPosRef.current.lerp(_camPos, a);
     dampLookRef.current.lerp(_look, a);
