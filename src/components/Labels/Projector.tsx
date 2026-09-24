@@ -12,6 +12,7 @@ import {
   ATMOSPHERE_TABLEAU_ID,
   HUYGENS_SEPARATION_T,
 } from "@/scenes/cassini/data/missionConstants";
+import { getMoonFact, moonLabelledIn } from "@/scenes/cassini/data/moonFacts";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
 import { moonWorldPositions } from "@/scenes/cassini/parts/TableauMoonRenderer";
 import { labelAnchorsRef } from "@/scenes/cassini/Spacecraft";
@@ -368,7 +369,15 @@ export function Projector() {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              useMissionStore.getState().resetCamera();
+              const s = useMissionStore.getState();
+              const tab = getActiveTableau(s.currentT);
+              if (moonLabelledIn(tab, body.bodyId) && getMoonFact(body.bodyId)) {
+                s.setActiveMoon(
+                  s.activeMoon === body.bodyId ? null : body.bodyId,
+                );
+                return;
+              }
+              s.resetCamera();
             }}
           >
             <span className={styles.moonName}>{body.name}</span>

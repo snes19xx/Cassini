@@ -3,6 +3,7 @@ import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
 import { BeginMission } from "./components/BeginMission/BeginMission";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
+import { MoonPanel } from "./components/InfoPanel/MoonPanel";
 import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
 import { PlumesToggle } from "./components/PlumesToggle/PlumesToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
@@ -264,6 +265,7 @@ export default function App() {
         return;
       if (e.key === "Escape") {
         setActiveComponent(null);
+        useMissionStore.getState().setActiveMoon(null);
         return;
       }
       if (e.key === " ") {
@@ -478,6 +480,7 @@ export default function App() {
       <BeginMission />
 
       <InfoPanelGate />
+      <MoonPanel />
       <MoonLightingToggle />
       <PlumesToggle />
       <SpectralSelector />
