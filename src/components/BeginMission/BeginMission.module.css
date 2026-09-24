@@ -2,7 +2,7 @@
 .begin {
   position: absolute;
   left: clamp(30px, 2.5vw, 44px);
-  bottom: 138px;
+  bottom: 150px;
   display: flex;
   align-items: center;
   gap: 8px;

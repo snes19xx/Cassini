@@ -193,6 +193,12 @@ function DisplayModel({
   const { scene } = useGLTF(`/assets/${activeModel}`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
+  // DisplayModel suspends until the opening model is parsed.
+  useEffect(() => {
+    const id = setTimeout(warmDeferredModels, DEFERRED_MODEL_PRELOAD_MS);
+    return () => clearTimeout(id);
+  }, []);
+
   useLayoutEffect(() => {
     clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -603,8 +609,13 @@ export function Spacecraft() {
 
 useGLTF.preload("/assets/CassiniHuygensA.glb");
 
-const DEFERRED_MODEL_PRELOAD_MS = 5000;
-setTimeout(() => {
+export const DEFERRED_MODEL_PRELOAD_MS = 5000;
+
+let deferredWarmed = false;
+
+export function warmDeferredModels() {
+  if (deferredWarmed) return;
+  deferredWarmed = true;
   useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");
-}, DEFERRED_MODEL_PRELOAD_MS);
+}
