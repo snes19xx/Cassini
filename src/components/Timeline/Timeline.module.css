@@ -16,10 +16,7 @@
   -webkit-backdrop-filter: blur(var(--panel-blur));
 
   border: 1px solid var(--panel-border);
-  border-top: 1px solid var(--color-fg-dim);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 -1px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   transition:
     background var(--motion-duration-panel) var(--motion-ease-standard),
@@ -66,7 +63,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--color-fg-muted);
   background: transparent;
   border: none;
@@ -84,13 +81,18 @@
 }
 
 .transportBtn.playPause {
-  color: var(--color-accent);
-  width: 32px;
-  height: 32px;
+  width: auto;
+  height: 28px;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--color-fg);
+  border: 1px solid var(--color-fg-dim);
 }
 
 .transportBtn.playPause:hover {
   color: var(--color-fg);
+  background: var(--panel-bg-chip);
+  border-color: var(--color-fg);
 }
 
 .transportBtn svg {
@@ -98,11 +100,20 @@
   flex-shrink: 0;
 }
 
+.playPauseLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
 /*  Speed selector  */
 .speedGroup {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: stretch;
+  gap: 0;
+  height: 28px;
+  border: 1px solid var(--color-fg-dim);
 }
 
 .speedBtn {
@@ -110,12 +121,17 @@
   font-size: var(--text-9);
   letter-spacing: 0.04em;
   color: var(--color-fg-muted);
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 0 10px;
+  border-radius: 0;
   background: transparent;
   border: none;
+  border-right: 1px solid var(--color-fg-dim);
   cursor: pointer;
   transition: all var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+.speedBtn:last-child {
+  border-right: none;
 }
 
 .speedBtn:hover {
@@ -309,7 +325,7 @@
   letter-spacing: 0.08em;
   color: var(--color-accent);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 3.5px;
   background: var(--color-accent-wash);
   border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
   cursor: pointer;

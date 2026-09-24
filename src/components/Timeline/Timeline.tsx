@@ -135,6 +135,9 @@ export function Timeline() {
             }
           >
             {isPlaying ? <IconPause /> : <IconPlay />}
+            <span className={styles.playPauseLabel}>
+              {isPlaying ? "PAUSE" : "PLAY"}
+            </span>
           </button>
 
           <div className={styles.speedGroup} aria-label="Playback speed">

@@ -152,7 +152,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
   family_portrait: {
     id: "family_portrait",
     displayName: "FAMILY PORTRAIT",
-    hook: "July 29, 2011— Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
+    hook: "July 29, 2011 — Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
     events: [
       ev(
         2011,
