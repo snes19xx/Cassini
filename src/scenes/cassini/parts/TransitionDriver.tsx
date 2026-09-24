@@ -6,17 +6,20 @@
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import * as THREE from "three";
 import { isOrbitalTableau, isTerminalTableau } from "../data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "../data/tableaus";
-import {
-  TITAN_TABLEAU_ID,
-  isArrivalTableau,
-} from "../arrival/lib/arrivalShot";
+import { TITAN_TABLEAU_ID, isArrivalTableau } from "../arrival/lib/arrivalShot";
 import { cassiniWorldPos } from "../lib/cassiniAnchor";
 import {
-  easeInOutCubic,
+  buildTraverseFor,
+  sampleTraverse,
+  type TraverseShot,
+} from "../lib/traverseShot";
+import {
+  beginTransitionFrame,
+  getFlyProgress,
   useTransitionStore,
 } from "../lib/useTransitionStore";
 
@@ -46,10 +49,9 @@ const _rideRel = new THREE.Vector3();
 
 export function TransitionDriver() {
   const { camera, controls } = useThree() as any;
-  const tableauId = useMissionStore((s) => getActiveTableau(s.currentT).id);
-  const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
   const setPhase = useTransitionStore((s) => s.setPhase);
   const setFly = useTransitionStore((s) => s.setFly);
+  const setTraverse = useTransitionStore((s) => s.setTraverse);
 
   const phaseRef = useRef<"idle" | "flying">("idle");
   const startMsRef = useRef(0);
@@ -63,11 +65,25 @@ export function TransitionDriver() {
   const rideRef = useRef(false);
   const rideRelStartRef = useRef(new THREE.Vector3());
   const rideRelEndRef = useRef(new THREE.Vector3());
+  // Moon -> moon pull-back-and-approach.
+  const traverseRef = useRef<TraverseShot | null>(null);
 
-  const prevTableauIdRef = useRef(tableauId);
-  const prevNonceRef = useRef(cameraResetNonce);
+  const prevTableauIdRef = useRef<string | null>(null);
+  const prevNonceRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  // Runs at priority -1, ahead of every other useFrame.
+  const armForFrame = useCallback(() => {
+    const state = useMissionStore.getState();
+    const tableauId = getActiveTableau(state.currentT).id;
+    const cameraResetNonce = state.cameraResetNonce;
+
+    // First frame: adopt the current pose without treating it as a crossing.
+    if (prevTableauIdRef.current === null) {
+      prevTableauIdRef.current = tableauId;
+      prevNonceRef.current = cameraResetNonce;
+      return;
+    }
+
     const prevId = prevTableauIdRef.current;
     const idChanged = tableauId !== prevId;
     const nonceChanged = cameraResetNonce !== prevNonceRef.current;
@@ -80,13 +96,25 @@ export function TransitionDriver() {
       if (phaseRef.current === "flying" && controls) {
         controls.update?.();
         phaseRef.current = "idle";
+        traverseRef.current = null;
+        setTraverse(null);
         setPhase("idle");
         setFly(0, FLY_BASE_MS);
       }
       return;
     }
 
-    const state = useMissionStore.getState();
+    const wasTraversing = traverseRef.current !== null;
+    if (wasTraversing) {
+      traverseRef.current = null;
+      setTraverse(null);
+      if (phaseRef.current === "flying") {
+        phaseRef.current = "idle";
+        setPhase("idle");
+        setFly(0, FLY_BASE_MS);
+      }
+    }
+
     const snapFovOnly = () => {
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov =
@@ -150,26 +178,57 @@ export function TransitionDriver() {
       durationMsRef.current = RIDE_FLY_MS;
     }
 
+    // One at a time: a fast scrub falls back to the plain fly.
+    const shot = wasTraversing
+      ? null
+      : buildTraverseFor(
+          prevId,
+          tableauId,
+          startPosRef.current,
+          startTargetRef.current,
+          state.playbackSpeed,
+        );
+    traverseRef.current = shot;
+    setTraverse(shot);
+    if (shot) {
+      rideRef.current = false;
+      durationMsRef.current = shot.durationMs;
+    }
+
     if (phaseRef.current !== "flying") {
       phaseRef.current = "flying";
       setPhase("flying");
     }
     setFly(startMsRef.current, durationMsRef.current);
-  }, [tableauId, cameraResetNonce, camera, controls, setPhase, setFly]);
+  }, [camera, controls, setPhase, setFly, setTraverse]);
+
+  // Arm before latching the frame's clock, since arming can cancel the fly.
+  useFrame(() => {
+    armForFrame();
+    beginTransitionFrame();
+  }, -1);
 
   useFrame(() => {
     if (phaseRef.current !== "flying") return;
     if (!controls) return;
 
-    const elapsed = performance.now() - startMsRef.current;
-    const tNorm = Math.min(1, Math.max(0, elapsed / durationMsRef.current));
-    const e = easeInOutCubic(tNorm);
+    const { e, tNorm } = getFlyProgress();
 
-    if (rideRef.current) {
+    const traverse = traverseRef.current;
+    if (traverse) {
+      const s = sampleTraverse(traverse, e);
+      camera.position.copy(s.pos);
+      if (controls.target) controls.target.copy(s.target);
+      if (camera instanceof THREE.PerspectiveCamera) camera.fov = s.fov;
+    } else if (rideRef.current) {
       camera.position
         .copy(cassiniWorldPos)
         .add(
-          _rideRel.lerpVectors(rideRelStartRef.current, rideRelEndRef.current, e),
+          _rideRel.lerpVectors(
+            rideRelStartRef.current,
+            rideRelEndRef.current,
+            e,
+          ),
         );
       if (controls.target) {
         controls.target.lerpVectors(cassiniWorldPos, endTargetRef.current, e);
@@ -186,6 +245,7 @@ export function TransitionDriver() {
     }
     camera.lookAt(controls.target ?? endTargetRef.current);
     if (
+      !traverse &&
       camera instanceof THREE.PerspectiveCamera &&
       startFovRef.current !== endFovRef.current
     ) {
@@ -208,6 +268,8 @@ export function TransitionDriver() {
       controls.update?.();
       phaseRef.current = "idle";
       rideRef.current = false;
+      traverseRef.current = null;
+      setTraverse(null);
       setPhase("idle");
       setFly(0, FLY_BASE_MS);
     }
