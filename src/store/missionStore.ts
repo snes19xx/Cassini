@@ -21,6 +21,11 @@ export type FinaleCameraMode =
   | "pov" // forward along velocity
   | "wide"; // pulled back, whole loop
 
+// single toggle button, only shown during titan_huygens
+export type TitanCameraMode =
+  | "shoulder" // behind Cassini, tracking Huygens
+  | "wide"; // the tableau's own preset
+
 const LABEL_MODEL: ActiveModel = "CassiniHuygensA.glb";
 
 // override replaces the theme default; panel and button both call this
@@ -67,6 +72,11 @@ interface MissionState {
 
   finaleCameraMode: FinaleCameraMode;
 
+  // null follows the t-scheduled titan_huygens camera
+  titanCameraOverride: TitanCameraMode | null;
+  // so the driver re-snaps
+  titanCameraNonce: number;
+
   // theme stashed entering the terminal descent, restored on exit. null if
   // nothing to restore: pre-terminal, already in space, or picked manually
   _preTerminalRenderMode: RenderMode | null;
@@ -97,6 +107,8 @@ interface MissionState {
   toggleInfoPanel: () => void;
   setFinaleCameraMode: (mode: FinaleCameraMode) => void;
   cycleFinaleCameraMode: () => void;
+  setTitanCameraOverride: (mode: TitanCameraMode | null) => void;
+  toggleTitanCamera: (effective: TitanCameraMode) => void;
   reset: () => void;
 }
 
@@ -122,6 +134,8 @@ export const useMissionStore = create<MissionState>((set) => ({
   _preLabelModel: "CassiniHuygensA.glb",
   infoPanelOverride: null,
   finaleCameraMode: "thirdPerson",
+  titanCameraOverride: null,
+  titanCameraNonce: 0,
   _preTerminalRenderMode: null,
   resumeOnPanelClose: false,
   resumeOnPopoverClose: false,
@@ -260,6 +274,23 @@ export const useMissionStore = create<MissionState>((set) => ({
       return { finaleCameraMode: next[s.finaleCameraMode] };
     }),
 
+  setTitanCameraOverride: (mode) =>
+    set((s) =>
+      s.titanCameraOverride === mode
+        ? {}
+        : {
+            titanCameraOverride: mode,
+            titanCameraNonce: s.titanCameraNonce + 1,
+          },
+    ),
+
+  // Takes the effective mode, since a null override means the button flips
+  // whatever the schedule is currently showing.
+  toggleTitanCamera: (effective) =>
+    set(() => ({
+      titanCameraOverride: effective === "shoulder" ? "wide" : "shoulder",
+    })),
+
   reset: () =>
     set((s) => ({
       currentT: 0,
@@ -282,6 +313,8 @@ export const useMissionStore = create<MissionState>((set) => ({
       _preLabelModel: "CassiniHuygensA.glb",
       infoPanelOverride: null,
       finaleCameraMode: "thirdPerson",
+      titanCameraOverride: null,
+      titanCameraNonce: s.titanCameraNonce + 1,
       _preTerminalRenderMode: null,
     })),
 }));

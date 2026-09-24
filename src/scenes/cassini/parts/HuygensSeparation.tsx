@@ -1,32 +1,29 @@
 // src/scenes/cassini/parts/HuygensSeparation.tsx
 //
-// Huygens probe separation + descent animation. Mounts only during the
-// Huygens descent portion of the Titan tableau and plays out as:
-//
-//   1. Probe spring-releases off Cassini
-//   2. Probe falls toward Titan with accelerating ease
-//   3. Probe fades out as it enters Titan's haze
-//
-// Rendered as a sibling of the spacecraft model at world origin, so the
-// position below lerps from the tableau's Cassini offset to Titan's origin.
+// Huygens probe spring release, fall and haze fade, mounted only across the
+// descent window of the Titan tableau.
 
 import { useMissionStore } from "@/store/missionStore";
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { HUYGENS_SEPARATION_T } from "../data/missionConstants";
 import { getActiveTableau } from "../data/tableaus";
-
-const SEP_START = HUYGENS_SEPARATION_T;
-const TOUCHDOWN = 0.395;
-const FADE_END = 0.4;
+import {
+  FADE_END,
+  SEP_START,
+  TOUCHDOWN,
+  getHuygensPos,
+} from "../lib/huygensDescent";
 
 // Sentinels for the selector below: outside the descent window it pins
 // currentT to a constant, so zustand's Object.is check skips a re-render
 // on every frame for the ~96% of the mission outside this tiny window.
 const BEFORE_WINDOW = -1;
 const AFTER_WINDOW = 2;
+
+// Scratch target for getHuygensPos
+const _probePos = { x: 0, y: 0, z: 0 };
 
 export function HuygensSeparation() {
   const currentT = useMissionStore((s) =>
@@ -110,22 +107,13 @@ export function HuygensSeparation() {
   const tableau = getActiveTableau(currentT);
   if (tableau.id !== "titan_huygens") return null;
 
-  // p ramps 0->1 across SEP_START..TOUCHDOWN.
-  const p = Math.min(
-    1,
-    Math.max(0, (currentT - SEP_START) / (TOUCHDOWN - SEP_START)),
-  );
-
-  const startOffset = tableau.cassiniOffset ?? [0, 0, 0];
-  const fallEase = Math.pow(p, 2.2);
-  // Sine-shaped perpendicular offset for the spring-release kick off the bus.
-  const lateralBump = Math.sin(p * Math.PI) * 4.0;
-
-  const position: [number, number, number] = [
-    startOffset[0] * (1 - fallEase) + -lateralBump * 0.4,
-    startOffset[1] * (1 - fallEase) - lateralBump * 0.6,
-    startOffset[2] * (1 - fallEase) - lateralBump * 0.3,
+  const startOffset = (tableau.cassiniOffset ?? [0, 0, 0]) as [
+    number,
+    number,
+    number,
   ];
+  const p = getHuygensPos(currentT, startOffset, _probePos);
+  const position: [number, number, number] = [p.x, p.y, p.z];
 
   return (
     <group ref={groupRef} position={position}>
