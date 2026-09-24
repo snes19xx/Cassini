@@ -6,7 +6,7 @@
 import { getMoonFact, moonLabelledIn } from "@/scenes/cassini/data/moonFacts";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
 import { infoPanelVisible, useMissionStore } from "@/store/missionStore";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import styles from "./InfoPanel.module.css";
 
 export function MoonPanel() {
@@ -28,6 +28,8 @@ export function MoonPanel() {
 
   const fact = activeMoon ? getMoonFact(activeMoon) : null;
   if (!fact || stale) return null;
+
+  const figureAfter = fact.figure?.afterParagraph ?? fact.paragraphs.length - 1;
 
   return (
     <div
@@ -62,9 +64,25 @@ export function MoonPanel() {
           <h2 className={styles.detailName}>{fact.name}</h2>
         </div>
         {fact.paragraphs.map((text, i) => (
-          <p key={i} className={styles.detailBody}>
-            {text}
-          </p>
+          <Fragment key={i}>
+            <p
+              className={styles.detailBody}
+              data-abuts-figure={
+                figureAfter === i && fact.figure ? "" : undefined
+              }
+            >
+              {text}
+            </p>
+            {figureAfter === i && fact.figure && (
+              <img
+                className={styles.detailFigure}
+                src={fact.figure.src}
+                alt={fact.figure.alt}
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </Fragment>
         ))}
       </div>
     </div>

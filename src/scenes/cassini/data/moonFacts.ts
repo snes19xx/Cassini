@@ -9,6 +9,13 @@ export interface MoonFact {
   id: string;
   name: string;
   paragraphs: string[];
+  figure?: {
+    /** Path under /public. */
+    src: string;
+    alt: string;
+    /** Index of the paragraph the plate sits under; default is the last. */
+    afterParagraph?: number;
+  };
 }
 
 export const MOON_FACTS: Record<string, MoonFact> = {
@@ -102,8 +109,9 @@ export const MOON_FACTS: Record<string, MoonFact> = {
     id: "tethys",
     name: "TETHYS",
     paragraphs: [
-      "Tethys is marked by mysterious, geologically fresh red streaks. " +
-        "High-resolution color imaging from Cassini revealed narrow, curving " +
+      "Tethys is marked by mysterious, geologically fresh red streaks " +
+        "(PIA19637).",
+      "High-resolution color imaging from Cassini revealed narrow, curving " +
         "reddish arcs etched across its surface that cut cleanly across " +
         "older craters and rifts. Because these features ignore existing " +
         "terrain, scientists believe they are geologically young and could " +
@@ -111,6 +119,11 @@ export const MOON_FACTS: Record<string, MoonFact> = {
         "or the remnants of a shattered, iron-rich cometary body crashing " +
         "across the surface.",
     ],
+    figure: {
+      src: "/assets/tethys-red-streaks.webp",
+      alt: "Enhanced-colour Cassini mosaic of Tethys, red arcs cutting across cratered ice",
+      afterParagraph: 0,
+    },
   },
 
   dione: {
