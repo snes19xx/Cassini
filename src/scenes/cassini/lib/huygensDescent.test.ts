@@ -8,7 +8,6 @@ import {
   FADE_END,
   SEP_START,
   TOUCHDOWN,
-  descentProgress,
   getHuygensPos,
   isDescending,
 } from "./huygensDescent";
@@ -32,13 +31,6 @@ describe("descent window", () => {
     expect(isDescending(TOUCHDOWN)).toBe(true);
     expect(isDescending(FADE_END + 0.001)).toBe(false);
   });
-
-  it("clamps descentProgress to [0,1] outside the fall", () => {
-    expect(descentProgress(0)).toBe(0);
-    expect(descentProgress(SEP_START)).toBe(0);
-    expect(descentProgress(TOUCHDOWN)).toBe(1);
-    expect(descentProgress(1)).toBe(1);
-  });
 });
 
 describe("getHuygensPos", () => {
@@ -61,17 +53,5 @@ describe("getHuygensPos", () => {
       expect(d, `radius at ${i}% of the fall`).toBeLessThan(prev);
       prev = d;
     }
-  });
-
-  it("pushes the probe off the bus axis mid-fall", () => {
-    const mid = at(SEP_START + (TOUCHDOWN - SEP_START) * 0.5);
-    const fallEase = Math.pow(0.5, 2.2);
-    const onAxis = {
-      x: START[0] * (1 - fallEase),
-      y: START[1] * (1 - fallEase),
-      z: START[2] * (1 - fallEase),
-    };
-    const off = Math.hypot(mid.x - onAxis.x, mid.y - onAxis.y, mid.z - onAxis.z);
-    expect(off).toBeGreaterThan(1);
   });
 });

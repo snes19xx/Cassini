@@ -16,7 +16,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { FULL_MISSION_SECONDS } from "../data/missionConstants";
-import { getActiveTableau, type Tableau } from "../data/tableaus";
+import { TABLEAUS, getActiveTableau, type Tableau } from "../data/tableaus";
 import { missionToDisplay } from "../lib/tRemap";
 import { CRESCENT_SUN_POS } from "./SceneLighting";
 import {
@@ -32,6 +32,8 @@ import {
   arrivalRollRad,
   isArrivalTableau,
 } from "../arrival/lib/arrivalShot";
+import { traverseMoonState } from "../lib/traverseShot";
+import { getTraverseProgress } from "../lib/useTransitionStore";
 
 // Live world position per visible moon, read by the labels Projector.
 export const moonWorldPositions: Map<string, THREE.Vector3> = new Map();
@@ -107,6 +109,7 @@ const MOON_SPIN_FACTOR = 3000;
 const _orbAxis = new THREE.Vector3();
 const _orbEuler = new THREE.Euler();
 const _orbOffset = new THREE.Vector3();
+const _traverseSeat = new THREE.Vector3();
 
 // PIA18322: refraction bends Titan's crescent past the terminator.
 const HAZE_VERT = /* glsl */ `
@@ -262,6 +265,14 @@ function resolveMoonTarget(
   return null;
 }
 
+/** Group scale `body` renders at inside the tableau `tabId`, or 0 if absent. */
+function fullScaleFor(tabId: string, body: string, realR: number): number {
+  const tab = TABLEAUS.find((x) => x.id === tabId);
+  if (!tab) return 0;
+  const target = resolveMoonTarget(tab, body, realR);
+  return target ? target.scale : 0;
+}
+
 function useMoonBinding(body: MoonId): Binding {
   return useSyncExternalStore(
     (fn) => subscribe(body, fn),
@@ -405,7 +416,29 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       const t = useMissionStore.getState().currentT;
       const tab = getActiveTableau(t);
       const target = resolveMoonTarget(tab, body, realR);
-      const targetScale = target ? target.scale : 0;
+      let targetScale = target ? target.scale : 0;
+
+      // Moon -> moon: the departing moon fades at its translated seat, the
+      // arriving one holds full scale. Written direct, never damped.
+      const traverse = getTraverseProgress();
+      const departing = traverse !== null && body === traverse.shot.fromBody;
+      let traverseSeat: THREE.Vector3 | null = null;
+      if (traverse) {
+        const st = traverseMoonState(traverse.shot, body, traverse.e);
+        if (st) {
+          const full = departing
+            ? fullScaleFor(traverse.shot.fromId, body, realR)
+            : targetScale;
+          liveScaleRef.current = full * st.scaleMul;
+          targetScale = liveScaleRef.current;
+          traverseSeat = _traverseSeat.copy(st.offset);
+        }
+      }
+
+      // A departing Enceladus keeps its plumes while it is still on screen.
+      const effectsTab = departing
+        ? TABLEAUS.find((x) => x.id === traverse.shot.fromId)
+        : tab;
 
       // Titan is off-frame for the first part of the entry pan. Snap scale while hidden.
       const prevTabId = prevTabIdRef.current;
@@ -448,7 +481,10 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
             );
           }
           _orbAxis.set(0, 0, 1);
-          _orbOffset.applyAxisAngle(_orbAxis, arrivalRollRad(arrivalProgress(t)));
+          _orbOffset.applyAxisAngle(
+            _orbAxis,
+            arrivalRollRad(arrivalProgress(t)),
+          );
           tx = _orbOffset.x;
           ty = _orbOffset.y;
           tz = _orbOffset.z;
@@ -487,6 +523,11 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
         groupRef.current.position.copy(lp);
       }
 
+      if (traverseSeat) {
+        livePosRef.current.copy(traverseSeat);
+        groupRef.current.position.copy(traverseSeat);
+      }
+
       groupRef.current.scale.setScalar(Math.max(0.00001, liveScaleRef.current));
       groupRef.current.visible = liveScaleRef.current > 0.001;
 
@@ -514,8 +555,8 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
 
       if (hazeRef.current && hazeMaterial) {
         const hazeVisible =
-          !!target &&
-          tab.effects?.crescentLighting === true &&
+          groupRef.current.visible &&
+          effectsTab?.effects?.crescentLighting === true &&
           renderMode !== "blueprint";
         hazeRef.current.visible = hazeVisible;
         if (hazeVisible) {
@@ -537,9 +578,9 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
       // Y-billboard so the jets rise off the limb from any orbit azimuth.
       if (plumeRef.current && plumeMaterial) {
         const plumesVisible =
-          !!target &&
-          tab.body === body &&
-          tab.effects?.plumes === true &&
+          groupRef.current.visible &&
+          effectsTab?.body === body &&
+          effectsTab?.effects?.plumes === true &&
           useMissionStore.getState().showPlumes &&
           renderMode !== "blueprint";
         plumeRef.current.visible = plumesVisible;

@@ -13,6 +13,8 @@ import {
   isArrivalTableau,
 } from "../arrival/lib/arrivalShot";
 import { FinaleStage } from "../finale/FinaleStage";
+import { traverseSaturn } from "../lib/traverseShot";
+import { getTraverseProgress } from "../lib/useTransitionStore";
 import { SaturnGroup } from "./SaturnGroup";
 import { TableauMoonRenderer } from "./TableauMoonRenderer";
 
@@ -82,6 +84,8 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
   const tabEnterAtMsRef = useRef(0);
   const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
   const lastNonceRef = useRef(cameraResetNonce);
+  // True while a traverse is holding the outgoing backdrop in place.
+  const wasHoldingRef = useRef(false);
 
   useFrame((_, deltaRaw) => {
     if (!groupRef.current) return;
@@ -90,16 +94,41 @@ function GlobalSaturn({ renderMode }: { renderMode: string }) {
       : 0;
     try {
       const t = useMissionStore.getState().currentT;
-      const target = targetSaturnTransform(t);
       const tab = getActiveTableau(t);
+
+      // Moon -> moon: the corridor translates the outgoing tableau, so the
+      // backdrop slides between the two seats and the snap below stays out.
+      const traverse = getTraverseProgress();
+      const crossing = traverse
+        ? traverseSaturn(traverse.shot, traverse.e)
+        : null;
+      if (crossing) {
+        lastTabIdRef.current = tab.id;
+        wasHoldingRef.current = true;
+        lastNonceRef.current = cameraResetNonce;
+        tabEnterAtMsRef.current = 0;
+        groupRef.current.position.copy(crossing.pos);
+        liveScaleRef.current = crossing.scale;
+        groupRef.current.scale.setScalar(Math.max(0.00001, crossing.scale));
+        if (!liveVisible.current) {
+          liveVisible.current = true;
+          groupRef.current.visible = true;
+        }
+        return;
+      }
+
+      const target = targetSaturnTransform(t);
       const prevTabId = lastTabIdRef.current;
       const tabChanged = prevTabId !== tab.id;
-      if (tabChanged) {
+      // A crossing can end a frame short of the incoming seat.
+      const crossingEnded = wasHoldingRef.current;
+      wasHoldingRef.current = false;
+      if (tabChanged || crossingEnded) {
         lastTabIdRef.current = tab.id;
         // Only arm the hide-gate if the position actually moved.
         const posSnapped =
           groupRef.current.position.distanceToSquared(target.pos) > 1e-6;
-        if (posSnapped) {
+        if (posSnapped && !crossingEnded) {
           tabEnterAtMsRef.current = performance.now();
         }
         groupRef.current.position.copy(target.pos);
