@@ -120,6 +120,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     events: [
       ev(2005, 9, 24, "First close flyby (1,500 km) — Odysseus crater"),
       ev(2007, 8, 14, "Second close pass — high-res Ithaca Chasma"),
+      ev(2010, 8, 14, "Global map completed — north pole filled in"),
       ev(2015, 6, 30, "Final Tethys flyby"),
     ],
   },
@@ -141,8 +142,9 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
     hook: "Saturn's second-largest moon. Cassini detected a tenuous oxygen-carbon-dioxide exosphere — only the second non-Earth body where molecular oxygen was confirmed in situ.",
     events: [
       ev(2005, 11, 26, "First close Rhea flyby"),
-      ev(2010, 3, 2, "Closest Rhea pass — 101 km altitude"),
+      ev(2010, 3, 2, "Low pass over Rhea — 101 km altitude"),
       ev(2010, 11, 28, "Oxygen + CO₂ exosphere announced"),
+      ev(2011, 1, 11, "Closest Rhea flyby — 69 km over the surface"),
       ev(2016, 3, 29, "Return to the icy-moon realm — dual Rhea view"),
     ],
   },
