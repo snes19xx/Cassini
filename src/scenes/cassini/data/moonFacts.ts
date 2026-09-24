@@ -2,6 +2,8 @@
 //
 // Panel copy for each labelled moon, keyed by the same bodyId the labels use.
 
+import type { Tableau } from "./tableaus";
+
 export interface MoonFact {
   /** Matches tableau.moons[].body and the BODY_LABELS bodyId set. */
   id: string;
@@ -141,3 +143,13 @@ export const MOON_FACTS: Record<string, MoonFact> = {
     ],
   },
 };
+
+export function getMoonFact(bodyId: string): MoonFact | null {
+  return MOON_FACTS[bodyId] ?? null;
+}
+
+/** Whether this tableau puts a clickable label on the body. */
+export function moonLabelledIn(tab: Tableau, bodyId: string): boolean {
+  if (tab.kind === "moon" && tab.body === bodyId) return true;
+  return (tab.moons ?? []).some((m) => m.body === bodyId);
+}
