@@ -40,6 +40,8 @@ interface MissionState {
   playbackSpeed: PlaybackSpeed;
 
   activeComponent: string | null;
+  // moon fact panel is open for
+  activeMoon: string | null;
   openPhaseId: string | null;
   renderMode: RenderMode;
   titanSpectralMode: TitanSpectralMode;
@@ -77,6 +79,7 @@ interface MissionState {
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
   setActiveComponent: (id: string | null) => void;
+  setActiveMoon: (id: string | null) => void;
   setOpenPhaseId: (id: string | null) => void;
   setRenderMode: (mode: RenderMode) => void;
   enterTerminalTheme: () => void;
@@ -102,6 +105,7 @@ export const useMissionStore = create<MissionState>((set) => ({
   isPlaying: false,
   playbackSpeed: 1,
   activeComponent: null,
+  activeMoon: null,
   openPhaseId: null,
   renderMode: "blueprint",
   titanSpectralMode: "visible",
@@ -139,6 +143,18 @@ export const useMissionStore = create<MissionState>((set) => ({
         };
       }
       return { activeComponent };
+    }),
+
+  // Shares resumeOnPanelClose with setActiveComponent.
+  setActiveMoon: (activeMoon) =>
+    set((s) => {
+      if (activeMoon && s.isPlaying) {
+        return { activeMoon, isPlaying: false, resumeOnPanelClose: true };
+      }
+      if (!activeMoon && s.resumeOnPanelClose) {
+        return { activeMoon: null, isPlaying: true, resumeOnPanelClose: false };
+      }
+      return { activeMoon };
     }),
 
   setOpenPhaseId: (openPhaseId) =>
@@ -250,6 +266,7 @@ export const useMissionStore = create<MissionState>((set) => ({
       isPlaying: false,
       playbackSpeed: 1,
       activeComponent: null,
+      activeMoon: null,
       openPhaseId: null,
       renderMode: "blueprint",
       titanSpectralMode: "visible",
