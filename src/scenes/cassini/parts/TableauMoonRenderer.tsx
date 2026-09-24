@@ -61,7 +61,7 @@ const BODY_RADIUS: Record<string, number> = {
   pandora: 0.41,
 };
 
-// Fetched lazily; PANDORA.glb alone is ~1.9 MB.
+// Fetched lazily.
 const SMALL_MOON_GLB: Record<string, string> = {
   janus: "/assets/JANUS.glb",
   pandora: "/assets/PANDORA.glb",
@@ -72,13 +72,31 @@ const smallMoonMaterial = new THREE.MeshStandardMaterial({
   color: "#66645f",
   roughness: 0.95,
   metalness: 0.0,
+  flatShading: true,
+});
+
+const smallMoonBlueprintMaterial = new THREE.MeshBasicMaterial({
+  color: "#8fd2ff",
+  wireframe: true,
+  transparent: true,
+  opacity: 0.5,
 });
 
 /**
  * Recentered on its bounding sphere and scaled so that sphere's radius
  * equals `radius`, so placement scaling lands the true rendered size.
  */
-function SmallMoonGLB({ url, radius }: { url: string; radius: number }) {
+function SmallMoonGLB({
+  url,
+  radius,
+  material,
+  visible,
+}: {
+  url: string;
+  radius: number;
+  material: THREE.Material;
+  visible: boolean;
+}) {
   const { scene } = useGLTF(url);
   const model = useMemo(() => {
     const clone = scene.clone(true);
@@ -94,12 +112,16 @@ function SmallMoonGLB({ url, radius }: { url: string; radius: number }) {
     );
     clone.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
-        (o as THREE.Mesh).material = smallMoonMaterial;
+        (o as THREE.Mesh).material = material;
       }
     });
     return clone;
-  }, [scene, radius]);
-  return <primitive object={model} />;
+  }, [scene, radius, material]);
+  return (
+    <group visible={visible}>
+      <primitive object={model} />
+    </group>
+  );
 }
 
 // True tidally-locked periods read as static, so speed them up.
@@ -614,11 +636,22 @@ function MoonMesh({ body, renderMode }: { body: MoonId; renderMode: string }) {
     <group ref={groupRef} visible={false}>
       <group ref={tiltRef}>
         <group ref={spinRef}>
-          {glbUrl && glbLatched && showSpace ? (
+          {glbUrl && glbLatched ? (
             /* Own boundary: a suspension reaching TableauResolver's would
                blank every pre-mounted body. */
             <Suspense fallback={sphereBody}>
-              <SmallMoonGLB url={glbUrl} radius={realR} />
+              <SmallMoonGLB
+                url={glbUrl}
+                radius={realR}
+                material={smallMoonMaterial}
+                visible={showSpace}
+              />
+              <SmallMoonGLB
+                url={glbUrl}
+                radius={realR}
+                material={smallMoonBlueprintMaterial}
+                visible={!showSpace}
+              />
             </Suspense>
           ) : (
             sphereBody
