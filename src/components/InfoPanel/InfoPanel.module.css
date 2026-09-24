@@ -142,11 +142,13 @@
   }
 }
 
-/* Scrollbar stays reserved but transparent so hover can't reflow text. */
+/* Scrollbar stays reserved but transparent so hover can't reflow text.
+   scrollbar-width alone holds the gutter only while a scrollbar exists. */
 .scrollBody {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color var(--motion-duration-panel)
@@ -332,6 +334,22 @@
   border-bottom: 1px solid var(--panel-border);
 }
 
+/* Plate inside the fact copy. The paragraph it hangs off drops its bottom
+   padding and rule. */
+.detailFigure {
+  display: block;
+  width: calc(100% - 32px);
+  height: auto;
+  margin: 0 16px 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 2px;
+}
+
+.detailBody[data-abuts-figure] {
+  padding-bottom: 10px;
+  border-bottom: none;
+}
+
 /* Back button */
 .backBtn {
   display: flex;
@@ -399,6 +417,11 @@
 
 .wrapper[data-theme="space"].moonPanel .detailBody {
   padding: 16px;
+}
+
+/* Beats the shorthand above, which restores the gap the plate closes. */
+.wrapper[data-theme="space"].moonPanel .detailBody[data-abuts-figure] {
+  padding-bottom: 10px;
 }
 
 .wrapper[data-theme="space"] * {
