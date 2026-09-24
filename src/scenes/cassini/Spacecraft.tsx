@@ -30,6 +30,8 @@ import {
 import { cassiniWorldPos } from "./lib/cassiniAnchor";
 import { isArrivalTableau } from "./arrival/lib/arrivalShot";
 import { stateAt } from "./lib/stateAt";
+import { traverseCassiniPos } from "./lib/traverseShot";
+import { getTraverseProgress } from "./lib/useTransitionStore";
 import { CassiniHuygensA, type CassiniAAnchors } from "./parts/CassiniHuygensA";
 import { CassiniHuygensAwithoutHuygens } from "./parts/CassiniHuygensAwithoutHuygens";
 import { HuygensSeparation } from "./parts/HuygensSeparation";
@@ -366,6 +368,7 @@ export function Spacecraft() {
       const t = useMissionStore.getState().currentT;
       const state = stateAt(t);
       const tableau = getActiveTableau(t);
+      const traverseNow = getTraverseProgress();
       groupRef.current.rotation.copy(state.orientation);
 
       const disintegrationAmount = state.effects.disintegration || 0;
@@ -390,6 +393,13 @@ export function Spacecraft() {
       } else if (isArrivalTableau(tableau.id)) {
         // Cassini is hidden here (effects.hideCassini) and parks on the camera position.
         targetPosRef.current.copy(camera.position);
+      } else if (traverseNow) {
+        // Fly the corridor, sampled off the shared curve.
+        traverseCassiniPos(
+          traverseNow.shot,
+          traverseNow.e,
+          targetPosRef.current,
+        );
       } else if (tableau.cassiniOffset) {
         targetPosRef.current.set(
           tableau.cassiniOffset[0],
@@ -420,9 +430,14 @@ export function Spacecraft() {
         ) {
           live.copy(target);
         }
-        live.x = THREE.MathUtils.damp(live.x, target.x, 3.5, delta);
-        live.y = THREE.MathUtils.damp(live.y, target.y, 3.5, delta);
-        live.z = THREE.MathUtils.damp(live.z, target.z, 3.5, delta);
+        if (traverseNow) {
+          // The corridor pose already has the easing.
+          live.copy(target);
+        } else {
+          live.x = THREE.MathUtils.damp(live.x, target.x, 3.5, delta);
+          live.y = THREE.MathUtils.damp(live.y, target.y, 3.5, delta);
+          live.z = THREE.MathUtils.damp(live.z, target.z, 3.5, delta);
+        }
         if (!Number.isFinite(live.x)) live.x = target.x;
         if (!Number.isFinite(live.y)) live.y = target.y;
         if (!Number.isFinite(live.z)) live.z = target.z;
