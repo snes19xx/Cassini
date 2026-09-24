@@ -56,6 +56,8 @@ const HEAT_ORANGE = new THREE.Color("#ff6600");
 const HEAT_YELLOW = new THREE.Color("#ffc83c");
 const HEAT_WHITE = new THREE.Color("#fff4e8");
 const HEAT_BLUE = new THREE.Color("#8fd2ff");
+export const HULL_GROUP_NAME = "cassiniHull";
+
 const _heatScratch = new THREE.Color();
 
 function applyHeatingGlow(
@@ -216,7 +218,7 @@ function DisplayModel({
   }, [clonedScene, materialMode, activeModel, materials]);
 
   return (
-    <group ref={groupRef} scale={modelScale}>
+    <group ref={groupRef} name={HULL_GROUP_NAME} scale={modelScale}>
       <primitive object={clonedScene} />
     </group>
   );
@@ -256,7 +258,7 @@ function LabelModel({
   });
 
   return (
-    <group ref={groupRef} scale={modelScale}>
+    <group ref={groupRef} name={HULL_GROUP_NAME} scale={modelScale}>
       {huygensHasSeparated ? (
         <CassiniHuygensAwithoutHuygens
           anchorRefs={anchorRefs}

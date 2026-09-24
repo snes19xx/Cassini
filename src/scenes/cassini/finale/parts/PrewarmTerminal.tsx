@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
+import { HULL_GROUP_NAME } from "../../Spacecraft";
 import { isTerminalTableau } from "../../data/missionConstants";
 import { getActiveTableau } from "../../data/tableaus";
 import { createTerminalDeckMaterial } from "../../parts/SaturnBody";
@@ -147,11 +148,24 @@ export function PrewarmTerminal() {
         fill.layers.enable(0);
         fill.layers.enable(1);
         scene.add(fill);
+        // material.transparent is part of three's program hash, and
+        // applyOpacityErosion flips it at disintegration 0.3. Compile the
+        // transparent hull variant in this pass too.
+        const flipped: THREE.Material[] = [];
+        scene.getObjectByName(HULL_GROUP_NAME)?.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          const mat = child.material;
+          if (mat instanceof THREE.MeshStandardMaterial && !mat.transparent) {
+            mat.transparent = true;
+            flipped.push(mat);
+          }
+        });
         try {
           await withBudget(gl.compileAsync(scene, camera), COMPILE_BUDGET_MS);
         } finally {
           scene.remove(fill);
           fill.dispose();
+          for (const mat of flipped) mat.transparent = false;
         }
         if (!cancelled) warmBloomOffscreen(gl, camera);
       } catch (err) {
