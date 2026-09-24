@@ -16,11 +16,13 @@ import {
 import { FinalePlungeCamera } from "./finale/parts/FinalePlungeCamera";
 import { PrewarmTerminal } from "./finale/parts/PrewarmTerminal";
 import { RingDiveCameraDriver } from "./finale/parts/RingDiveCameraDriver";
+import { titanCameraMode } from "./lib/titanCamera";
 import { useTransitionStore } from "./lib/useTransitionStore";
 import { MissionTimeAdvancer } from "./parts/MissionTimeAdvancer";
 import { SceneLighting } from "./parts/SceneLighting";
 import { TableauResolver } from "./parts/TableauResolver";
 import { TextureServiceDriver } from "./parts/TextureServiceDriver";
+import { TitanShoulderCamera } from "./parts/TitanShoulderCamera";
 import { TransitionDriver } from "./parts/TransitionDriver";
 import { Spacecraft } from "./Spacecraft";
 
@@ -31,12 +33,14 @@ function SceneControls() {
   const inFly = useTransitionStore((s) => s.phase === "flying");
 
   // Single derived source for OrbitControls.enabled: locked while the
-  // terminal plunge or finale POV owns the camera, or mid-fly.
+  // terminal plunge or finale POV or the Titan shouldercamera drives the camera,
+  // or mid-fly.
   const orbitLocked = useMissionStore((s) => {
     const id = getActiveTableau(s.currentT).id;
     return (
       isTerminalTableau(id) ||
-      (s.finaleCameraMode === "pov" && isOrbitalTableau(id))
+      (s.finaleCameraMode === "pov" && isOrbitalTableau(id)) ||
+      titanCameraMode(s.currentT, s.titanCameraOverride) === "shoulder"
     );
   });
   const orbitEnabled = !orbitLocked && !inFly;
@@ -128,6 +132,7 @@ export function CassiniScene() {
       <SceneControls />
       <TransitionDriver />
       <RingDiveCameraDriver />
+      <TitanShoulderCamera />
       <FinalePlungeCamera />
       <AtmosphericHaze />
       <CassiniMeteor />

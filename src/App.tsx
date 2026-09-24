@@ -9,6 +9,7 @@ import { PlumesToggle } from "./components/PlumesToggle/PlumesToggle";
 import { SignalLost } from "./components/SignalLost/SignalLost";
 import { TableauTransition } from "./components/TableauTransition/TableauTransition";
 import { Timeline } from "./components/Timeline/Timeline";
+import { TitanCameraSwitcher } from "./components/TitanCameraSwitcher/TitanCameraSwitcher";
 import { SpectralSelector } from "./components/TitanSpectralSelector/TitanSpectralSelector";
 import { useProjectionStore } from "./hooks/useProjectedPoints";
 import {
@@ -488,6 +489,7 @@ export default function App() {
       <Timeline />
       <SignalLost />
       <FinaleCameraSwitcher />
+      <TitanCameraSwitcher />
       <FinaleDebugHUD />
       <RingBackdropDebug />
       <CameraDebug />
