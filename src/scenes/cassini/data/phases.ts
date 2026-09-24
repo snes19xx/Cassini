@@ -4,10 +4,6 @@
 // The scrubber's own tick marks come from TABLEAUS; this file is pure
 // InfoPanel content keyed by body.
 
-const MISSION_START_MS = new Date("1997-10-15").getTime();
-const MISSION_END_MS = new Date("2017-09-15").getTime();
-const MISSION_SPAN_MS = MISSION_END_MS - MISSION_START_MS;
-
 export interface BodyEvent {
   /** Pretty-printed for display, e.g. "Mar 8, 2006". */
   date: string;
@@ -154,9 +150,7 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
   family_portrait: {
     id: "family_portrait",
     displayName: "FAMILY PORTRAIT",
-    // Timeline dates here read as ~2014 (tToDateMs is linear); the real
-    // quintet photo is July 29, 2011.
-    hook: "July 29, 2011 — Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
+    hook: "July 29, 2011— Cassini's narrow-angle camera catches five moons in one frame above the sunlit rings. Janus hangs far left; tiny Pandora rides just beyond the thin F ring; brilliant Enceladus floats above the ring plane; and Rhea — closest to the camera — is cut by the right edge of the frame, with little Mimas at its shoulder. The moons' sizes are true to scale. Orbit, and watch Saturn hiding just past the edge.",
     events: [
       ev(
         2011,
@@ -199,18 +193,17 @@ export const BODY_CONTENT: Record<string, BodyContent> = {
 
 const NINETY_DAYS_MS = 90 * 24 * 3600 * 1000;
 
-/** Convert mission t in [0, 1] to wall-clock ms (1997-10-15 to 2017-09-15). */
-export function tToDateMs(t: number): number {
-  return MISSION_START_MS + Math.max(0, Math.min(1, t)) * MISSION_SPAN_MS;
-}
-
-/** Closest event within 90 days of `dateMs`, or null if none qualify. */
+/**
+ * Closest event within 90 days of `dateMs`, or null if none qualify.
+ * `allowDistant` drops the 90-day window.
+ */
 export function findActiveEvent(
   events: BodyEvent[],
   dateMs: number,
+  allowDistant = false,
 ): BodyEvent | null {
   let best: BodyEvent | null = null;
-  let bestDiff = NINETY_DAYS_MS;
+  let bestDiff = allowDistant ? Infinity : NINETY_DAYS_MS;
   for (const e of events) {
     const diff = Math.abs(e.dateMs - dateMs);
     if (diff <= bestDiff) {
@@ -219,6 +212,18 @@ export function findActiveEvent(
     }
   }
   return best;
+}
+
+/** True when no event is in reach of a tableau spanning [fromMs, toMs]. */
+export function eventsAllOutOfReach(
+  events: BodyEvent[],
+  fromMs: number,
+  toMs: number,
+): boolean {
+  return !events.some(
+    (e) =>
+      e.dateMs >= fromMs - NINETY_DAYS_MS && e.dateMs <= toMs + NINETY_DAYS_MS,
+  );
 }
 
 // Ring-crossing flash trigger times: one for ring_dive's single crossing,

@@ -5,9 +5,13 @@ import { stateAt } from "@/scenes/cassini/lib/stateAt";
 import {
   BODY_CONTENT,
   RING_CROSSING_T_VALUES,
+  eventsAllOutOfReach,
   findActiveEvent,
-  tToDateMs,
 } from "@/scenes/cassini/data/phases";
+import {
+  formatMissionDate,
+  tToDateMs,
+} from "@/scenes/cassini/data/missionDates";
 import {
   TABLEAUS,
   getActiveTableau,
@@ -61,21 +65,6 @@ function Stat({ label, value }: StatProps) {
       <span className={styles.statValue}>{value}</span>
     </div>
   );
-}
-
-// Long-span tableaus drop the day so the date doesn't imply false precision.
-const MONTH_YEAR_TABLEAUS = new Set(["family_portrait", "three_crescents"]);
-
-function missionDate(t: number, tableauId?: string): string {
-  const d = new Date(tToDateMs(t));
-  if (tableauId && MONTH_YEAR_TABLEAUS.has(tableauId)) {
-    return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  }
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function earthSaturnDistanceMkm(t: number): number {
@@ -198,7 +187,15 @@ export function InfoPanel() {
   const bodyId = getBodyContentId(activeTableau);
   const body = bodyId ? BODY_CONTENT[bodyId] : null;
   const activeEvent = body
-    ? findActiveEvent(body.events, tToDateMs(currentT))
+    ? findActiveEvent(
+        body.events,
+        tToDateMs(currentT),
+        eventsAllOutOfReach(
+          body.events,
+          tToDateMs(activeTableau.tStart),
+          tToDateMs(Math.min(1, activeTableau.tEnd)),
+        ),
+      )
     : null;
   const distanceMkm = earthSaturnDistanceMkm(currentT);
   const lightDelaySec = (distanceMkm * 1e6) / 299792;
@@ -303,7 +300,7 @@ export function InfoPanel() {
               body={body}
               activeEvent={activeEvent}
               activeDateMs={tToDateMs(currentT)}
-              missionDateLabel={missionDate(currentT, activeTableau.id)}
+              missionDateLabel={formatMissionDate(currentT, activeTableau.id)}
             />
           ) : (
             <SpacecraftSection
