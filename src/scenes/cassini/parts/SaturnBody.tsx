@@ -14,9 +14,6 @@ import { makeLogDepthShaderMaterial } from "../lib/logDepthShaderMaterial";
 
 const SATURN_R = 180;
 const SATURN_TEXTURE_PATH = "/textures/optimized/saturn_opt.webp";
-// Dramatic storm map for the terminal deck only. Saturn keeps its normal
-// texture everywhere else, right up to the atmosphere entry.
-const STORM_TEXTURE_PATH = "/textures/finale/saturn_storm_8k.webp";
 
 // logarithmicDepthBuffer needs the logdepthbuf_* chunks injected by hand.
 const DECK_VERT = /* glsl */ `
@@ -50,8 +47,8 @@ void main() {
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
 
-  // Drives swirl detail off luma and re-tints cream, so the olive storm map
-  // reads as brightness variation against the atmosphere.
+  // Swirl detail comes off luma, re-tinted cream: the Saturn map is a
+  // saturated olive, the real cloud deck a pale sand.
   vec3 tex = mix(vec3(0.85, 0.78, 0.64), texture2D(uMap, vUv).rgb, uHasMap);
   float luma = dot(tex, vec3(0.299, 0.587, 0.114));
   // Contrast for the swirls, capped short of white to stay near haze color.
@@ -89,64 +86,25 @@ export function createTerminalDeckMaterial(): THREE.ShaderMaterial {
 const sharedLoader = new TextureLoader();
 let cachedSaturnTexture: THREE.Texture | null = null;
 let saturnLoadPromise: Promise<THREE.Texture | null> | null = null;
-let cachedStormTexture: THREE.Texture | null = null;
-let stormLoadPromise: Promise<THREE.Texture | null> | null = null;
 
-function loadTextureOnce(
-  path: string,
-  getCache: () => THREE.Texture | null,
-  setCache: (t: THREE.Texture) => void,
-  getPromise: () => Promise<THREE.Texture | null> | null,
-  setPromise: (p: Promise<THREE.Texture | null>) => void,
-): Promise<THREE.Texture | null> {
-  const cached = getCache();
-  if (cached) return Promise.resolve(cached);
-  const existing = getPromise();
-  if (existing) return existing;
-  const p = new Promise<THREE.Texture | null>((resolve) => {
+function loadSaturnTexture(): Promise<THREE.Texture | null> {
+  if (cachedSaturnTexture) return Promise.resolve(cachedSaturnTexture);
+  if (saturnLoadPromise) return saturnLoadPromise;
+  saturnLoadPromise = new Promise<THREE.Texture | null>((resolve) => {
     sharedLoader.load(
-      path,
+      SATURN_TEXTURE_PATH,
       (tex) => {
-        setCache(tex);
+        cachedSaturnTexture = tex;
         resolve(tex);
       },
       undefined,
       (err) => {
-        console.warn(`[SaturnBody] failed to load ${path}`, err);
+        console.warn(`[SaturnBody] failed to load ${SATURN_TEXTURE_PATH}`, err);
         resolve(null);
       },
     );
   });
-  setPromise(p);
-  return p;
-}
-
-function loadSaturnTexture(): Promise<THREE.Texture | null> {
-  return loadTextureOnce(
-    SATURN_TEXTURE_PATH,
-    () => cachedSaturnTexture,
-    (t) => {
-      cachedSaturnTexture = t;
-    },
-    () => saturnLoadPromise,
-    (p) => {
-      saturnLoadPromise = p;
-    },
-  );
-}
-
-function loadStormTexture(): Promise<THREE.Texture | null> {
-  return loadTextureOnce(
-    STORM_TEXTURE_PATH,
-    () => cachedStormTexture,
-    (t) => {
-      cachedStormTexture = t;
-    },
-    () => stormLoadPromise,
-    (p) => {
-      stormLoadPromise = p;
-    },
-  );
+  return saturnLoadPromise;
 }
 
 export function SaturnBody({ renderMode }: { renderMode: string }) {
@@ -156,47 +114,32 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(
     cachedSaturnTexture,
   );
-  const [stormTexture, setStormTexture] = useState<THREE.Texture | null>(
-    cachedStormTexture,
-  );
   const isTerminal = useMissionStore((s) =>
     isTerminalTableauId(getActiveTableau(s.currentT).id),
   );
 
-  // Kick off the loads on first mount
+  // Kick off the load on first mount
   useEffect(() => {
+    if (texture) return;
     let cancelled = false;
-    if (!texture) {
-      loadSaturnTexture().then((tex) => {
-        if (!cancelled && tex) setTexture(tex);
-      });
-    }
-    if (!stormTexture) {
-      loadStormTexture().then((tex) => {
-        if (!cancelled && tex) setStormTexture(tex);
-      });
-    }
+    loadSaturnTexture().then((tex) => {
+      if (!cancelled && tex) setTexture(tex);
+    });
     return () => {
       cancelled = true;
     };
-  }, [texture, stormTexture]);
+  }, [texture]);
 
   useEffect(() => {
-    const maxAniso = Math.min(16, gl.capabilities.getMaxAnisotropy());
-    for (const tex of [texture, stormTexture]) {
-      if (!tex) continue;
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = maxAniso;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.generateMipmaps = true;
-      // Storm map ships upside down relative to the standard equirectangular
-      // convention the other textures use.
-      if (tex === stormTexture) tex.flipY = false;
-      tex.needsUpdate = true;
-      gl.initTexture(tex); // avoids a first-bind hitch
-    }
-  }, [texture, stormTexture, gl]);
+    if (!texture) return;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(16, gl.capabilities.getMaxAnisotropy());
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+    gl.initTexture(texture); // avoids a first-bind hitch
+  }, [texture, gl]);
 
   useEffect(() => {
     if (meshRef.current) meshRef.current.layers.set(1);
@@ -229,28 +172,23 @@ export function SaturnBody({ renderMode }: { renderMode: string }) {
   if (!deckMaterialRef.current) {
     deckMaterialRef.current = createTerminalDeckMaterial();
   }
-  // Bind the active map into the space material: the storm texture during
-  // the terminal plunge, the normal Saturn map everywhere else.
+  // Bind the Saturn map into the space material and the terminal deck shader.
   useEffect(() => {
+    if (!texture) return;
     const mat = spaceMaterialRef.current;
     if (mat) {
-      const active = isTerminal && stormTexture ? stormTexture : texture;
-      if (active) {
-        mat.map = active;
-        mat.color = new THREE.Color("#ffffff");
-        mat.needsUpdate = true;
-      }
+      mat.map = texture;
+      // White once a real texture is bound, clearing the fallback tint.
+      mat.color = new THREE.Color("#ffffff");
+      mat.needsUpdate = true;
     }
     const deck = deckMaterialRef.current;
     if (deck) {
-      const deckTex = stormTexture ?? texture;
-      if (deckTex) {
-        deck.uniforms.uMap!.value = deckTex;
-        deck.uniforms.uHasMap!.value = 1;
-        deck.needsUpdate = true;
-      }
+      deck.uniforms.uMap!.value = texture;
+      deck.uniforms.uHasMap!.value = 1;
+      deck.needsUpdate = true;
     }
-  }, [texture, stormTexture, isTerminal]);
+  }, [texture]);
   // Terminal plunge swaps in the soft-deck shader; blueprint mode keeps its
   // wireframe throughout.
   const material =

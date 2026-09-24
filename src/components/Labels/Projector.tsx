@@ -29,8 +29,8 @@ const MIN_PUSH_SECONDARY = 140;
 const HOMEPAGE_T_EPSILON = 0.001;
 const LABEL_SAFE_BOTTOM_PX = 240;
 const HORIZONTAL_LOCK_EXCEPTIONS = new Set(["mag", "rpws"]);
-const LEFT_COLUMN_END_X = 380;
-const RIGHT_COLUMN_END_OFFSET = 380;
+const LEFT_COLUMN_END_X = 390;
+const RIGHT_COLUMN_END_OFFSET = 390;
 const LOCKED_LABEL_MIN_GAP_PX = 44;
 
 // Display name shown on each label.
@@ -371,7 +371,10 @@ export function Projector() {
               e.stopPropagation();
               const s = useMissionStore.getState();
               const tab = getActiveTableau(s.currentT);
-              if (moonLabelledIn(tab, body.bodyId) && getMoonFact(body.bodyId)) {
+              if (
+                moonLabelledIn(tab, body.bodyId) &&
+                getMoonFact(body.bodyId)
+              ) {
                 s.setActiveMoon(
                   s.activeMoon === body.bodyId ? null : body.bodyId,
                 );

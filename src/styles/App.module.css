@@ -197,13 +197,13 @@
   }
 }
 
-.vignette {
+/* .vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: var(--vignette-bg);
   animation: appReveal 500ms ease-out 300ms both;
-}
+} */
 
 .viewSwitcher {
   display: flex;

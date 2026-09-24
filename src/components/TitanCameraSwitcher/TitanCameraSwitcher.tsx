@@ -8,7 +8,7 @@ import { type TitanCameraMode, useMissionStore } from "@/store/missionStore";
 import styles from "./TitanCameraSwitcher.module.css";
 
 const LABEL: Record<TitanCameraMode, string> = {
-  shoulder: "SHOULDER",
+  shoulder: "DESCENT",
   wide: "WIDE",
 };
 
