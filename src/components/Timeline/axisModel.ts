@@ -58,7 +58,7 @@ const CHAPTER_SPECS = [
     label: "PORTRAITS",
     from: "family_portrait",
     to: "three_crescents",
-    share: 0.2,
+    share: 0.18,
   },
   {
     id: "finale",
