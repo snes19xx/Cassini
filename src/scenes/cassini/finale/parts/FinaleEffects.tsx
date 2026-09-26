@@ -1,10 +1,10 @@
 // Fog overlay for the terminal descent. Density and color ramp with descent
 // progress so the atmosphere thickens visibly as Cassini falls.
 
-import { Trail } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { useEffect, useMemo, useRef } from "react";
+import { MeshLineGeometry, MeshLineMaterial } from "meshline";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
 import { getActiveTableau } from "../../data/tableaus";
@@ -31,6 +31,72 @@ const _pEntry = new THREE.Vector3();
 const _pExit = new THREE.Vector3();
 const _pSeg = new THREE.Vector3();
 const _proj = new THREE.Vector3();
+const _trailHead = new THREE.Vector3();
+const squareAttenuation = (x: number) => x * x;
+
+/**
+ * The meteor sparks' ribbon, with drei <Trail>'s look and history rules.
+ * drei rebuilds the whole ribbon every frame; this builds it once and
+ * slides the positions along with advance().
+ */
+function SparkTrail({
+  target,
+  width,
+  color,
+  length,
+  decay,
+  attenuation,
+}: {
+  target: RefObject<THREE.Object3D>;
+  width: number;
+  color: THREE.Color;
+  length: number;
+  decay: number;
+  attenuation: (x: number) => number;
+}) {
+  const scene = useThree((s) => s.scene);
+  const size = useThree((s) => s.size);
+  const geo = useMemo(() => new MeshLineGeometry(), []);
+  const mat = useMemo(
+    () =>
+      new MeshLineMaterial({
+        lineWidth: 0.1 * width,
+        color,
+        sizeAttenuation: 1,
+        resolution: new THREE.Vector2(),
+      }),
+    [width, color],
+  );
+  const builtLengthRef = useRef(0);
+
+  useEffect(() => {
+    mat.uniforms.resolution!.value.set(size.width, size.height);
+  }, [mat, size]);
+  useEffect(() => () => mat.dispose(), [mat]);
+  useEffect(() => () => geo.dispose(), [geo]);
+
+  useFrame(() => {
+    const head = target.current;
+    if (!head) return;
+    head.getWorldPosition(_trailHead);
+    // Same history size drei uses, length x 10 points, seeded at the head.
+    if (builtLengthRef.current !== length) {
+      const points = new Float32Array(length * 10 * 3);
+      for (let i = 0; i < points.length; i += 3) {
+        points[i] = _trailHead.x;
+        points[i + 1] = _trailHead.y;
+        points[i + 2] = _trailHead.z;
+      }
+      geo.setPoints(points, attenuation);
+      builtLengthRef.current = length;
+    }
+    // drei pushes the head once per whole step of `decay`, rounded up.
+    for (let i = 0; i < decay; i++) geo.advance(_trailHead);
+    geo.computeBoundingSphere();
+  });
+
+  return createPortal(<mesh geometry={geo} material={mat} />, scene);
+}
 
 export function AtmosphericHaze() {
   const { scene } = useThree();
@@ -214,19 +280,20 @@ function MeteorStreak({ cfg, slot }: { cfg: SparkCfg; slot: number }) {
   const length = cfg.core ? d.streakLength : d.streakLength * 0.5;
 
   return (
-    <Trail
-      width={width}
-      color={trailColor}
-      length={length}
-      decay={d.decay}
-      local={false}
-      attenuation={(x) => x * x}
-    >
+    <>
+      <SparkTrail
+        target={meshRef}
+        width={width}
+        color={trailColor}
+        length={length}
+        decay={d.decay}
+        attenuation={squareAttenuation}
+      />
       <mesh ref={meshRef} position={initialPos}>
         <sphereGeometry args={[headR, 10, 10]} />
         <meshBasicMaterial color={headColor} transparent depthWrite={false} />
       </mesh>
-    </Trail>
+    </>
   );
 }
 
