@@ -1,20 +1,28 @@
-import { DIVES } from "@/scenes/cassini/finale/data/diveTable";
-import {
-  JUMP_TO_TABLEAU,
-  TABLEAUS,
-  getActiveTableau,
-} from "@/scenes/cassini/data/tableaus";
-import { clampSeekT } from "@/scenes/cassini/data/missionConstants";
-import {
-  displayToMission,
-  missionToDisplay,
-} from "@/scenes/cassini/lib/tRemap";
 import { useThrottledMissionT } from "@/hooks/useThrottledMissionT";
+import { formatMissionDate } from "@/scenes/cassini/data/missionDates";
+import { SEEK_MAX_T, clampSeekT } from "@/scenes/cassini/data/missionConstants";
+import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
+import { DIVES } from "@/scenes/cassini/finale/data/diveTable";
 import { PlaybackSpeed, useMissionStore } from "@/store/missionStore";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { AxisLayout, GEO, computeAxisLayout } from "./axisLayout";
+import {
+  BRACKETS,
+  STOPS,
+  axisT,
+  axisX,
+  bracketMembers,
+  stopAt,
+} from "./axisModel";
 import styles from "./Timeline.module.css";
-
-//  Inline SVG icons
 
 function IconPlay() {
   return (
@@ -33,270 +41,322 @@ function IconPause() {
   );
 }
 
-//  Helpers
-
-function tToMissionDate(t: number): string {
-  const startMs = new Date("1997-10-15").getTime();
-  const endMs = new Date("2017-09-15").getTime();
-  const d = new Date(startMs + t * (endMs - startMs));
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function tToPercent(t: number): string {
-  return `${(t * 100).toFixed(1)}%`;
-}
-
 const SPEEDS: PlaybackSpeed[] = [1, 2, 5, 10];
 
-// Chronological encounter order.
-const JUMP_LABELS: { label: string; tableauId: string }[] = [
-  { label: "SATURN", tableauId: JUMP_TO_TABLEAU.SATURN! },
-  { label: "TITAN", tableauId: JUMP_TO_TABLEAU.TITAN! },
-  { label: "ENCELADUS", tableauId: JUMP_TO_TABLEAU.ENCELADUS! },
-  { label: "IAPETUS", tableauId: JUMP_TO_TABLEAU.IAPETUS! },
-  { label: "MIMAS", tableauId: JUMP_TO_TABLEAU.MIMAS! },
-  { label: "TETHYS", tableauId: JUMP_TO_TABLEAU.TETHYS! },
-  { label: "DIONE", tableauId: JUMP_TO_TABLEAU.DIONE! },
-  { label: "RHEA", tableauId: JUMP_TO_TABLEAU.RHEA! },
-  { label: "FAMILY", tableauId: JUMP_TO_TABLEAU.FAMILY! },
-  { label: "CRESCENTS", tableauId: JUMP_TO_TABLEAU.CRESCENTS! },
-  { label: "FINAL DIVES", tableauId: JUMP_TO_TABLEAU.FINALE! },
-  { label: "GRAND FINALE", tableauId: JUMP_TO_TABLEAU.ATMOSPHERE! },
-];
-
-//  Component
+// Arrow-key step, in axis units.
+const KEY_STEP = 0.005;
+const KEY_STEP_COARSE = 0.05;
 
 export function Timeline() {
-  // dragDisplayT drives the head at full rate while dragging, this only
-  // throttles the idle/playback repaint rate
+  // 12 Hz during playback; dragT drives the head at full rate while scrubbing.
   const currentT = useThrottledMissionT(12);
   const isPlaying = useMissionStore((s) => s.isPlaying);
   const playbackSpeed = useMissionStore((s) => s.playbackSpeed);
-
   const setTime = useMissionStore((s) => s.setTime);
   const togglePlay = useMissionStore((s) => s.togglePlay);
   const setPlaybackSpeed = useMissionStore((s) => s.setPlaybackSpeed);
 
-  const fillRef = useRef<HTMLDivElement>(null);
+  const [dragT, setDragT] = useState<number | null>(null);
+  const t = dragT ?? currentT;
 
-  // Local until release, then the store's currentT takes back over.
-  const [dragDisplayT, setDragDisplayT] = useState<number | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const labelRefs = useRef<Record<string, HTMLElement | null>>({});
+  const laidOutWidth = useRef(0);
+  const [layout, setLayout] = useState<AxisLayout | null>(null);
 
-  const tableauById = useMemo(() => {
-    const map: Record<string, { tStart: number; jumpT?: number }> = {};
-    for (const tab of TABLEAUS) {
-      map[tab.id] = { tStart: tab.tStart, jumpT: tab.jumpT };
+  const remeasure = useCallback((force = false) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const width = track.clientWidth;
+    if (!width || (!force && width === laidOutWidth.current)) return;
+    laidOutWidth.current = width;
+    const widths: Record<string, number> = {};
+    for (const [id, node] of Object.entries(labelRefs.current)) {
+      if (node) widths[id] = node.offsetWidth;
     }
-    return map;
+    setLayout(computeAxisLayout(width, widths));
   }, []);
 
-  const handleScrub = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const missionT = clampSeekT(displayToMission(parseFloat(e.target.value)));
-      const displayT = missionToDisplay(missionT);
-      setDragDisplayT(displayT);
-      setTime(missionT);
-      if (fillRef.current) {
-        fillRef.current.style.width = `${displayT * 100}%`;
-      }
+  useLayoutEffect(() => {
+    remeasure(true);
+    const track = trackRef.current;
+    if (!track) return;
+    const ro = new ResizeObserver(() => remeasure());
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [remeasure]);
+
+  // Remeasure once the mono face has loaded.
+  useEffect(() => {
+    let live = true;
+    void document.fonts?.ready.then(() => {
+      if (live) remeasure(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [remeasure]);
+
+  const jump = useCallback(
+    (target: number) => {
+      setTime(clampSeekT(target));
+      useMissionStore.getState().resetCamera();
     },
     [setTime],
   );
 
-  const endScrub = useCallback(() => setDragDisplayT(null), []);
-
-  const handleJump = useCallback(
-    (tableauId: string) => {
-      const tab = tableauById[tableauId];
-      if (!tab) return;
-      setTime(tab.jumpT ?? tab.tStart + 1e-5);
-      useMissionStore.getState().resetCamera();
+  const seek = useCallback(
+    (clientX: number) => {
+      const rail = railRef.current;
+      if (!rail) return;
+      const r = rail.getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+      const next = clampSeekT(axisT(x));
+      setDragT(next);
+      setTime(next);
     },
-    [tableauById, setTime],
+    [setTime],
+  );
+
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // preventDefault costs the rail its click focus.
+    e.currentTarget.focus();
+    useMissionStore.setState({ isPlaying: false });
+    seek(e.clientX);
+  };
+
+  const drag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) seek(e.clientX);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setDragT(null);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? KEY_STEP_COARSE : KEY_STEP;
+    const x = axisX(useMissionStore.getState().currentT);
+    let next: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") next = axisT(x + step);
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown")
+      next = axisT(x - step);
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = SEEK_MAX_T;
+    if (next === null) return;
+    e.preventDefault();
+    // App.tsx binds the arrows to tableau steps.
+    e.stopPropagation();
+    setTime(clampSeekT(next));
+  };
+
+  const brackets = useMemo(
+    () =>
+      BRACKETS.map((b) => ({ ...b, jumpT: bracketMembers(b.id)[0]!.jumpT })),
+    [],
   );
 
   const activeTableau = getActiveTableau(currentT);
-  const displayT = dragDisplayT ?? missionToDisplay(currentT);
-  const pct = displayT * 100;
+  const activeStop = stopAt(t);
+  const headX = axisX(t) * 100;
+  const annH = layout?.annH ?? GEO.annH;
+  const stamp = formatMissionDate(t, activeTableau.id);
+
+  const place = (id: string): React.CSSProperties => {
+    const slot = layout?.slots[id];
+    if (!slot) return { left: 0, bottom: 0, visibility: "hidden" };
+    return {
+      left: slot.x,
+      bottom: slot.bottom,
+      visibility: slot.hidden ? "hidden" : "visible",
+    };
+  };
+
+  const ruleClass = (on: boolean) =>
+    `${styles.rule}${on ? ` ${styles.ruleOn}` : ""}`;
 
   return (
     <div className={styles.wrapper} role="region" aria-label="Mission timeline">
-      <div className={styles.topRow}>
-        <div className={styles.controls}>
-          <button
-            className={`${styles.transportBtn} ${styles.playPause}`}
-            onClick={togglePlay}
-            aria-label={
-              isPlaying ? "Pause mission playback" : "Play mission playback"
-            }
-          >
-            {isPlaying ? <IconPause /> : <IconPlay />}
-            <span className={styles.playPauseLabel}>
-              {isPlaying ? "PAUSE" : "PLAY"}
-            </span>
-          </button>
-
-          <div className={styles.speedGroup} aria-label="Playback speed">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                className={`${styles.speedBtn} ${playbackSpeed === s ? styles.active : ""}`}
-                onClick={() => setPlaybackSpeed(s)}
-                aria-pressed={playbackSpeed === s}
-                aria-label={`${s}x speed`}
-              >
-                {s}×
-              </button>
-            ))}
+      <div className={styles.axis}>
+        <div className={styles.left}>
+          <div className={styles.phase} aria-live="polite">
+            {activeTableau.label}
           </div>
-        </div>
+          <div className={styles.stamp}>{stamp}</div>
 
-        <div className={styles.divider} aria-hidden />
-
-        <div className={styles.track}>
-          <div className={styles.scrubberRow}>
-            <div
-              ref={fillRef}
-              className={styles.sliderFill}
-              style={{ width: `${pct}%` }}
-              aria-hidden
-            />
-
-            <svg
-              className={styles.markersCanvas}
-              viewBox="0 0 1000 20"
-              preserveAspectRatio="none"
-              aria-hidden
+          <div className={styles.transport}>
+            <button
+              type="button"
+              className={styles.play}
+              onClick={togglePlay}
+              aria-label={
+                isPlaying ? "Pause mission playback" : "Play mission playback"
+              }
             >
-              {Array.from({ length: 11 }, (_, i) => i / 10).map((t) => (
-                <rect
-                  key={`decade-${t}`}
-                  x={t * 1000}
-                  y={0}
-                  width={1}
-                  height={8}
-                  fill="var(--color-fg-dim)"
-                  opacity={0.5}
-                />
+              {isPlaying ? <IconPause /> : <IconPlay />}
+              <span>{isPlaying ? "PAUSE" : "PLAY"}</span>
+            </button>
+
+            <div
+              className={styles.speeds}
+              role="group"
+              aria-label="Playback speed"
+            >
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`${styles.speed}${playbackSpeed === s ? ` ${styles.speedOn}` : ""}`}
+                  onClick={() => setPlaybackSpeed(s)}
+                  aria-pressed={playbackSpeed === s}
+                  aria-label={`${s}x speed`}
+                >
+                  {s}x
+                </button>
               ))}
-              {TABLEAUS.map((tab) => {
-                const pt = missionToDisplay(tab.tStart);
-                return (
-                  <g key={tab.id}>
-                    <rect
-                      x={pt * 1000}
-                      y={0}
-                      width={1}
-                      height={20}
-                      fill="var(--color-accent)"
-                      opacity={0.55}
-                    />
-                    <polygon
-                      points={`${pt * 1000},0 ${pt * 1000 - 3},6 ${pt * 1000},12 ${pt * 1000 + 3},6`}
-                      fill="var(--color-accent)"
-                      opacity={0.7}
-                    />
-                  </g>
-                );
-              })}
-              {activeTableau.kind === "finale" &&
-                DIVES.map((d) => {
-                  const pt = missionToDisplay(d.t);
-                  return (
-                    <rect
-                      key={`dive-${d.index}`}
-                      x={pt * 1000}
-                      y={11}
-                      width={0.6}
-                      height={9}
-                      fill={
-                        d.isFinalFive
-                          ? "var(--color-warn, #ff6b35)"
-                          : "var(--color-accent)"
-                      }
-                      opacity={0.55}
-                    />
-                  );
-                })}
-              <rect
-                x={displayT * 1000}
-                y={0}
-                width={1.5}
-                height={20}
-                fill="var(--color-fg)"
-                opacity={0.9}
-              />
-            </svg>
-
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.0001"
-              value={displayT}
-              onChange={handleScrub}
-              onPointerUp={endScrub}
-              onPointerCancel={endScrub}
-              onKeyUp={endScrub}
-              onBlur={endScrub}
-              className={styles.slider}
-              aria-label="Mission time scrubber"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={parseFloat(pct.toFixed(1))}
-              aria-valuetext={tToMissionDate(currentT)}
-            />
-
-            {activeTableau.kind === "finale" && (
-              <div className={styles.diveHitRow} aria-hidden={false}>
-                {DIVES.map((d) => {
-                  const pt = missionToDisplay(d.t);
-                  return (
-                    <button
-                      key={`dive-hit-${d.index}`}
-                      type="button"
-                      className={`${styles.diveHit}${d.isFinalFive ? ` ${styles.diveHitFinal5}` : ""}`}
-                      style={{ left: `${pt * 100}%` }}
-                      onClick={() => {
-                        setTime(d.t);
-                        useMissionStore.getState().resetCamera();
-                      }}
-                      title={`Dive ${d.index} / ${DIVES.length} -- ${d.date}${d.notes ? ` -- ${d.notes}` : ""}`}
-                      aria-label={`Jump to dive ${d.index}, ${d.date}`}
-                    />
-                  );
-                })}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
-        <div className={styles.divider} aria-hidden />
-
-        <div className={styles.readout} aria-live="polite">
-          <span className={styles.readoutMain}>{tToMissionDate(currentT)}</span>
-          <span className={styles.readoutSub}>{tToPercent(currentT)}</span>
-        </div>
-      </div>
-
-      <div className={styles.bottomRow}>
-        <div className={styles.jumpContainer}>
-          <span className={styles.modelSelectLabel}>JUMP TO</span>
-          <div className={styles.jumpGroup}>
-            {JUMP_LABELS.map(({ label, tableauId }) => (
-              <button
-                key={label}
-                className={styles.jumpBtn}
-                onClick={() => handleJump(tableauId)}
+        {/* --ann-h lets the rail's grab area reach up over the band. */}
+        <div
+          className={styles.track}
+          ref={trackRef}
+          style={{ "--ann-h": `${annH}px` } as React.CSSProperties}
+        >
+          <div className={styles.ann} style={{ height: annH }}>
+            {layout && (
+              <svg
+                className={styles.stems}
+                viewBox={`0 0 ${layout.width} ${layout.annH}`}
+                preserveAspectRatio="none"
+                aria-hidden
               >
-                {label}
+                {STOPS.map((s) =>
+                  layout.slots[s.id] ? (
+                    <path
+                      key={s.id}
+                      d={layout.slots[s.id]!.stem}
+                      className={ruleClass(activeStop?.id === s.id)}
+                    />
+                  ) : null,
+                )}
+                {brackets.map((b) =>
+                  layout.slots[b.id] ? (
+                    <path
+                      key={b.id}
+                      d={layout.slots[b.id]!.stem}
+                      className={ruleClass(t >= b.t0 && t < b.t1)}
+                    />
+                  ) : null,
+                )}
+              </svg>
+            )}
+
+            {brackets.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                ref={(node) => {
+                  labelRefs.current[b.id] = node;
+                }}
+                className={`${styles.lab} ${styles.chapter}${t >= b.t0 && t < b.t1 ? ` ${styles.labOn}` : ""}`}
+                style={place(b.id)}
+                onClick={() => jump(b.jumpT)}
+              >
+                {b.label}
+              </button>
+            ))}
+
+            {STOPS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                ref={(node) => {
+                  labelRefs.current[s.id] = node;
+                }}
+                className={`${styles.lab} ${s.tier === "chapter" ? styles.major : styles.minor}${activeStop?.id === s.id ? ` ${styles.labOn}` : ""}`}
+                style={place(s.id)}
+                onClick={() => jump(s.jumpT)}
+              >
+                {s.label}
+                <span className={styles.tip}>
+                  {s.label} {formatMissionDate(s.t)}
+                </span>
               </button>
             ))}
           </div>
+
+          <div
+            ref={railRef}
+            className={styles.rail}
+            role="slider"
+            tabIndex={0}
+            aria-label="Mission time scrubber"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Number(headX.toFixed(1))}
+            aria-valuetext={stamp}
+            onPointerDown={startDrag}
+            onPointerMove={drag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onKeyDown={onKeyDown}
+          >
+            <div
+              className={styles.progress}
+              style={{ width: `${headX}%` }}
+              aria-hidden
+            />
+            {layout?.years.map((y) => (
+              <Fragment key={y.year}>
+                <div
+                  className={`${styles.year}${y.labeled ? ` ${styles.yearMajor}` : ""}`}
+                  style={{ left: y.x }}
+                  aria-hidden
+                />
+                {y.labeled && (
+                  <div className={styles.yearLabel} style={{ left: y.x }}>
+                    {y.year}
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+
+          {activeTableau.kind === "finale" && (
+            <div className={styles.dives}>
+              {DIVES.map((d) => (
+                <button
+                  key={d.index}
+                  type="button"
+                  className={`${styles.dive}${d.isFinalFive ? ` ${styles.diveFinal}` : ""}`}
+                  style={{ left: `${axisX(d.t) * 100}%` }}
+                  onClick={() => jump(d.t)}
+                  title={`Dive ${d.index} / ${DIVES.length} -- ${d.date}${d.notes ? ` -- ${d.notes}` : ""}`}
+                  aria-label={`Jump to dive ${d.index}, ${d.date}`}
+                >
+                  <span className={styles.diveTick} aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div
+            className={styles.head}
+            style={{ left: `${headX}%`, height: annH + 8 }}
+            aria-hidden
+          />
+          <div
+            className={styles.knob}
+            style={{ left: `${headX}%`, top: annH }}
+            aria-hidden
+          />
         </div>
       </div>
     </div>

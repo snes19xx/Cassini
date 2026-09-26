@@ -54,7 +54,7 @@ function packRows(items: Item[], width: number, gap: number): boolean {
       it.hidden = true;
       continue;
     }
-    const row = lo >= right[0]! + gap ? 0 : lo >= right[1]! ? 1 : -1;
+    const row = lo >= right[0]! + gap ? 0 : lo >= right[1]! + gap ? 1 : -1;
     if (row < 0) {
       it.hidden = true;
       continue;
