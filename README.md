@@ -11,5 +11,5 @@ Built with React, [React Three Fiber](https://docs.pmnd.rs/react-three-fiber),
 Three.js, zustand, and Vite.
 
 <p align="center">
-  <img src="assets/progress.png" alt="screenshot" height="420" />
+  <img src="assets/labels.jpg" alt="screenshot" height="60%" />
 </p>
