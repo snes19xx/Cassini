@@ -106,8 +106,7 @@ describe("dates", () => {
       const [tPrev, msPrev] = DATE_ANCHORS[i - 1]!;
       expect(t).toBeGreaterThan(tPrev);
       expect(ms).toBeGreaterThanOrEqual(msPrev);
-      // The last tableau ends past 1 to include impact, so t=1 has no
-      // boundary of its own.
+      // The last tableau ends past 1 to include impact.
       expect(t === 1 || bounds.has(t), String(t)).toBe(true);
     }
   });
