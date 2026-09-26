@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "optimize-textures": "node scripts/optimize-textures.mjs",
-    "optimize-moon-glb": "node scripts/optimize-moon-glb.mjs"
+    "optimize-moon-glb": "node scripts/optimize-moon-glb.mjs",
+    "optimize-cassini-glb": "node scripts/optimize-cassini-glb.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
