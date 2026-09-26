@@ -204,12 +204,6 @@ function DisplayModel({
       if (child instanceof THREE.Mesh) {
         if (!child.userData.originalMaterial) {
           child.userData.originalMaterial = child.material;
-          const original = child.userData.originalMaterial as THREE.Material;
-          if (original instanceof THREE.MeshStandardMaterial) {
-            // Without an env map, high metalness clips to white under boosted sun.
-            if (original.metalness > 0.25) original.metalness = 0.25;
-            original.envMapIntensity = 0.6;
-          }
         }
         let target = child.userData.originalMaterial as THREE.Material;
         if (materialMode === "blueprint") {
