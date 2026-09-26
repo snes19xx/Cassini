@@ -225,6 +225,7 @@ export const TABLEAUS: Tableau[] = [
   },
 
   // Enceladus sits close to Saturn (~238k km, ~29 deg apparent), so the backdrop reads big.
+  // Enceladus through Rhea sit at ~78% of true apparent size.
   {
     id: "enceladus",
     kind: "moon",
@@ -240,8 +241,8 @@ export const TABLEAUS: Tableau[] = [
     },
     zoom: { minDist: 34, maxDist: 1600 },
     saturnBackdrop: {
-      pos: [-1100, 80, -1300],
-      scale: 1.05,
+      pos: [-1178, -27, -1233],
+      scale: 2.0,
     },
     effects: { rings: true, plumes: true },
   },
@@ -308,13 +309,12 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 36, maxDist: 1600 },
     saturnBackdrop: {
       pos: [-1100, 60, -1100],
-      scale: 0.9,
+      scale: 1.5,
     },
     effects: { rings: true },
   },
 
-  // Dione (377k km, ~18 deg apparent). Backdrop runs a touch large here for
-  // visual weight, though still smaller than Tethys.
+  // Dione (377k km, ~18 deg apparent).
   {
     id: "dione",
     kind: "moon",
@@ -331,7 +331,7 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 38, maxDist: 1700 },
     saturnBackdrop: {
       pos: [-1200, -120, -1000],
-      scale: 0.75,
+      scale: 1.2,
     },
     effects: { rings: true },
   },
@@ -353,7 +353,7 @@ export const TABLEAUS: Tableau[] = [
     zoom: { minDist: 42, maxDist: 1700 },
     saturnBackdrop: {
       pos: [-1500, 120, -1300],
-      scale: 0.55,
+      scale: 1.05,
     },
     effects: { rings: true },
   },
