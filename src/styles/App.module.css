@@ -302,12 +302,14 @@
   color: var(--color-fg);
 }
 
+.viewBtnActive,
+.inspectionBtnActive {
+  box-shadow: 0 0 0 1px var(--color-fg);
+}
+
 .viewBtnActive {
   background: var(--color-fg);
   color: var(--color-bg);
-  box-shadow:
-    -1px 0 0 var(--color-fg),
-    1px 0 0 var(--color-fg);
   position: relative;
 }
 
@@ -574,9 +576,7 @@
 .root[data-theme="space"][data-terminal] .viewBtnActive:hover {
   background: #1b2733;
   color: #eef2f5;
-  box-shadow:
-    -1px 0 0 #1b2733,
-    1px 0 0 #1b2733;
+  box-shadow: 0 0 0 1px #1b2733;
 }
 
 .root[data-theme="space"][data-terminal] .viewBtn:disabled,

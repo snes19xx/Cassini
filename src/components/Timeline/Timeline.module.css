@@ -152,6 +152,7 @@
 .speedOn:hover {
   color: var(--color-bg);
   background: var(--color-fg);
+  box-shadow: 0 0 0 1px var(--color-fg);
 }
 
 .track {
