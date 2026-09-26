@@ -172,7 +172,12 @@ function InspectionViewBar() {
 }
 
 function InfoPanelGate() {
-  const show = useMissionStore((s) => infoPanelVisible(s));
+  const show = useMissionStore((s) => {
+    // The component inspector docks right, not in this panel's slot.
+    if (s.activeComponent !== null) return true;
+    if (s.currentT < LABELS_HOMEPAGE_T_EPSILON) return false;
+    return infoPanelVisible(s);
+  });
   if (!show) return null;
   return <InfoPanel />;
 }
