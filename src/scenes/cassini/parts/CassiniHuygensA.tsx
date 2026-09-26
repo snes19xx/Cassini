@@ -4,8 +4,27 @@
 // refs for live label anchor projection.
 
 import { useGLTF } from "@react-three/drei";
-import React, { useLayoutEffect, useMemo } from "react";
+import { useThree } from "@react-three/fiber";
+import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+
+const STUDIO_ENV_INTENSITY = 0.9;
+
+const studioEnvs = new WeakMap<THREE.WebGLRenderer, THREE.Texture>();
+
+function studioEnv(gl: THREE.WebGLRenderer): THREE.Texture {
+  let env = studioEnvs.get(gl);
+  if (!env) {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    env = pmrem.fromScene(room, 0.04).texture;
+    room.dispose();
+    pmrem.dispose();
+    studioEnvs.set(gl, env);
+  }
+  return env;
+}
 
 export interface CassiniAAnchors {
   bus: React.RefObject<THREE.Mesh>;
@@ -37,23 +56,45 @@ export function CassiniLabelHull({
   ...props
 }: ModelProps) {
   const { scene } = useGLTF(url);
+  const gl = useThree((s) => s.gl);
   const clone = useMemo(() => scene.clone(), [scene]);
 
-  const exported = useMemo(() => {
+  // scene.clone() shares its materials with the useGLTF cache.
+  const studioMaterials = useMemo(() => {
+    const env = studioEnv(gl);
+    const byOriginal = new Map<THREE.Material, THREE.Material>();
     const byMesh = new Map<THREE.Mesh, THREE.Material>();
     clone.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        byMesh.set(child, child.material as THREE.Material);
+      if (!(child instanceof THREE.Mesh)) return;
+      const original = child.material as THREE.Material;
+      let lit = byOriginal.get(original);
+      if (!lit) {
+        lit = original.clone();
+        if (lit instanceof THREE.MeshStandardMaterial) {
+          lit.envMap = env;
+          lit.envMapIntensity = STUDIO_ENV_INTENSITY;
+        }
+        byOriginal.set(original, lit);
       }
+      byMesh.set(child, lit);
     });
     return byMesh;
-  }, [clone]);
+  }, [clone, gl]);
+
+  useEffect(
+    () => () => {
+      for (const material of new Set(studioMaterials.values())) {
+        material.dispose();
+      }
+    },
+    [studioMaterials],
+  );
 
   useLayoutEffect(() => {
-    for (const [mesh, material] of exported) {
+    for (const [mesh, material] of studioMaterials) {
       mesh.material = overrideMaterial ?? material;
     }
-  }, [exported, overrideMaterial]);
+  }, [studioMaterials, overrideMaterial]);
 
   useLayoutEffect(() => {
     if (!anchorRefs) return;
