@@ -33,6 +33,27 @@ const COMPILE_BUDGET_MS = 1500;
 // Backstop against a wedged compileAsync; the warm window always closes.
 const WARM_MAX_MS = 4000;
 
+/**
+ * compileAsync with a render target bound, so the cached programs are the
+ * ones the terminal actually draws with. Three keys programs on output
+ * colour space, and FinaleBloom's RenderPass draws into an offscreen buffer.
+ */
+function compileForComposer(
+  gl: THREE.WebGLRenderer,
+  target: THREE.WebGLRenderTarget,
+  object: THREE.Object3D,
+  camera: THREE.Camera,
+  targetScene?: THREE.Scene,
+): Promise<unknown> {
+  const prev = gl.getRenderTarget();
+  gl.setRenderTarget(target);
+  try {
+    return gl.compileAsync(object, camera, targetScene);
+  } finally {
+    gl.setRenderTarget(prev);
+  }
+}
+
 /** Resolves when `p` settles or the budget expires; never rejects, never hangs. */
 function withBudget(p: Promise<unknown>, budgetMs: number): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -136,11 +157,16 @@ export function PrewarmTerminal() {
     let cancelled = false;
     const group = groupRef.current;
     warmStartMsRef.current = performance.now();
+    // Stands in for the composer's HalfFloat buffer; only its being a
+    // non-XR target matters to the program key.
+    const composerTarget = new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.HalfFloatType,
+    });
     (async () => {
       try {
         if (group) {
           await withBudget(
-            gl.compileAsync(group, camera, scene),
+            compileForComposer(gl, composerTarget, group, camera, scene),
             COMPILE_BUDGET_MS,
           );
         }
@@ -161,7 +187,10 @@ export function PrewarmTerminal() {
           }
         });
         try {
-          await withBudget(gl.compileAsync(scene, camera), COMPILE_BUDGET_MS);
+          await withBudget(
+            compileForComposer(gl, composerTarget, scene, camera),
+            COMPILE_BUDGET_MS,
+          );
         } finally {
           scene.remove(fill);
           fill.dispose();
@@ -173,6 +202,7 @@ export function PrewarmTerminal() {
           console.warn("[PrewarmTerminal] compile pass failed", err);
         }
       } finally {
+        composerTarget.dispose();
         if (!cancelled) compiledRef.current = true;
       }
     })();
