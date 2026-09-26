@@ -258,6 +258,8 @@
 .inspectionBtnActive {
   background: var(--color-fg);
   color: var(--color-bg);
+  position: relative;
+  z-index: 1;
 }
 
 .inspectionBtnActive:hover {
@@ -302,15 +304,22 @@
   color: var(--color-fg);
 }
 
-.viewBtnActive,
-.inspectionBtnActive {
-  box-shadow: 0 0 0 1px var(--color-fg);
+/* One solid underlay 1px wider on every side covers the group's border and
+   the separators. A box-shadow ring left an anti-aliased seam. */
+.viewBtnActive::before,
+.inspectionBtnActive::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: inherit;
 }
 
 .viewBtnActive {
   background: var(--color-fg);
   color: var(--color-bg);
   position: relative;
+  z-index: 1;
 }
 
 .viewBtnActive:hover {
@@ -576,7 +585,6 @@
 .root[data-theme="space"][data-terminal] .viewBtnActive:hover {
   background: #1b2733;
   color: #eef2f5;
-  box-shadow: 0 0 0 1px #1b2733;
 }
 
 .root[data-theme="space"][data-terminal] .viewBtn:disabled,

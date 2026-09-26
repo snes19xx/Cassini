@@ -375,7 +375,7 @@ export default function App() {
             <strong className={styles.esa}>ESA</strong> ·{" "}
             <strong className={styles.jpl}>JPL</strong> ·{" "}
             <a
-              href="https://snes19xx.github.io/"
+              href="https://github.com/snes19xx"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.snesLink}

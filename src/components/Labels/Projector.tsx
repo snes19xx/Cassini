@@ -216,12 +216,12 @@ export function Projector() {
 
           if (text) {
             text.style.transform = `translate(${lineEndX}px, ${t.ty}px) ${isLeft ? "translateX(-100%)" : ""}`;
+            // Borders stay in Labels.module.css. An inline border here
+            // outranks the hover and active accent, pinning that edge dim.
             if (isLeft) {
-              text.style.borderLeft = "1px solid var(--panel-border)";
               text.style.alignItems = "flex-end";
               text.style.borderRadius = "2px 0 0 2px";
             } else {
-              text.style.borderRight = "1px solid var(--panel-border)";
               text.style.alignItems = "flex-start";
               text.style.borderRadius = "0 2px 2px 0";
             }

@@ -152,7 +152,16 @@
 .speedOn:hover {
   color: var(--color-bg);
   background: var(--color-fg);
-  box-shadow: 0 0 0 1px var(--color-fg);
+  position: relative;
+  z-index: 1;
+}
+
+.speedOn::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: inherit;
 }
 
 .track {
@@ -394,7 +403,7 @@
 
 /* --panel-bg-chip is opaque cream here. */
 :global([data-theme="editorial"]) .play:hover,
-:global([data-theme="editorial"]) .speed:hover {
+:global([data-theme="editorial"]) .speed:not(.speedOn):hover {
   background: var(--color-accent-wash);
 }
 

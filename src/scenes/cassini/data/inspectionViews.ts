@@ -55,8 +55,8 @@ export const INSPECTION_VIEWS: Record<InspectionViewId, InspectionView> = {
 };
 
 export const INSPECTION_VIEW_ORDER: InspectionViewId[] = [
-  "top",
   "front",
+  "top",
   "rear",
   "mag",
 ];

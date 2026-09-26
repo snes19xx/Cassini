@@ -9,7 +9,8 @@
   --panel-top: clamp(123px, 12vh, 160px);
   top: var(--panel-top);
   width: 280px;
-  z-index: 100;
+  /* Above the per-moon controls (lighting, plumes, cameras, spectral: all 100). */
+  z-index: 110;
 
   /* Caps the panel above the timeline chrome; .scrollBody handles overflow. */
   display: flex;

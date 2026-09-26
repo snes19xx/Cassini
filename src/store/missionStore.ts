@@ -129,7 +129,7 @@ export const useMissionStore = create<MissionState>((set) => ({
   autoRotate: true,
   uiScale: 1,
   cameraResetNonce: 0,
-  inspectionView: "top",
+  inspectionView: "front",
   inspectionViewNonce: 0,
   _preLabelModel: "CassiniHuygensA.glb",
   infoPanelOverride: null,
@@ -241,7 +241,7 @@ export const useMissionStore = create<MissionState>((set) => ({
           cameraResetNonce: s.cameraResetNonce + 1,
           // defaults to TOP so labels show right away; nonce forces a
           // re-snap even if inspectionView was already "top"
-          inspectionView: "top",
+          inspectionView: "front",
           inspectionViewNonce: s.inspectionViewNonce + 1,
         };
       } else {
@@ -309,7 +309,7 @@ export const useMissionStore = create<MissionState>((set) => ({
       autoRotate: true,
       uiScale: 1,
       cameraResetNonce: s.cameraResetNonce + 1,
-      inspectionView: "top",
+      inspectionView: "front",
       _preLabelModel: "CassiniHuygensA.glb",
       infoPanelOverride: null,
       finaleCameraMode: "thirdPerson",
