@@ -9,7 +9,7 @@ import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-const STUDIO_ENV_INTENSITY = 0.9;
+const STUDIO_ENV_INTENSITY = 0.1;
 
 const studioEnvs = new WeakMap<THREE.WebGLRenderer, THREE.Texture>();
 
