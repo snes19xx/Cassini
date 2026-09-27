@@ -114,8 +114,12 @@ export function CassiniLabelHull({
   );
 }
 
-export function CassiniHuygensA(props: Omit<ModelProps, "url">) {
-  return <CassiniLabelHull url="/assets/CassiniHuygensA.glb" {...props} />;
+export function CassiniHuygensA({
+  geo,
+  ...props
+}: Omit<ModelProps, "url"> & { geo?: boolean }) {
+  const url = geo
+    ? "/assets/CassiniHuygensA_geo.glb"
+    : "/assets/CassiniHuygensA.glb";
+  return <CassiniLabelHull url={url} {...props} />;
 }
-
-useGLTF.preload("/assets/CassiniHuygensA.glb");
