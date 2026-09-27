@@ -4,7 +4,7 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLiveLabelAnchors } from "../../hooks/useLiveLabelAnchors";
 import type { AnchorPoint } from "../../hooks/useProjectedPoints";
-import { useMissionStore } from "../../store/missionStore";
+import { useMissionStore, type ActiveModel } from "../../store/missionStore";
 import { INSPECTION_VIEWS } from "./data/inspectionViews";
 import {
   HUYGENS_SEPARATION_T,
@@ -185,6 +185,12 @@ function useCameraFraming(cameraResetNonce: number, showLabels: boolean) {
   ]);
 }
 
+// Untextured copies for the wireframe themes
+const GEO_MODELS: Partial<Record<ActiveModel, string>> = {
+  "CassiniHuygensA.glb": "CassiniHuygensA_geo.glb",
+  "CassiniHuygensAwithoutHyugens.glb": "CassiniHuygensAwithoutHyugens_geo.glb",
+};
+
 function DisplayModel({
   activeModel,
   materialMode,
@@ -265,18 +271,21 @@ function LabelModel({
     labelAnchorsRef.current = liveAnchors.current;
   });
 
+  const Hull = huygensHasSeparated
+    ? CassiniHuygensAwithoutHuygens
+    : CassiniHuygensA;
+  const geoHull = (
+    <Hull geo anchorRefs={anchorRefs} overrideMaterial={overrideMaterial} />
+  );
+
   return (
     <group ref={groupRef} name={HULL_GROUP_NAME} scale={modelScale}>
-      {huygensHasSeparated ? (
-        <CassiniHuygensAwithoutHuygens
-          anchorRefs={anchorRefs}
-          overrideMaterial={overrideMaterial}
-        />
+      {overrideMaterial ? (
+        geoHull
       ) : (
-        <CassiniHuygensA
-          anchorRefs={anchorRefs}
-          overrideMaterial={overrideMaterial}
-        />
+        <Suspense fallback={geoHull}>
+          <Hull anchorRefs={anchorRefs} overrideMaterial={overrideMaterial} />
+        </Suspense>
       )}
     </group>
   );
@@ -633,15 +642,20 @@ export function Spacecraft() {
     );
   }
 
+  const displayProps = { materialMode, groupRef, materials, modelScale };
+  const geoModel = GEO_MODELS[actualModel] ?? actualModel;
+
   return (
     <group>
-      <DisplayModel
-        activeModel={actualModel}
-        materialMode={materialMode}
-        groupRef={groupRef}
-        materials={materials}
-        modelScale={modelScale}
-      />
+      {materialMode === "space" ? (
+        <Suspense
+          fallback={<DisplayModel activeModel={geoModel} {...displayProps} />}
+        >
+          <DisplayModel activeModel={actualModel} {...displayProps} />
+        </Suspense>
+      ) : (
+        <DisplayModel activeModel={geoModel} {...displayProps} />
+      )}
       {activeModel !== "CassiniHuygensAwithout_Cassini.glb" &&
         activeModel !== "CassiniHuygensAwithoutHyugens.glb" && (
           <Suspense fallback={null}>
@@ -653,7 +667,7 @@ export function Spacecraft() {
   );
 }
 
-useGLTF.preload("/assets/CassiniHuygensA.glb");
+useGLTF.preload("/assets/CassiniHuygensA_geo.glb");
 
 export const DEFERRED_MODEL_PRELOAD_MS = 5000;
 
@@ -662,6 +676,8 @@ let deferredWarmed = false;
 export function warmDeferredModels() {
   if (deferredWarmed) return;
   deferredWarmed = true;
+  useGLTF.preload("/assets/CassiniHuygensA.glb");
+  useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens_geo.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");
 }

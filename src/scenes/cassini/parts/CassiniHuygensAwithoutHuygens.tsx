@@ -9,17 +9,16 @@ import * as THREE from "three";
 import { CassiniLabelHull, type CassiniAAnchors } from "./CassiniHuygensA";
 
 interface ModelProps extends React.ComponentPropsWithoutRef<"group"> {
+  geo?: boolean;
   anchorRefs?: CassiniAAnchors;
   overrideMaterial?: THREE.Material | null;
 }
 
-export function CassiniHuygensAwithoutHuygens(props: ModelProps) {
-  return (
-    <CassiniLabelHull
-      url="/assets/CassiniHuygensAwithoutHyugens.glb"
-      {...props}
-    />
-  );
+export function CassiniHuygensAwithoutHuygens({ geo, ...props }: ModelProps) {
+  const url = geo
+    ? "/assets/CassiniHuygensAwithoutHyugens_geo.glb"
+    : "/assets/CassiniHuygensAwithoutHyugens.glb";
+  return <CassiniLabelHull url={url} {...props} />;
 }
 
 // No module-level preload: Spacecraft.tsx warms this variant on a timer.
