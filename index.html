@@ -51,9 +51,12 @@
     <!-- The Editorial theme pulls these two faces from Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- media="print" keeps it off the first-paint path -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      media="print"
+      onload="this.media = 'all'"
     />
 
     <!-- Needs crossorigin to match three's FileLoader request -->
@@ -62,6 +65,7 @@
       href="/assets/CassiniHuygensA_geo.glb"
       as="fetch"
       crossorigin="anonymous"
+      fetchpriority="low"
     />
   </head>
   <body>
