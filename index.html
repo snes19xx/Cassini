@@ -51,9 +51,12 @@
     <!-- The Editorial theme pulls these two faces from Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- media="print" keeps it off the first-paint path -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      media="print"
+      onload="this.media = 'all'"
     />
 
     <!-- Needs crossorigin to match three's FileLoader request -->
@@ -62,12 +65,12 @@
       href="/Cassini/assets/CassiniHuygensA_geo.glb"
       as="fetch"
       crossorigin="anonymous"
+      fetchpriority="low"
     />
-    <script type="module" crossorigin src="/Cassini/assets/index-CSO-bSd_.js"></script>
+    <script type="module" crossorigin src="/Cassini/assets/index-kPCoLZkb.js"></script>
     <link rel="modulepreload" crossorigin href="/Cassini/assets/rolldown-runtime-hePW80VL.js">
-    <link rel="modulepreload" crossorigin href="/Cassini/assets/three-vendor-BNJgjhQX.js">
-    <link rel="modulepreload" crossorigin href="/Cassini/assets/r3f-vendor-DKQ1otq-.js">
-    <link rel="stylesheet" crossorigin href="/Cassini/assets/index-B3KSoNwY.css">
+    <link rel="modulepreload" crossorigin href="/Cassini/assets/react-vendor-G66kKWgn.js">
+    <link rel="stylesheet" crossorigin href="/Cassini/assets/index-SIpC1bST.css">
   </head>
   <body>
     <!-- black background here, not CSS, so there's no white flash pre-paint -->
