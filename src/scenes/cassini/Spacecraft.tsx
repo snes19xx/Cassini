@@ -33,6 +33,7 @@ import {
 } from "./finale/lib/swingAroundTrajectory";
 import { cassiniWorldPos } from "./lib/cassiniAnchor";
 import { isArrivalTableau } from "./arrival/lib/arrivalShot";
+import { orientationAt } from "./lib/orientationAt";
 import { stateAt } from "./lib/stateAt";
 import { traverseCassiniPos } from "./lib/traverseShot";
 import { getTraverseProgress } from "./lib/useTransitionStore";
@@ -207,12 +208,6 @@ function DisplayModel({
   const { scene } = useGLTF(`/assets/${activeModel}`);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
-  // DisplayModel suspends until the opening model is parsed.
-  useEffect(() => {
-    const id = setTimeout(warmDeferredModels, DEFERRED_MODEL_PRELOAD_MS);
-    return () => clearTimeout(id);
-  }, []);
-
   useLayoutEffect(() => {
     clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -298,6 +293,12 @@ export function Spacecraft() {
   const cameraResetNonce = useMissionStore((s) => s.cameraResetNonce);
   const showLabels = useMissionStore((s) => s.showLabels);
   const autoRotate = useMissionStore((s) => s.autoRotate);
+  const hullReady = useMissionStore((s) => s.hullReady);
+
+  // Runs after the hull GLB resolves
+  useEffect(() => {
+    useMissionStore.getState().setHullReady();
+  }, []);
 
   const huygensHasSeparated = useMissionStore(
     (s) => s.currentT >= HUYGENS_SEPARATION_T,
@@ -388,7 +389,7 @@ export function Spacecraft() {
       const state = stateAt(t);
       const tableau = getActiveTableau(t);
       const traverseNow = getTraverseProgress();
-      groupRef.current.rotation.copy(state.orientation);
+      groupRef.current.rotation.copy(orientationAt(t));
 
       const disintegrationAmount = state.effects.disintegration || 0;
 
@@ -624,9 +625,19 @@ export function Spacecraft() {
     }
   }, -1);
 
+  const warmTextured = hullReady && (
+    <Suspense fallback={null}>
+      <WarmModel
+        url="/assets/CassiniHuygensA.glb"
+        onLoaded={warmDeferredModels}
+      />
+    </Suspense>
+  );
+
   if (showLabels) {
     return (
       <group>
+        {warmTextured}
         <LabelModel
           materialMode={materialMode}
           groupRef={groupRef}
@@ -647,6 +658,7 @@ export function Spacecraft() {
 
   return (
     <group>
+      {warmTextured}
       {materialMode === "space" ? (
         <Suspense
           fallback={<DisplayModel activeModel={geoModel} {...displayProps} />}
@@ -669,14 +681,18 @@ export function Spacecraft() {
 
 useGLTF.preload("/assets/CassiniHuygensA_geo.glb");
 
-export const DEFERRED_MODEL_PRELOAD_MS = 5000;
+// Calls onLoaded once url is in the useGLTF cache.
+function WarmModel({ url, onLoaded }: { url: string; onLoaded: () => void }) {
+  useGLTF(url);
+  useEffect(onLoaded, [onLoaded]);
+  return null;
+}
 
 let deferredWarmed = false;
 
-export function warmDeferredModels() {
+function warmDeferredModels() {
   if (deferredWarmed) return;
   deferredWarmed = true;
-  useGLTF.preload("/assets/CassiniHuygensA.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens_geo.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithoutHyugens.glb");
   useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");

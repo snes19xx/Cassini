@@ -34,6 +34,10 @@ export default defineConfig({
         // rolldown replaced manualChunks with groups, first match wins
         codeSplitting: {
           groups: [
+            {
+              name: "react-vendor",
+              test: /node_modules[\\/](react|react-dom|scheduler|zustand)[\\/]/,
+            },
             { name: "three-vendor", test: /node_modules[\\/]three[\\/]/ },
             {
               name: "r3f-vendor",

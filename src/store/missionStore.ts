@@ -85,6 +85,8 @@ interface MissionState {
   resumeOnPanelClose: boolean;
   resumeOnPopoverClose: boolean;
 
+  hullReady: boolean;
+
   setTime: (t: number) => void;
   togglePlay: () => void;
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -109,6 +111,7 @@ interface MissionState {
   cycleFinaleCameraMode: () => void;
   setTitanCameraOverride: (mode: TitanCameraMode | null) => void;
   toggleTitanCamera: (effective: TitanCameraMode) => void;
+  setHullReady: () => void;
   reset: () => void;
 }
 
@@ -139,6 +142,7 @@ export const useMissionStore = create<MissionState>((set) => ({
   _preTerminalRenderMode: null,
   resumeOnPanelClose: false,
   resumeOnPopoverClose: false,
+  hullReady: false,
 
   setTime: (t) => set({ currentT: Math.max(0, Math.min(1, t)) }),
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
@@ -289,6 +293,8 @@ export const useMissionStore = create<MissionState>((set) => ({
     set(() => ({
       titanCameraOverride: effective === "shoulder" ? "wide" : "shoulder",
     })),
+
+  setHullReady: () => set({ hullReady: true }),
 
   reset: () =>
     set((s) => ({

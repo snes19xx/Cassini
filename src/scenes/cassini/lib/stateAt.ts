@@ -1,14 +1,11 @@
 // src/scenes/cassini/lib/stateAt.ts
 
-import * as THREE from "three";
 import {
   DISINTEGRATION_T_START,
   HUYGENS_SEPARATION_T,
 } from "../data/missionConstants";
-import { ORIENTATION_KEYS } from "../data/orientationKeys";
 import { RING_CROSSING_T_VALUES } from "../data/phases";
 import {
-  easeOutBackSoft,
   easeOutCubic,
   norm,
   plateau,
@@ -31,35 +28,6 @@ function defaultStage(): StageState {
     scale: 1,
     opacity: 1,
   };
-}
-
-const Q_KEYS = ORIENTATION_KEYS.map((k) => {
-  const e = new THREE.Euler(k.euler[0], k.euler[1], k.euler[2], "YXZ");
-  return { t: k.t, q: new THREE.Quaternion().setFromEuler(e) };
-});
-
-// Reused across calls; the returned Euler is always a fresh allocation.
-const _qScratch = new THREE.Quaternion();
-
-function orientationAt(t: number): THREE.Euler {
-  // Q_KEYS is non-empty (asserted at module init by ORIENTATION_KEYS), so
-  // first/last are always defined under noUncheckedIndexedAccess.
-  let lo = Q_KEYS[0]!;
-  let hi = Q_KEYS[Q_KEYS.length - 1]!;
-  for (let i = 0; i < Q_KEYS.length - 1; i++) {
-    const a = Q_KEYS[i]!;
-    const b = Q_KEYS[i + 1]!;
-    if (t >= a.t && t <= b.t) {
-      lo = a;
-      hi = b;
-      break;
-    }
-  }
-  const frac = lo.t === hi.t ? 0 : (t - lo.t) / (hi.t - lo.t);
-  const easedFrac = easeOutBackSoft(Math.max(0, Math.min(1, frac)));
-
-  _qScratch.slerpQuaternions(lo.q, hi.q, easedFrac);
-  return new THREE.Euler().setFromQuaternion(_qScratch, "YXZ");
 }
 
 // skip recompute if t matches the last call
@@ -190,8 +158,6 @@ export function stateAt(t: number): MissionState {
     mli.visible = mli.opacity > 0.01;
   }
 
-  const orientation = orientationAt(t);
-
   const cameraRadius = (() => {
     if (t < 0.336) return 80;
     if (t < 0.361) return 60;
@@ -206,7 +172,6 @@ export function stateAt(t: number): MissionState {
     huygens,
     mliThermalBlanket: mli,
     effects,
-    orientation,
     cameraRadius,
   };
   _lastT = t;
