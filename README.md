@@ -1,10 +1,10 @@
 # Cassini
 
-<p align="left">
-  <img src="assets/cassini.gif" alt="Cool slideshow of cassini I made" height="520" />
-</p>
-
 An interactive 3D web application that visualizes the twenty-year journey of the Cassini-Huygens mission to Saturn, from its 1997 launch to its final atmospheric entry on September 15, 2017.
+
+<p align="left">
+  <img src="assets/labels.jpg" alt="screenshot" height="550" />
+</p>
 
 The entire mission plays as a continuous interactive sequence lasting just under five minutes (299.99 seconds at 1x speed). The viewer can let the mission play in real time, scrub along the timeline, pause at any moment, orbit the camera around the spacecraft or moons, inspect scientific instruments, and cycle through visual themes and spectral views.
 
@@ -146,7 +146,6 @@ I used several deliberate liberties were taken to create an engaging visual expe
 ## Screenshots
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 600px;">
-  <img src="assets/labels.jpg" style="width: 100%;">
   <img src="assets/Iapetus.jpg" style="width: 100%;">
   <img src="assets/blue.jpg" style="width: 100%;">
   <img src="assets/arrival.jpg" style="width: 100%;">
