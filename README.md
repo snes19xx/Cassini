@@ -29,7 +29,7 @@ This project is a personal educational reconstruction built with React 19, React
   - [Scientific Exploration](#scientific-exploration)
 - [Notes](#notes)
 - [Screenshots](#screenshots)
-- [Credits and Sources](#credits-and-sources)
+- [Credits, Acknowledgements and Sources](#credits-acknowledgements-and-sources)
 
 ## Core Architecture and Design
 
@@ -145,14 +145,14 @@ I used several deliberate liberties were taken to create an engaging visual expe
 
 ## Screenshots
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-  <img src="assets/labels.jpg" style="width: 80%;">
-  <img src="assets/Iapetus.jpg" style="width: 80%;">
-  <img src="assets/blue.jpg" style="width: 80%;">
-  <img src="assets/arrival.jpg" style="width: 80%;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 600px;">
+  <img src="assets/labels.jpg" style="width: 100%;">
+  <img src="assets/Iapetus.jpg" style="width: 100%;">
+  <img src="assets/blue.jpg" style="width: 100%;">
+  <img src="assets/arrival.jpg" style="width: 100%;">
 </div>
 
-## Credits and Sources
+## Credits, Acknowledgements and Sources
 
 - The theme and UI is based almost entirely on @redradman's [Artemis](https://github.com/redradman/artemis). I also decided on the architecture based on this project.
 - Mission Telemetry and Timelines: NASA/JPL Cassini launch and arrival press kits, the Grand Finale press kit, and the JPL DESCANSO Telecom Summary.
@@ -162,10 +162,13 @@ I used several deliberate liberties were taken to create an engaging visual expe
   - Titan enhanced colour texture map by [askaniy](https://www.deviantart.com/askaniy/art/Titan-Enhanced-Color-Map-11K-1066578731).
   - Titan true colour by [ducn1567](https://www.deviantart.com/ducn1567/art/Titan-Texture-2K-1014816449).
   - Titan infrared was Converted into an equirectangular map from spherical projections in [PIA21923: Seeing Titan with Infrared Eyes](https://www.jpl.nasa.gov/images/pia21923-seeing-titan-with-infrared-eyes/) using `scripts/titan_maker.py`.
-  - Titan false colour (`titan_false_color_IR_opt.webp`): Modelled from [Mapping Titan's Changes](https://science.nasa.gov/resource/mapping-titans-changes/).
+  - Titan false colour is modelled from [Mapping Titan's Changes](https://science.nasa.gov/resource/mapping-titans-changes/).
   - Enceladus infrared: Sourced from [PIA24027: Enceladus in the Infrared (Map View)](https://www.jpl.nasa.gov/images/pia24027-enceladus-in-the-infrared-map-view/).
   - Additional baseline releases: NASA/JPL-Caltech imaging archives.
-- Ring Profiles: Baked from Björn Jónsson's radial occultation profiles and brightness data.
+- Ring Profiles: Baked from Björn Jónsson's radial occultation profiles and brightness data at [link](bjj.mmedia.is/data/s_rings/index.html)
+- The arrival scene (I like to call it '_Grand Arrival_') is directly based on the Astronomy Picture of the Day release [Cassini Approaches Saturn](https://apod.nasa.gov/apod/ap110315.html), with credit to the Cassini Imaging Team, ISS, JPL, ESA, NASA, and S. Van Vuuren et al.
+- The Grand Finale sequence for the atmospheric disintegration of the probe was inspired by NASA JPL's video, [Cassini's Grand Finale](https://youtu.be/xrGAQCq9BMU).
 - Atmosphere Limb Profile: Sampled from Cassini ISS natural-color image PIA21046.
 - Spacecraft Models: Converted and optimized from NASA/JPL 3D resources.
-- Assisted during development by Google Gemini (3.1 pro and 3.8 flash) using agy (used to be gemini-cli when I started) and Anthropic's claude (free)
+- The image showcase linked on the End of Mission screen is decoupled for performance and is an independent site available at the [Cassini Gallery](https://snes19xx.github.io/cassini-gallery/)
+- Assisted during development by Google Gemini (3.1 pro and 3.8 flash) using agy (used to be gemini-cli when I started) and Anthropic's claude (Sonnet and Opus that are available inside agy with regular plan)
