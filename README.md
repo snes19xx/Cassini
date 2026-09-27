@@ -145,11 +145,12 @@ I used several deliberate liberties were taken to create an engaging visual expe
 
 ## Screenshots
 
-<img src="assets/labels.jpg" width="40%">
-<img src="assets/Iapetus.jpg" width="40%">
-<p><p/>
-<img src="assets/blue.jpg" width="40%">
-<img src="assets/arrival.jpg" width="40%">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+  <img src="assets/labels.jpg" style="width: 80%;">
+  <img src="assets/Iapetus.jpg" style="width: 80%;">
+  <img src="assets/blue.jpg" style="width: 80%;">
+  <img src="assets/arrival.jpg" style="width: 80%;">
+</div>
 
 ## Credits and Sources
 
