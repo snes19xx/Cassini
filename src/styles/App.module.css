@@ -488,6 +488,14 @@
   background: var(--panel-bg-chip);
 }
 
+.chromeBtnActive:disabled,
+.chromeBtnActive[disabled],
+.chromeBtnActive:disabled:hover,
+.chromeBtnActive[disabled]:hover {
+  background: var(--color-fg-faint);
+  color: var(--color-fg-dim);
+}
+
 .tableauVeil {
   position: absolute;
   inset: 0;

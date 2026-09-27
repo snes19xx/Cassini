@@ -22,7 +22,7 @@
   --font-display: "Cormorant Garamond", "Times New Roman", Georgia, serif;
   --font-serif: "Lora", "Times New Roman", Georgia, serif;
   --font-eyebrow: "Cormorant Garamond", "Times New Roman", Georgia, serif;
-  --font-sans: var(--font-mono);
+  --font-sans: sans-serif;
 
   --tracking-01: 0.1em;
   --tracking-02: 0.12em;

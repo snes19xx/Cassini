@@ -447,11 +447,12 @@ export default function App() {
             type="button"
             className={`${styles.chromeBtn}${showLabels ? ` ${styles.chromeBtnActive}` : ""}`}
             onClick={() => {
-              if (!labelsAvailable) return;
+              if (!labelsAvailable && !showLabels) return;
               toggleLabels();
             }}
             aria-pressed={showLabels}
-            disabled={!labelsAvailable}
+            // Turning labels off stays available wherever they are on.
+            disabled={!labelsAvailable && !showLabels}
             title={
               labelsAvailable
                 ? "Toggle labels overlay"

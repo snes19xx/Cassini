@@ -239,8 +239,7 @@ export const useMissionStore = create<MissionState>((set) => ({
           _preLabelModel: s.activeModel,
           activeModel: LABEL_MODEL,
           cameraResetNonce: s.cameraResetNonce + 1,
-          // defaults to TOP so labels show right away; nonce forces a
-          // re-snap even if inspectionView was already "top"
+          // The nonce forces a re-snap even when the view is already FRONT.
           inspectionView: "front",
           inspectionViewNonce: s.inspectionViewNonce + 1,
         };

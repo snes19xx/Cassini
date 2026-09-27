@@ -9,13 +9,13 @@
   --eom-accent: #7e7b32;
   --eom-accent-wash: rgba(126, 123, 50, 0.12);
 
-  --eom-title-font: var(--font-mono);
+  --eom-title-font: var(--font-display);
   --eom-title-size: clamp(34px, 6vh, 62px);
   --eom-title-tracking: var(--tracking-05);
   --eom-title-weight: var(--weight-regular);
   --eom-title-transform: uppercase;
-  --eom-copy-font: var(--font-mono);
-  --eom-copy-size: clamp(12px, 1.5vh, 15px);
+  --eom-copy-font: var(--font-sans);
+  --eom-copy-size: clamp(16px, 1.5vh, 24px);
   --eom-copy-lh: 1.7;
 
   position: absolute;
@@ -75,8 +75,8 @@
 }
 
 [data-eom-theme="blueprint"] .backdrop {
-  --grid-major-alpha: 0.03;
-  --grid-minor-alpha: 0.022;
+  --grid-major-alpha: 0.01;
+  --grid-minor-alpha: 0.01;
   background-color: #0b2e55;
   background-image:
     radial-gradient(
@@ -228,7 +228,7 @@
 }
 
 .eyebrow {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-10);
   letter-spacing: var(--tracking-06);
   text-transform: uppercase;
@@ -252,7 +252,7 @@
   font-size: var(--eom-copy-size);
   line-height: var(--eom-copy-lh);
   color: var(--eom-fg-muted);
-  max-width: 54ch;
+  max-width: 94ch;
   text-wrap: pretty;
 }
 
@@ -268,7 +268,7 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-11);
   letter-spacing: var(--tracking-05);
   text-transform: uppercase;
