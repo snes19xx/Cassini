@@ -17,6 +17,10 @@ body,
 
 html {
   background: var(--scene-bg);
+  /* Phones lay out wider than the screen (index.html), which triggers
+     Safari text inflation and Chrome font boosting. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {

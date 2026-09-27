@@ -3,6 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Phones get the desktop layout zoomed to fit, the way the browser's
+      "desktop site" mode does. Inline to land before first layout.
+    -->
+    <script>
+      (function () {
+        var PORTRAIT_LAYOUT_WIDTH = 980;
+        // iOS Safari never swaps screen.width on rotation.
+        var shortSide = Math.min(screen.width, screen.height);
+        var longSide = Math.max(screen.width, screen.height);
+        if (!matchMedia("(pointer: coarse)").matches || shortSide >= 500)
+          return;
+        var meta = document.querySelector('meta[name="viewport"]');
+        var landscape = matchMedia("(orientation: landscape)");
+        function apply() {
+          // Landscape scales by the aspect to hold the portrait text size.
+          var width = landscape.matches
+            ? Math.round((PORTRAIT_LAYOUT_WIDTH * longSide) / shortSide)
+            : PORTRAIT_LAYOUT_WIDTH;
+          meta.setAttribute("content", "width=" + width);
+        }
+        apply();
+        landscape.addEventListener("change", apply);
+      })();
+    </script>
 
     <title>Cassini-Huygens Mission</title>
     <meta name="theme-color" content="#000000" />
@@ -21,11 +46,7 @@
       content="Fly Cassini's 20-year journey, launch to the final plunge into Saturn, in under five minutes."
     />
 
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="/favicon.svg"
-    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- The Editorial theme pulls these two faces from Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
