@@ -1,6 +1,6 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLiveLabelAnchors } from "../../hooks/useLiveLabelAnchors";
 import type { AnchorPoint } from "../../hooks/useProjectedPoints";
@@ -625,7 +625,9 @@ export function Spacecraft() {
           huygensHasSeparated={huygensHasSeparated}
           modelScale={modelScale}
         />
-        <HuygensSeparation />
+        <Suspense fallback={null}>
+          <HuygensSeparation />
+        </Suspense>
         <RingCrossingFlash />
       </group>
     );
@@ -642,7 +644,9 @@ export function Spacecraft() {
       />
       {activeModel !== "CassiniHuygensAwithout_Cassini.glb" &&
         activeModel !== "CassiniHuygensAwithoutHyugens.glb" && (
-          <HuygensSeparation />
+          <Suspense fallback={null}>
+            <HuygensSeparation />
+          </Suspense>
         )}
       <RingCrossingFlash />
     </group>

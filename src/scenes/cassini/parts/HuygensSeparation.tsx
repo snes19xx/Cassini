@@ -33,6 +33,26 @@ export function HuygensSeparation() {
         ? AFTER_WINDOW
         : s.currentT,
   );
+
+  if (currentT === BEFORE_WINDOW || currentT === AFTER_WINDOW) return null;
+  const tableau = getActiveTableau(currentT);
+  if (tableau.id !== "titan_huygens") return null;
+
+  const startOffset = (tableau.cassiniOffset ?? [0, 0, 0]) as [
+    number,
+    number,
+    number,
+  ];
+  return <HuygensProbe currentT={currentT} startOffset={startOffset} />;
+}
+
+function HuygensProbe({
+  currentT,
+  startOffset,
+}: {
+  currentT: number;
+  startOffset: [number, number, number];
+}) {
   const { scene } = useGLTF("/assets/CassiniHuygensAwithout_Cassini.glb");
   const clonedScene = useMemo(() => scene.clone(), [scene]);
   const renderMode = useMissionStore((s) => s.renderMode);
@@ -103,15 +123,6 @@ export function HuygensSeparation() {
     }
   });
 
-  if (currentT === BEFORE_WINDOW || currentT === AFTER_WINDOW) return null;
-  const tableau = getActiveTableau(currentT);
-  if (tableau.id !== "titan_huygens") return null;
-
-  const startOffset = (tableau.cassiniOffset ?? [0, 0, 0]) as [
-    number,
-    number,
-    number,
-  ];
   const p = getHuygensPos(currentT, startOffset, _probePos);
   const position: [number, number, number] = [p.x, p.y, p.z];
 
@@ -121,5 +132,3 @@ export function HuygensSeparation() {
     </group>
   );
 }
-
-useGLTF.preload("/assets/CassiniHuygensAwithout_Cassini.glb");
