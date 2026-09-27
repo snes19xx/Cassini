@@ -139,6 +139,12 @@ export function TransitionDriver() {
     // the two orbital tableaus; a fly here would fight it mid-arc.
     if (isOrbitalTableau(tableauId) && isOrbitalTableau(prevId)) return;
 
+    // Chase and POV ease in from wherever the camera is, fov included. A fly
+    // to the wide preset first reads as a jump out and back in.
+    if (isOrbitalTableau(tableauId) && state.finaleCameraMode !== "wide") {
+      return;
+    }
+
     if (isTerminalTableau(tableauId)) return;
 
     // ArrivalCameraDriver drives the camera from its first frame.

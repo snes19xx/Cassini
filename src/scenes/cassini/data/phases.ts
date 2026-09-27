@@ -228,11 +228,11 @@ export function eventsAllOutOfReach(
   );
 }
 
-// Ring-crossing flash trigger times: one for ring_dive's single crossing,
+// Ring-crossing flash trigger times: RING DIVE's B-ring punch-through, then
 // one each for the five Final Five atmospheric passes. stateAt.ts consumes
-// the same list.
+// the same list, and finaleOrbit.test.ts pins the first to the trajectory.
 export const RING_CROSSING_T_VALUES: number[] = [
-  0.9902, // ring_dive crossing
+  0.981872, // ring_dive: B-ring punch-through
   0.995565,
   0.996453,
   0.99734,

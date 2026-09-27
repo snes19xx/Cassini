@@ -26,6 +26,8 @@ import { TitanShoulderCamera } from "./parts/TitanShoulderCamera";
 import { TransitionDriver } from "./parts/TransitionDriver";
 import { Spacecraft } from "./Spacecraft";
 
+const CHASE_ZOOM_MIN = 15;
+
 function SceneControls() {
   const inspectionLocked = useMissionStore(
     (s) => s.showLabels && s.inspectionView !== null && s.currentT < 0.001,
@@ -55,6 +57,10 @@ function SceneControls() {
   // object every call, which fails zustand's equality check every time.
   const zoomMin = useMissionStore((s) => {
     const tab = getActiveTableau(s.currentT);
+    // Chase orbits Cassini 40 units off; a grab must not throw it to 400.
+    if (s.finaleCameraMode === "thirdPerson" && isOrbitalTableau(tab.id)) {
+      return CHASE_ZOOM_MIN;
+    }
     return s.currentT < 0.001 ? tab.zoom.minDist * 0.7 : tab.zoom.minDist;
   });
   const zoomMax = useMissionStore((s) => {

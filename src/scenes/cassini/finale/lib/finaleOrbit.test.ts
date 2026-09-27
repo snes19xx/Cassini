@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
+import { RING_CROSSING_T_VALUES } from "../../data/phases";
 import { missionToDisplay } from "../../lib/tRemap";
 import {
   APOAPSE,
@@ -130,5 +131,10 @@ describe("finaleOrbit", () => {
     expect(radii[1]).toBeGreaterThan(RING_INNER);
     expect(radii[1]).toBeLessThan(RING_OUTER);
     expect(radii[2]).toBeLessThan(RING_INNER);
+  });
+
+  it("matches the B-ring crossing listed in phases.ts", () => {
+    const punch = nearCrossings()[1]!;
+    expect(RING_CROSSING_T_VALUES[0]).toBeCloseTo(punch.t, 5);
   });
 });

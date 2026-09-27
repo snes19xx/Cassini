@@ -8,10 +8,15 @@ import { useMissionStore } from "../../store/missionStore";
 import { INSPECTION_VIEWS } from "./data/inspectionViews";
 import {
   HUYGENS_SEPARATION_T,
+  isOrbitalTableau,
   isTerminalTableau,
 } from "./data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "./data/tableaus";
 import { useCameraDebugStore } from "./finale/lib/cameraDebug";
+import {
+  ORBITAL_MODEL_SCALE,
+  WIDE_MODEL_SCALE,
+} from "./finale/lib/finaleOrbit";
 import { useCassiniDebugStore } from "./finale/lib/cassiniDebug";
 import { getPlungeSample } from "./finale/lib/plungeTrajectory";
 import {
@@ -56,6 +61,10 @@ const HEAT_YELLOW = new THREE.Color("#ffc83c");
 const HEAT_WHITE = new THREE.Color("#fff4e8");
 const HEAT_BLUE = new THREE.Color("#8fd2ff");
 export const HULL_GROUP_NAME = "cassiniHull";
+
+// foil_gold's base colour in the GLB.
+const GOLD_SHINE = new THREE.Color(1.0, 0.66, 0.08);
+const GOLD_SHINE_INTENSITY = 0.6;
 
 const _heatScratch = new THREE.Color();
 
@@ -323,6 +332,8 @@ export function Spacecraft() {
   const livePosRef = useRef(new THREE.Vector3(0, 0, 0));
   // Tableau id from the previous frame, for the snap on the way out of the arrival.
   const prevTableauIdRef = useRef<string>("");
+  const goldShineOnRef = useRef(false);
+  const orbitalScaleRef = useRef(ORBITAL_MODEL_SCALE);
   const driftClockRef = useRef(0);
   const liveDriftAmpRef = useRef(6.5);
   const liveDriftSpeedRef = useRef(0.18);
@@ -495,6 +506,24 @@ export function Spacecraft() {
         }
       }
 
+      // Wide views the whole orbit from ~2200 out, where the craft is drawn
+      // larger; a camera-mode switch eases between the two scales.
+      if (isOrbitalTableau(tableau.id)) {
+        const target =
+          useMissionStore.getState().finaleCameraMode === "wide"
+            ? WIDE_MODEL_SCALE
+            : ORBITAL_MODEL_SCALE;
+        orbitalScaleRef.current = isOrbitalTableau(prevTableauIdRef.current)
+          ? THREE.MathUtils.damp(orbitalScaleRef.current, target, 6, delta)
+          : target;
+        groupRef.current.scale.setScalar(orbitalScaleRef.current);
+      } else if (
+        isOrbitalTableau(prevTableauIdRef.current) &&
+        !isTerminalTableau(tableau.id)
+      ) {
+        groupRef.current.scale.setScalar(modelScale);
+      }
+
       prevTableauIdRef.current = tableau.id;
 
       cassiniWorldPos.copy(groupRef.current.position);
@@ -546,6 +575,7 @@ export function Spacecraft() {
         });
       } else if (needsMaterialResetRef.current) {
         needsMaterialResetRef.current = false;
+        goldShineOnRef.current = false;
         groupRef.current.traverse((child) => {
           if (
             child instanceof THREE.Mesh &&
@@ -556,6 +586,29 @@ export function Spacecraft() {
             child.material.emissiveIntensity = 0.0;
           }
         });
+      }
+
+      // In the wide finale view the metallic foil reflects a black sky and
+      // the craft disappears. A faint gold glow keeps it readable.
+      const wantGoldShine =
+        renderMode === "space" &&
+        useMissionStore.getState().finaleCameraMode === "wide" &&
+        isOrbitalTableau(tableau.id);
+      if (wantGoldShine && !goldShineOnRef.current) {
+        goldShineOnRef.current = true;
+        groupRef.current.traverse((child) => {
+          if (
+            child instanceof THREE.Mesh &&
+            child.material instanceof THREE.MeshStandardMaterial &&
+            child.material.name.startsWith("foil_gold")
+          ) {
+            child.material.emissive.copy(GOLD_SHINE);
+            child.material.emissiveIntensity = GOLD_SHINE_INTENSITY;
+          }
+        });
+      } else if (!wantGoldShine && goldShineOnRef.current) {
+        goldShineOnRef.current = false;
+        needsMaterialResetRef.current = true;
       }
     } catch (err) {
       console.error("[Spacecraft useFrame] swallowed error", err);

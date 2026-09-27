@@ -19,6 +19,7 @@ const SATURN_RADIUS = 180;
 const RING_THICKNESS_HALF = 3;
 
 const RING_ORBIT_SPEED = 0.05;
+const CROSSING_R_MAX = 600;
 
 const SUN_DIR = new THREE.Vector3(-400, 80, 200).normalize();
 
@@ -212,7 +213,8 @@ export function RingParticleField() {
     meshRef.current.rotation.y = fieldAngleRef.current;
 
     let boostFactor = 1;
-    if (isOrbital) {
+    // Apoapse crossings are ~1400 out, nowhere near the ring matter.
+    if (isOrbital && ringDiveStateRef.position.length() < CROSSING_R_MAX) {
       const cassiniAbsY = Math.abs(ringDiveStateRef.position.y);
       const closeness = Math.max(
         0,
