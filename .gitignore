@@ -1,6 +1,7 @@
 node_modules
 dist
 public/textures
+ASSETS
 
 # Windows Explorer metadata
 desktop.ini
