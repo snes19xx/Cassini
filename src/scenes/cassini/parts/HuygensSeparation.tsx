@@ -9,6 +9,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { getActiveTableau } from "../data/tableaus";
+import { MOON_TABLEAU_SCALE } from "../Spacecraft";
 import {
   FADE_END,
   SEP_START,
@@ -127,7 +128,7 @@ function HuygensProbe({
   const position: [number, number, number] = [p.x, p.y, p.z];
 
   return (
-    <group ref={groupRef} position={position}>
+    <group ref={groupRef} position={position} scale={MOON_TABLEAU_SCALE}>
       <primitive object={clonedScene} />
     </group>
   );

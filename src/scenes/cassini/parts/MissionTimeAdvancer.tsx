@@ -22,6 +22,6 @@ export function MissionTimeAdvancer() {
       return;
     }
     s.setTime(displayToMission(nextDisplayT));
-  }, -2);
+  }, -3);
   return null;
 }

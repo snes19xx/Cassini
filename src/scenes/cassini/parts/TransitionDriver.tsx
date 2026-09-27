@@ -71,7 +71,6 @@ export function TransitionDriver() {
   const prevTableauIdRef = useRef<string | null>(null);
   const prevNonceRef = useRef<number | null>(null);
 
-  // Runs at priority -1, ahead of every other useFrame.
   const armForFrame = useCallback(() => {
     const state = useMissionStore.getState();
     const tableauId = getActiveTableau(state.currentT).id;
@@ -209,10 +208,11 @@ export function TransitionDriver() {
   }, [camera, controls, setPhase, setFly, setTraverse]);
 
   // Arm before latching the frame's clock, since arming can cancel the fly.
+  // Priority -2: after MissionTimeAdvancer, before Spacecraft reads the traverse
   useFrame(() => {
     armForFrame();
     beginTransitionFrame();
-  }, -1);
+  }, -2);
 
   useFrame(() => {
     if (phaseRef.current !== "flying") return;

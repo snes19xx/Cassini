@@ -56,6 +56,8 @@ const BLUEPRINT_MODEL_SCALE = 3.5;
 const SPACE_MODEL_SCALE = 2.5;
 const HOMEPAGE_T_EPSILON = 0.001;
 
+export const MOON_TABLEAU_SCALE = 0.17;
+
 const HEAT_RED = new THREE.Color("#ff2a00");
 const HEAT_ORANGE = new THREE.Color("#ff6600");
 const HEAT_YELLOW = new THREE.Color("#ffc83c");
@@ -66,6 +68,10 @@ export const HULL_GROUP_NAME = "cassiniHull";
 // foil_gold's base colour in the GLB.
 const GOLD_SHINE = new THREE.Color(1.0, 0.66, 0.08);
 const GOLD_SHINE_INTENSITY = 0.6;
+// Bounding radius of the hull GLB, model units
+const HULL_RADIUS = 12;
+const SHINE_FULL_BELOW = 0.06;
+const SHINE_GONE_ABOVE = 0.15;
 
 const _heatScratch = new THREE.Color();
 
@@ -334,7 +340,14 @@ export function Spacecraft() {
       : renderMode === "blueprint"
         ? BLUEPRINT_MODEL_SCALE
         : SPACE_MODEL_SCALE;
-  const modelScale = isHomepage && !showLabels ? themeScale : 1;
+  const isMoonTableau = useMissionStore(
+    (s) => getActiveTableau(s.currentT).kind === "moon",
+  );
+  const baseModelScale = isHomepage && !showLabels ? themeScale : 1;
+  const modelScale =
+    isMoonTableau && !isHomepage
+      ? baseModelScale * MOON_TABLEAU_SCALE
+      : baseModelScale;
 
   useCameraFraming(cameraResetNonce, showLabels);
 
@@ -598,13 +611,31 @@ export function Spacecraft() {
         });
       }
 
-      // In the wide finale view the metallic foil reflects a black sky and
-      // the craft disappears. A faint gold glow keeps it readable.
-      const wantGoldShine =
+      // Faint gold glow while the craft is small on screen
+      let shine = 0;
+      if (
         renderMode === "space" &&
-        useMissionStore.getState().finaleCameraMode === "wide" &&
-        isOrbitalTableau(tableau.id);
-      if (wantGoldShine && !goldShineOnRef.current) {
+        glow === 0 &&
+        camera instanceof THREE.PerspectiveCamera &&
+        (tableau.kind === "moon" ||
+          (useMissionStore.getState().finaleCameraMode === "wide" &&
+            isOrbitalTableau(tableau.id)))
+      ) {
+        const dist = camera.position.distanceTo(groupRef.current.position);
+        const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        // Hull radius as a fraction of half the viewport height
+        const screenSize =
+          (groupRef.current.scale.x * HULL_RADIUS) /
+          Math.max(1e-6, dist * tanHalfFov);
+        shine =
+          1 -
+          THREE.MathUtils.smoothstep(
+            screenSize,
+            SHINE_FULL_BELOW,
+            SHINE_GONE_ABOVE,
+          );
+      }
+      if (shine > 0) {
         goldShineOnRef.current = true;
         groupRef.current.traverse((child) => {
           if (
@@ -613,10 +644,10 @@ export function Spacecraft() {
             child.material.name.startsWith("foil_gold")
           ) {
             child.material.emissive.copy(GOLD_SHINE);
-            child.material.emissiveIntensity = GOLD_SHINE_INTENSITY;
+            child.material.emissiveIntensity = GOLD_SHINE_INTENSITY * shine;
           }
         });
-      } else if (!wantGoldShine && goldShineOnRef.current) {
+      } else if (goldShineOnRef.current) {
         goldShineOnRef.current = false;
         needsMaterialResetRef.current = true;
       }

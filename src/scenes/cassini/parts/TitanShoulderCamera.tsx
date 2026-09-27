@@ -5,7 +5,7 @@
 
 import { useMissionStore } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { getActiveTableau } from "../data/tableaus";
 import { cassiniWorldPos } from "../lib/cassiniAnchor";
@@ -19,6 +19,8 @@ const SHOULDER_SIDE = 9;
 
 // Damp rate for position and aim, slow enough to read as a camera move.
 const RIG_LAMBDA = 3.2;
+
+const DRAG_PX = 4;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
@@ -34,8 +36,45 @@ export function TitanShoulderCamera() {
     camera: THREE.Camera;
     controls: { target?: THREE.Vector3 } | null;
   };
+  const gl = useThree((s) => s.gl);
   const aimRef = useRef(new THREE.Vector3());
   const wasDrivingRef = useRef(false);
+
+  // A drag or scroll during the descent switches to wide
+  useEffect(() => {
+    const el = gl.domElement;
+    let down: { x: number; y: number } | null = null;
+    const toWide = () => {
+      const s = useMissionStore.getState();
+      if (useTransitionStore.getState().phase === "flying") return;
+      if (titanCameraMode(s.currentT, s.titanCameraOverride) === "shoulder") {
+        s.setTitanCameraOverride("wide");
+      }
+    };
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY };
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > DRAG_PX) {
+        down = null;
+        toWide();
+      }
+    };
+    const onUp = () => {
+      down = null;
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    el.addEventListener("wheel", toWide, { passive: true });
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      el.removeEventListener("wheel", toWide);
+    };
+  }, [gl]);
 
   useFrame((_, deltaRaw) => {
     // Backgrounded tabs deliver multi-second deltas, which damp() turns into
