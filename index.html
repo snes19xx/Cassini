@@ -56,8 +56,13 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
     />
 
-    <!-- Never preload the GLBs with as="fetch": three's FileLoader sends
-         credentials, so the browser fetches each model twice. -->
+    <!-- Needs crossorigin to match three's FileLoader request -->
+    <link
+      rel="preload"
+      href="/assets/CassiniHuygensA_geo.glb"
+      as="fetch"
+      crossorigin="anonymous"
+    />
   </head>
   <body>
     <!-- black background here, not CSS, so there's no white flash pre-paint -->
