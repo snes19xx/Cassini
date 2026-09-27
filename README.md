@@ -145,11 +145,11 @@ I used several deliberate liberties were taken to create an engaging visual expe
 
 ## Screenshots
 
-<img src="assets/labels.jpg" width="48.5%">
-<img src="assets/Iapetus.jpg" width="48.5%">
+<img src="assets/labels.jpg" width="40%">
+<img src="assets/Iapetus.jpg" width="40%">
 <p><p/>
-<img src="assets/blue.jpg" width="48.5%">
-<img src="assets/arrival.jpg" width="48.5%">
+<img src="assets/blue.jpg" width="40%">
+<img src="assets/arrival.jpg" width="40%">
 
 ## Credits and Sources
 
