@@ -3,6 +3,7 @@
 // Moon texture lifecycle service: every moon holds an always-resident
 // placeholder, and at most one at a time also holds the optimized texture.
 
+import { assetUrl } from "@/lib/assetUrl";
 import * as THREE from "three";
 import { TABLEAUS, getActiveTableau } from "../data/tableaus";
 
@@ -240,7 +241,8 @@ async function loadTexture(
   const label = url.split("/").pop() ?? url;
   const t0 = performance.now();
   try {
-    const res = await fetch(url, { signal });
+    // plain fetch skips assetUrl rewrite
+    const res = await fetch(assetUrl(url), { signal });
     if (!res.ok) {
       console.warn(`[TextureService] HTTP ${res.status} for ${url}`);
       return null;
