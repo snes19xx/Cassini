@@ -1,8 +1,8 @@
 // src/scenes/cassini/index.tsx
 
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { Suspense, useEffect } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { Projector } from "../../components/Labels/Projector";
 import { useMissionStore } from "../../store/missionStore";
@@ -112,6 +112,28 @@ function CameraAndRendererSetup() {
   return null;
 }
 
+// At fractional zoom three's floor(cssSize * dpr) buffer can land a device
+// pixel short of the composited box, and the browser's stretch smears 1px
+// wireframe lines into half-bright pairs. Sizing the CSS box to buffer/dpr
+// keeps it 1:1, checked per frame because R3F rewrites the style on resize.
+function PixelAlignedCanvas() {
+  const gl = useThree((s) => s.gl);
+  const applied = useRef({ w: "", h: "" });
+  useFrame(() => {
+    const canvas = gl.domElement;
+    if (canvas.width === 0 || canvas.height === 0) return;
+    const { style } = canvas;
+    if (style.width === applied.current.w && style.height === applied.current.h)
+      return;
+    const dpr = gl.getPixelRatio();
+    style.width = `${canvas.width / dpr}px`;
+    style.height = `${canvas.height / dpr}px`;
+    // Read back the serialized values to match next frame's compare.
+    applied.current = { w: style.width, h: style.height };
+  });
+  return null;
+}
+
 export function CassiniScene() {
   return (
     <Canvas
@@ -119,6 +141,7 @@ export function CassiniScene() {
       gl={{ logarithmicDepthBuffer: true, antialias: true }}
     >
       <CameraAndRendererSetup />
+      <PixelAlignedCanvas />
       <MissionTimeAdvancer />
       <SceneEnvironment />
       <TextureServiceDriver />
