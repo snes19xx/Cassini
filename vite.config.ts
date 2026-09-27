@@ -4,8 +4,7 @@ import { defineConfig } from "vite";
 import glsl from "vite-plugin-glsl";
 
 export default defineConfig({
-  // Project page at snes19xx.github.io/cassini/.
-  base: "/cassini/",
+  base: "/Cassini/",
 
   plugins: [
     react(),
