@@ -63,7 +63,7 @@ const CHAPTER_SPECS = [
   {
     id: "finale",
     label: "GRAND FINALE",
-    from: "finale_approach",
+    from: "finale_swing_around",
     to: "finale_disintegration",
     share: 0.15,
   },

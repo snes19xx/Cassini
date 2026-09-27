@@ -1,7 +1,7 @@
 // src/scenes/cassini/finale/parts/RingDiveCameraDriver.tsx
 //
 // Per-frame camera writer for the two orbital finale tableaus. thirdPerson
-// holds a chase framing outward from Saturn beyond Cassini, looking back.
+// sits behind and above Cassini, pitched to keep Saturn's horizon in frame.
 
 import type { FinaleCameraMode } from "@/store/missionStore";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -9,21 +9,21 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useMissionStore } from "../../../../store/missionStore";
 import { isOrbitalTableau } from "../../data/missionConstants";
-import { getActiveTableau } from "../../data/tableaus";
+import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "../../data/tableaus";
 import { useTransitionStore } from "../../lib/useTransitionStore";
 import { ringDiveStateRef } from "../../Spacecraft";
+import { chaseCameraPose } from "../lib/chaseCamera";
 
-// Cassini's model + booms is ~26 units, so a small outward distance puts
-// the camera inside the structure.
-const CHASE_OUTWARD_DIST = 150;
-const CHASE_UP = 55;
+const CHASE_FWD_DAMP = 3;
+const BLEND_IN_MS = 1500;
+// Arriving from THREE CRESCENTS is a long ease out of its telephoto pose.
+const ENTRY_BLEND_MS = 2800;
 const POV_FORWARD = 2;
 const POV_LOOK_FORWARD = 60;
 const POV_LOOK_SENS = 0.003; // rad per pixel dragged
 const POV_PITCH_LIMIT = 1.35; // rad, short of the pole
 
 const DEFAULT_UP = new THREE.Vector3(0, 1, 0);
-const _outward = new THREE.Vector3();
 const _lookTarget = new THREE.Vector3();
 const _povDir = new THREE.Vector3();
 const _povRight = new THREE.Vector3();
@@ -44,6 +44,16 @@ export function RingDiveCameraDriver() {
   const povYawRef = useRef(0);
   const povPitchRef = useRef(0);
   const povDragRef = useRef<{ x: number; y: number } | null>(null);
+  // Damped heading, and its last usable horizontal part.
+  const chaseFwdRef = useRef(new THREE.Vector3());
+  const chaseLevelRef = useRef(new THREE.Vector3(1, 0, 0));
+  // Pose the camera held when this driver took over, eased out of.
+  const blendStartMsRef = useRef(-Infinity);
+  const blendMsRef = useRef(BLEND_IN_MS);
+  const blendFromFovRef = useRef(DEFAULT_TABLEAU_FOV);
+  const blendFromPosRef = useRef(new THREE.Vector3());
+  const blendFromTargetRef = useRef(new THREE.Vector3());
+  const blendFromUpRef = useRef(new THREE.Vector3(0, 1, 0));
   const tableauId = useMissionStore((s) => getActiveTableau(s.currentT).id);
 
   // A mode or tableau change drops the grab-to-take-over state, unless it's
@@ -130,7 +140,7 @@ export function RingDiveCameraDriver() {
     };
   }, [gl]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const t = useMissionStore.getState().currentT;
     const tableau = getActiveTableau(t);
     const isOrbital = isOrbitalTableau(tableau.id);
@@ -175,7 +185,24 @@ export function RingDiveCameraDriver() {
       return;
     }
 
+    const snapChase = !wasActiveRef.current || modeChanged;
     if (!wasActiveRef.current) savedUpRef.current.copy(camera.up);
+    if (snapChase) {
+      blendStartMsRef.current = performance.now();
+      blendMsRef.current = wasActiveRef.current ? BLEND_IN_MS : ENTRY_BLEND_MS;
+      blendFromFovRef.current =
+        camera instanceof THREE.PerspectiveCamera
+          ? camera.fov
+          : DEFAULT_TABLEAU_FOV;
+      blendFromPosRef.current.copy(camera.position);
+      blendFromUpRef.current.copy(camera.up);
+      if (controls?.target) {
+        blendFromTargetRef.current.copy(controls.target);
+      } else {
+        camera.getWorldDirection(blendFromTargetRef.current);
+        blendFromTargetRef.current.multiplyScalar(100).add(camera.position);
+      }
+    }
     wasActiveRef.current = true;
     camera.up.copy(DEFAULT_UP);
 
@@ -201,16 +228,37 @@ export function RingDiveCameraDriver() {
         .copy(camera.position)
         .addScaledVector(_povDir, POV_LOOK_FORWARD);
     } else {
-      _outward.copy(pos);
-      const r = _outward.length();
-      if (r < 1e-3) _outward.set(1, 0, 0);
-      else _outward.multiplyScalar(1 / r);
+      const chaseFwd = chaseFwdRef.current;
+      if (snapChase) {
+        chaseFwd.copy(fwd);
+      } else {
+        const k = 1 - Math.exp(-CHASE_FWD_DAMP * Math.min(delta, 0.1));
+        chaseFwd.lerp(fwd, k);
+      }
+      chaseCameraPose(
+        pos,
+        chaseFwd,
+        t,
+        chaseLevelRef.current,
+        camera.position,
+        camera.up,
+      );
+      _lookTarget.copy(pos);
+    }
 
-      camera.position
-        .copy(pos)
-        .addScaledVector(_outward, CHASE_OUTWARD_DIST)
-        .addScaledVector(DEFAULT_UP, CHASE_UP);
-      _lookTarget.set(0, 0, 0);
+    const fov = tableau.camera.fov ?? DEFAULT_TABLEAU_FOV;
+    const b =
+      (performance.now() - blendStartMsRef.current) / blendMsRef.current;
+    const e = b < 1 ? b * b * (3 - 2 * b) : 1;
+    if (e < 1) {
+      camera.position.lerpVectors(blendFromPosRef.current, camera.position, e);
+      _lookTarget.lerpVectors(blendFromTargetRef.current, _lookTarget, e);
+      camera.up.lerpVectors(blendFromUpRef.current, camera.up, e);
+      if (camera.up.lengthSq() < 1e-6) camera.up.copy(DEFAULT_UP);
+      camera.up.normalize();
+    }
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = THREE.MathUtils.lerp(blendFromFovRef.current, fov, e);
     }
 
     if (controls?.target) controls.target.copy(_lookTarget);

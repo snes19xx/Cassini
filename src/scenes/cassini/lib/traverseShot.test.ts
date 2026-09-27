@@ -84,7 +84,7 @@ describe("isTraverseBoundary", () => {
     ["family_portrait", "rhea"],
     ["family_portrait", "three_crescents"],
     ["three_crescents", "family_portrait"],
-    ["three_crescents", "finale_approach"],
+    ["three_crescents", "finale_swing_around"],
     ["cruise_early", "saturn_arrival"],
   ])("stays out of %s -> %s", (prev, next) => {
     expect(isTraverseBoundary(prev, next)).toBe(false);

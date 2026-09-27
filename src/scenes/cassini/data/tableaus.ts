@@ -473,50 +473,16 @@ export const TABLEAUS: Tableau[] = [
     effects: { crescentLighting: true, hideCassini: true, rings: true },
   },
 
-  // Elliptical approach: Cassini hangs at apoapse above the north pole,
-  // then swings down into the polar pass. Saturn sits upper-frame, off
-  // center, so the descent looks as a dive and not just a flyover.
-  {
-    id: "finale_approach",
-    kind: "finale",
-    tStart: 0.945,
-    tEnd: 0.955,
-    label: "FINAL APPROACH",
-    cassiniOffset: [250, 450, 250],
-    camera: {
-      pos: [800, 600, 1200],
-      lookAt: [50, -100, 100],
-    },
-    zoom: { minDist: 200, maxDist: 5000 },
-    effects: { rings: true },
-  },
-
-  // Top-down over the north pole, hexagon storm in frame.
-  {
-    id: "finale_polar",
-    kind: "finale",
-    tStart: 0.955,
-    tEnd: 0.963,
-    label: "POLAR PASSAGE",
-    cassiniOffset: [60, 420, 90],
-    camera: {
-      pos: [40, 900, 60],
-      lookAt: [0, 0, 0],
-    },
-    zoom: { minDist: 200, maxDist: 3000 },
-    effects: { rings: true },
-  },
-
-  // One full Kepler revolution just outside the F-ring's outer edge.
-  // cassiniOffset/camera are the static wide-mode pose; a per-frame
-  // trajectory takes over position while this tableau is active.
+  // Northern pass over the pole, periapse just outside the F ring, out to
+  // apoapse. Position comes from finaleOrbit; the offset is its start point
+  // and the camera is the wide-mode preset.
   {
     id: "finale_swing_around",
     kind: "finale",
-    tStart: 0.963,
+    tStart: 0.945,
     tEnd: 0.978,
     label: "SWING AROUND",
-    cassiniOffset: [460, 0, 0],
+    cassiniOffset: [-151, 635, -302],
     camera: {
       pos: [1500, 700, 1500],
       lookAt: [0, 0, 0],
@@ -525,16 +491,15 @@ export const TABLEAUS: Tableau[] = [
     effects: { rings: true },
   },
 
-  // Half-revolution Kepler orbit, apoapse to periapse, crossing INSIDE the
-  // visible ring band, unlike the swing above which stays just outside it.
-  // cassiniOffset is the apoapse start position.
+  // From apoapse, punch through the B ring, back out, then thread the D-ring
+  // gap and end at periapse. The offset is the apoapse start.
   {
     id: "finale_ring_dive",
     kind: "finale",
     tStart: 0.978,
     tEnd: TERMINAL_T_START,
     label: "RING DIVE",
-    cassiniOffset: [0, 697, 61],
+    cassiniOffset: [1209, 146, -691],
     camera: {
       pos: [1500, 700, 1500],
       lookAt: [0, 0, 0],
@@ -635,6 +600,6 @@ export const JUMP_TO_TABLEAU: Record<string, string> = {
   DIONE: "dione",
   FAMILY: "family_portrait",
   CRESCENTS: "three_crescents",
-  FINALE: "finale_approach",
+  FINALE: "finale_swing_around",
   ATMOSPHERE: "finale_atmospheric",
 };

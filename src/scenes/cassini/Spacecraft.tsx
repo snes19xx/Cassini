@@ -11,7 +11,6 @@ import {
   isTerminalTableau,
 } from "./data/missionConstants";
 import { DEFAULT_TABLEAU_FOV, getActiveTableau } from "./data/tableaus";
-import { getApproachCassiniPos } from "./finale/lib/approachTrajectory";
 import { useCameraDebugStore } from "./finale/lib/cameraDebug";
 import { useCassiniDebugStore } from "./finale/lib/cassiniDebug";
 import { getPlungeSample } from "./finale/lib/plungeTrajectory";
@@ -331,9 +330,7 @@ export function Spacecraft() {
   useEffect(() => {
     const t = useMissionStore.getState().currentT;
     const tableau = getActiveTableau(t);
-    if (tableau.id === "finale_approach") {
-      getApproachCassiniPos(t, livePosRef.current);
-    } else if (tableau.id === "finale_swing_around") {
+    if (tableau.id === "finale_swing_around") {
       getSwingAroundCassiniPos(t, livePosRef.current);
     } else if (tableau.id === "finale_ring_dive") {
       getRingDiveCassiniPos(t, livePosRef.current);
@@ -375,9 +372,7 @@ export function Spacecraft() {
 
       const disintegrationAmount = state.effects.disintegration || 0;
 
-      if (tableau.id === "finale_approach") {
-        getApproachCassiniPos(t, targetPosRef.current);
-      } else if (tableau.id === "finale_swing_around") {
+      if (tableau.id === "finale_swing_around") {
         const sample = getSwingAroundSample(t);
         targetPosRef.current.copy(sample.position);
         ringDiveStateRef.position.copy(sample.position);
