@@ -56,9 +56,14 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
     />
 
-    <!-- Never preload the GLBs with as="fetch": three's FileLoader sends
-         credentials, so the browser fetches each model twice. -->
-    <script type="module" crossorigin src="/Cassini/assets/index-DHtm8ISb.js"></script>
+    <!-- Needs crossorigin to match three's FileLoader request -->
+    <link
+      rel="preload"
+      href="/Cassini/assets/CassiniHuygensA_geo.glb"
+      as="fetch"
+      crossorigin="anonymous"
+    />
+    <script type="module" crossorigin src="/Cassini/assets/index-CSO-bSd_.js"></script>
     <link rel="modulepreload" crossorigin href="/Cassini/assets/rolldown-runtime-hePW80VL.js">
     <link rel="modulepreload" crossorigin href="/Cassini/assets/three-vendor-BNJgjhQX.js">
     <link rel="modulepreload" crossorigin href="/Cassini/assets/r3f-vendor-DKQ1otq-.js">
