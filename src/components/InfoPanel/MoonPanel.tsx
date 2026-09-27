@@ -3,6 +3,7 @@
 // Fact panel for a moon clicked in the labels overlay, styled off
 // InfoPanel.module.css so the mission panel can stay open beside it.
 
+import { assetUrl } from "@/lib/assetUrl";
 import { getMoonFact, moonLabelledIn } from "@/scenes/cassini/data/moonFacts";
 import { getActiveTableau } from "@/scenes/cassini/data/tableaus";
 import { infoPanelVisible, useMissionStore } from "@/store/missionStore";
@@ -76,7 +77,7 @@ export function MoonPanel() {
             {figureAfter === i && fact.figure && (
               <img
                 className={styles.detailFigure}
-                src={fact.figure.src}
+                src={assetUrl(fact.figure.src)}
                 alt={fact.figure.alt}
                 loading="lazy"
                 decoding="async"

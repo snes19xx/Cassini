@@ -1,10 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import * as THREE from "three";
 
-import "@/styles/tokens.css";
+import { assetUrl } from "@/lib/assetUrl";
 import "@/styles/global.css";
+import "@/styles/tokens.css";
 
 import App from "./App";
+
+// Asset paths are written from the site root.
+THREE.DefaultLoadingManager.setURLModifier(assetUrl);
 
 const root = document.getElementById("root");
 

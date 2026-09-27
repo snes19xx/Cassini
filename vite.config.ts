@@ -4,6 +4,9 @@ import { defineConfig } from "vite";
 import glsl from "vite-plugin-glsl";
 
 export default defineConfig({
+  // Project page at snes19xx.github.io/cassini/.
+  base: "/cassini/",
+
   plugins: [
     react(),
 
@@ -25,7 +28,7 @@ export default defineConfig({
 
   build: {
     target: "es2022",
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         // three barely changes, keep it out of the app chunk
