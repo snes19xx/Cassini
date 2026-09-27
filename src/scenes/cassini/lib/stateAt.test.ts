@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TABLEAUS } from "../data/tableaus";
+import { orientationAt } from "./orientationAt";
 import { stateAt } from "./stateAt";
 import type { StageState } from "./types";
 
@@ -44,9 +45,10 @@ describe("stateAt", () => {
       expectFiniteStage(s.huygens, `t=${t} huygens`);
       expectFiniteStage(s.mliThermalBlanket, `t=${t} mli`);
       expect(Number.isFinite(s.cameraRadius), `t=${t} cameraRadius`).toBe(true);
+      const orientation = orientationAt(t);
       for (const axis of ["x", "y", "z"] as const) {
         expect(
-          Number.isFinite(s.orientation[axis]),
+          Number.isFinite(orientation[axis]),
           `t=${t} orientation.${axis}`,
         ).toBe(true);
       }

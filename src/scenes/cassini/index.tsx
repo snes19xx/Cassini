@@ -1,5 +1,7 @@
 // src/scenes/cassini/index.tsx
 
+// Evaluates before the module-level GLB preloads
+import "./lib/loaderBase";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef } from "react";

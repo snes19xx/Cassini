@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { AtmosphereNote } from "./components/AtmosphereNote/AtmosphereNote";
 import { BeginMission } from "./components/BeginMission/BeginMission";
 import { SceneErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
+import { HullLoading } from "./components/HullLoading/HullLoading";
 import { InfoPanel } from "./components/InfoPanel/InfoPanel";
 import { MoonPanel } from "./components/InfoPanel/MoonPanel";
 import { MoonLightingToggle } from "./components/MoonLightingToggle/MoonLightingToggle";
@@ -11,7 +12,6 @@ import { TableauTransition } from "./components/TableauTransition/TableauTransit
 import { Timeline } from "./components/Timeline/Timeline";
 import { TitanCameraSwitcher } from "./components/TitanCameraSwitcher/TitanCameraSwitcher";
 import { SpectralSelector } from "./components/TitanSpectralSelector/TitanSpectralSelector";
-import { useProjectionStore } from "./hooks/useProjectedPoints";
 import {
   INSPECTION_VIEWS,
   INSPECTION_VIEW_ORDER,
@@ -35,6 +35,7 @@ import { FinaleRingsDebug } from "./scenes/cassini/finale/ui/FinaleRingsDebug";
 import { MeteorDebug } from "./scenes/cassini/finale/ui/MeteorDebug";
 import { RingBackdropDebug } from "./scenes/cassini/finale/ui/RingBackdropDebug";
 import { infoPanelVisible, useMissionStore } from "./store/missionStore";
+import { useProjectionStore } from "./store/projectionStore";
 import styles from "./styles/App.module.css";
 
 const LABELS_HOMEPAGE_T_EPSILON = 0.001;
@@ -357,6 +358,7 @@ export default function App() {
             <Suspense fallback={null}>
               <CassiniScene />
             </Suspense>
+            <HullLoading />
           </SceneErrorBoundary>
         </div>
       </div>

@@ -1,7 +1,5 @@
 // src/scenes/cassini/data/components.ts
 
-import * as THREE from "three";
-
 export interface StatRow {
   label: string;
   value: string;
@@ -18,7 +16,7 @@ export interface ComponentMetadata {
   // busRelative false: absolute scene-space position, driven by a live mesh
   // ref. busRelative true: local offset from bus centre, rotated by the
   // spacecraft quaternion (scene units run ~0.5x model metres).
-  anchor: THREE.Vector3;
+  anchor: [number, number, number];
   modelRadius: number;
   busRelative: boolean;
 }
@@ -44,7 +42,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Width", value: "4.0 m" },
       { label: "Structure", value: "12-sided Al honeycomb" },
     ],
-    anchor: new THREE.Vector3(0, 0, 0),
+    anchor: [0, 0, 0],
     modelRadius: 3,
     busRelative: false,
   },
@@ -69,7 +67,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Ka-band beamwidth", value: "0.167°" },
       { label: "Ku-band (RADAR)", value: "49.8 dBi @ 13,776.5 MHz" },
     ],
-    anchor: new THREE.Vector3(0.002, 1.932, -0.101),
+    anchor: [0.002, 1.932, -0.101],
     modelRadius: 2,
     busRelative: false,
   },
@@ -97,7 +95,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       },
       { label: "Surface Science", value: "SSP" },
     ],
-    anchor: new THREE.Vector3(0.072, -0.721, -4.587),
+    anchor: [0.072, -0.721, -4.587],
     modelRadius: 1.5,
     busRelative: false,
   },
@@ -120,7 +118,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Boom length", value: "13.0 m" },
     ],
     // MAG is now bus-relative; this anchor field is documentation only.
-    anchor: new THREE.Vector3(1.5, -1.5, -2.5),
+    anchor: [1.5, -1.5, -2.5],
     modelRadius: 1.5,
     busRelative: true,
   },
@@ -147,7 +145,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "WAC spectral", value: "380 – 1050 nm (18 filters)" },
       { label: "Exposure range", value: "5 ms – 1200 s (64 settings)" },
     ],
-    anchor: new THREE.Vector3(0.067, 0.624, 0.06),
+    anchor: [0.067, 0.624, 0.06],
     modelRadius: 1.5,
     busRelative: false,
   },
@@ -169,7 +167,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Alt. res.", value: "40 m at 24 km altitude" },
       { label: "Aperture", value: "High-Gain Antenna (4.0 m)" },
     ],
-    anchor: new THREE.Vector3(0, 1.143, 0),
+    anchor: [0, 1.143, 0],
     modelRadius: 1.5,
     busRelative: false,
   },
@@ -194,7 +192,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "VIMS-IR range", value: "0.85 – 5.1 µm (256 bands)" },
       { label: "Target", value: "Composition mapping (rings, Titan, Saturn)" },
     ],
-    anchor: new THREE.Vector3(0.55, 0.3, 0.5),
+    anchor: [0.55, 0.3, 0.5],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -214,7 +212,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Spectral range", value: "7 – 1,000 µm" },
       { label: "Science", value: "Thermal mapping — atmosphere & rings" },
     ],
-    anchor: new THREE.Vector3(-0.55, 0.3, 0.5),
+    anchor: [-0.55, 0.3, 0.5],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -236,7 +234,7 @@ export const COMPONENTS: ComponentMetadata[] = [
         value: "Atmospheric & plume composition (ionized + neutral species)",
       },
     ],
-    anchor: new THREE.Vector3(0.2, 0.5, 0.65),
+    anchor: [0.2, 0.5, 0.65],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -260,7 +258,7 @@ export const COMPONENTS: ComponentMetadata[] = [
         value: "Atmospheric occultations, ring occultations, aurora",
       },
     ],
-    anchor: new THREE.Vector3(0.65, 0.1, 0.3),
+    anchor: [0.65, 0.1, 0.3],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -289,7 +287,7 @@ export const COMPONENTS: ComponentMetadata[] = [
     // RPWS: the three electric-field antennas mount on the upper bus near
     // the HGA base, so the visible RPWS anchor sits HIGH on the model
     // (positive Y, near top of bus body). Side bias picks one of the booms.
-    anchor: new THREE.Vector3(0.3, 0.75, 0.0),
+    anchor: [0.3, 0.75, 0.0],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -312,7 +310,7 @@ export const COMPONENTS: ComponentMetadata[] = [
     // CAPS sits on the UPPER-LEFT face of the bus body (per reference photo),
     // just below the HGA mount. Slight forward bias to face the camera in
     // front-style inspection views.
-    anchor: new THREE.Vector3(-0.35, 0.4, 0.2),
+    anchor: [-0.35, 0.4, 0.2],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -333,7 +331,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Sensors", value: "CHEMS + INCA + LEMMS" },
       { label: "Science", value: "First ENA images of Saturn magnetosphere" },
     ],
-    anchor: new THREE.Vector3(0.65, -0.1, -0.25),
+    anchor: [0.65, -0.1, -0.25],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -359,7 +357,7 @@ export const COMPONENTS: ComponentMetadata[] = [
     // spacecraft (negative Y, well below bus center). Slight side offset
     // so the dot doesn't overlap with the bus-anchor projection on most
     // camera angles.
-    anchor: new THREE.Vector3(-0.1, -0.7, 0.05),
+    anchor: [-0.1, -0.7, 0.05],
     modelRadius: 1.2,
     busRelative: true,
   },
@@ -382,7 +380,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Type", value: "Corrugated cylindrical waveguide" },
     ],
     // Dot position is authoritative in labelOffsets.ts SECONDARY_OFFSETS.lga1.
-    anchor: new THREE.Vector3(0, 1.0, 0),
+    anchor: [0, 1.0, 0],
     modelRadius: 1.0,
     busRelative: true,
   },
@@ -403,7 +401,7 @@ export const COMPONENTS: ComponentMetadata[] = [
       { label: "Ka-band down", value: "32,028 MHz — 56.4 dBi" },
       { label: "Science", value: "Occultations, gravity, ring structure" },
     ],
-    anchor: new THREE.Vector3(-0.2, 0.5, -0.3),
+    anchor: [-0.2, 0.5, -0.3],
     modelRadius: 1.2,
     busRelative: true,
   },
